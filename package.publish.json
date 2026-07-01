@@ -1,0 +1,44 @@
+{
+  "name": "ark",
+  "version": "0.1.0",
+  "description": "Architectural Runtime Kernel — governance for Hexagonal + Event-Driven + DDD systems",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup"
+  },
+  "dependencies": {},
+  "peerDependencies": {},
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "architecture",
+    "ddd",
+    "event-driven",
+    "hexagonal",
+    "clean-architecture",
+    "governance",
+    "kernel",
+    "policy"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pedroknigge/ark"
+  }
+}

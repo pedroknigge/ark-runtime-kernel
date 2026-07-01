@@ -1,0 +1,59 @@
+{
+  "name": "ark",
+  "version": "0.1.0",
+  "description": "Architectural Runtime Kernel — governance for Hexagonal + Event-Driven + DDD systems",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist",
+    "prebuild": "node scripts/dev-setup.cjs",
+    "postbuild": "node scripts/dev-teardown.cjs",
+    "prepack": "node scripts/prepack-clean.cjs",
+    "postpack": "node scripts/postpack-restore.cjs"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.3",
+    "vitest": "^1.6.0"
+  },
+  "peerDependencies": {},
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "architecture",
+    "ddd",
+    "event-driven",
+    "hexagonal",
+    "clean-architecture",
+    "governance",
+    "kernel",
+    "policy"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pedroknigge/ark"
+  }
+}

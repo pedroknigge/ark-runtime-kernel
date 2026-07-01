@@ -1,2 +1,2 @@
 /** Ark library version — single source of truth. */
-export const version = '0.8.3';
+export const version = '0.8.4';

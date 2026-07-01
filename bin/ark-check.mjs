@@ -6,6 +6,7 @@ import {
   DEFAULT_RULES,
   layerForFile,
   looksLikeIntent,
+  resolveIntentLayer,
 } from './ark-shared.mjs';
 
 function parseArgs(argv) {
@@ -79,19 +80,17 @@ function normalize(value) {
 }
 
 function layerForIntent(intent, layers) {
-  const configured = layers.flatMap((layer) =>
-    (layer.intentPrefixes ?? []).map((prefix) => ({ layer: layer.name, prefix }))
-  );
-  // DEFAULT_INTENT_PREFIXES entries are { layer, prefixes: [...] } — flatten to the same
-  // { layer, prefix } shape so the fallback actually matches (a prior bug read `.prefix`
-  // off the plural-array entries, so the default fallback silently classified nothing).
-  const candidates =
+  // Use only layers that declare intent prefixes; fall back to the built-in defaults when
+  // none do (mirrors the write-gate). resolveIntentLayer applies the library's exact
+  // longest-prefix + trailing-dot semantics so CI and the MCP gate classify identically.
+  const configured = layers
+    .filter((layer) => (layer.intentPrefixes ?? []).length > 0)
+    .map((layer) => ({ name: layer.name, prefixes: layer.intentPrefixes }));
+  const source =
     configured.length > 0
       ? configured
-      : DEFAULT_INTENT_PREFIXES.flatMap((entry) =>
-          entry.prefixes.map((prefix) => ({ layer: entry.layer, prefix }))
-        );
-  return candidates.find((item) => intent.startsWith(item.prefix))?.layer;
+      : DEFAULT_INTENT_PREFIXES.map((entry) => ({ name: entry.layer, prefixes: entry.prefixes }));
+  return resolveIntentLayer(intent, source);
 }
 
 function isBlocked(rules, from, to) {

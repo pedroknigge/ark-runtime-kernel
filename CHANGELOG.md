@@ -2,6 +2,18 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 0.8.4 — 2026-07-01
+
+### Fixed — CI/MCP intent-classification parity
+
+`ark-check` classified intent names with declaration-order first-match + raw `startsWith`,
+while the MCP write-gate classifies via the library's `ArchitectureProfile.resolveLayer`
+(longest-prefix-first + prefixes normalized to a trailing `.`). For configs with
+overlapping prefixes (`Adapter.` vs `Adapter.Persistence.`) or dotless prefixes (`Domain`),
+the two gates disagreed. Both now share `resolveIntentLayer` (in `bin/ark-shared.mjs`),
+which mirrors the library semantics exactly — a regression test asserts the shared resolver
+and `profile.resolveLayer` return identical results across overlapping/dotless configs.
+
 ## 0.8.3 — 2026-07-01
 
 ### Fixed — third code-review pass (glob robustness + latent fallback bug)

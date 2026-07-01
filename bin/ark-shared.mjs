@@ -131,6 +131,31 @@ export function layerForFile(root, file, layers) {
   return undefined;
 }
 
+function normalizePrefix(prefix) {
+  return prefix.endsWith('.') ? prefix : `${prefix}.`;
+}
+
+/**
+ * Resolve an intent name to its layer using the SAME semantics as
+ * ArchitectureProfile.resolveLayer in src/kernel/layers/ArchitectureProfile.ts (which the
+ * ark-mcp write-gate uses via createArchitectureProfile): every prefix is normalized to a
+ * trailing '.', and the layer whose matching prefix is longest wins — regardless of config
+ * declaration order. Keeping ark-check on these exact rules is what makes the CI gate and
+ * the write-path gate classify identically. `layers` is an array of { name, prefixes }.
+ */
+export function resolveIntentLayer(intent, layers) {
+  const normalized = layers.map((layer) => ({
+    name: layer.name,
+    prefixes: (layer.prefixes ?? []).map(normalizePrefix),
+  }));
+  const sorted = [...normalized].sort((a, b) => {
+    const maxA = Math.max(0, ...a.prefixes.map((p) => p.length));
+    const maxB = Math.max(0, ...b.prefixes.map((p) => p.length));
+    return maxB - maxA;
+  });
+  return sorted.find((layer) => layer.prefixes.some((prefix) => intent.startsWith(prefix)))?.name;
+}
+
 /**
  * Intent-name recognizer. Kept deliberately in sync with `looksLikeIntentName` in
  * src/kernel/ai-gate/AICodeGate.ts: the two live in separate layers on purpose — the

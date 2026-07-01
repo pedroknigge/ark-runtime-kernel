@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
-// The CLIs are standalone .mjs; import the shared glob compiler directly.
-import { globToRegExp } from '../../../bin/ark-shared.mjs';
+// The CLIs are standalone .mjs; import the shared helpers directly.
+import { globToRegExp, resolveIntentLayer } from '../../../bin/ark-shared.mjs';
+import { createArchitectureProfile } from '../../../src/index';
 
 describe('globToRegExp', () => {
   it('matches ** across nested directories', () => {
@@ -32,5 +33,40 @@ describe('globToRegExp', () => {
   it('honors backslash-escaped braces as literals', () => {
     const re = globToRegExp('src/\\{legacy\\}/**');
     expect(re.test('src/{legacy}/x.ts')).toBe(true);
+  });
+});
+
+describe('resolveIntentLayer (CI/MCP intent-classification parity)', () => {
+  // These configs deliberately use overlapping and dotless prefixes — the cases where the
+  // old first-match/raw-startsWith logic disagreed with the library's resolveLayer.
+  const overlapping = [
+    { name: 'Adapters', prefixes: ['Adapter.'] },
+    { name: 'Persistence', prefixes: ['Adapter.Persistence.'] },
+  ];
+  const dotless = [{ name: 'DomainModel', prefixes: ['Domain'] }];
+
+  it('matches the longest prefix regardless of declaration order', () => {
+    expect(resolveIntentLayer('Adapter.Persistence.Save', overlapping)).toBe('Persistence');
+    expect(resolveIntentLayer('Adapter.Other.X', overlapping)).toBe('Adapters');
+  });
+
+  it('normalizes dotless prefixes to a segment boundary', () => {
+    expect(resolveIntentLayer('Domain.Order', dotless)).toBe('DomainModel');
+    expect(resolveIntentLayer('DomainFoo.Bar', dotless)).toBeUndefined();
+  });
+
+  it('agrees with the library ArchitectureProfile.resolveLayer the MCP gate uses', () => {
+    for (const layers of [overlapping, dotless]) {
+      const profile = createArchitectureProfile({ name: 'p', layers });
+      for (const intent of [
+        'Adapter.Persistence.Save',
+        'Adapter.Other.X',
+        'Domain.Order',
+        'DomainFoo.Bar',
+        'Unrelated.Thing',
+      ]) {
+        expect(resolveIntentLayer(intent, layers)).toBe(profile.resolveLayer(intent));
+      }
+    }
   });
 });

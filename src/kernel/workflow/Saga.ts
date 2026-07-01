@@ -3,14 +3,17 @@
  */
 
 import type { EventBus } from '../event-bus';
-import type { SagaDefinition, SagaInstance } from './types';
+import type { SagaContext, SagaDefinition, SagaInstance } from './types';
 
-export function createSaga(def: SagaDefinition, bus: EventBus): SagaInstance {
+export function createSaga<P extends SagaContext = SagaContext>(
+  def: SagaDefinition<P>,
+  bus: EventBus
+): SagaInstance<P> {
   return {
     id: `saga-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     definition: def,
-    async run(initialPayload: any) {
-      const context: any = { ...initialPayload };
+    async run(initialPayload: P) {
+      const context: P = { ...initialPayload };
       for (const step of def.steps) {
         try {
           const result = await step.execute(context, bus);

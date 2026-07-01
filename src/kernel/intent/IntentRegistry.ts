@@ -25,7 +25,7 @@ export interface DefineIntentOptions {
  * IntentRegistry manages all registered intents and their declared relationships.
  */
 export class IntentRegistry {
-  private readonly intents = new Map<string, IntentCreator<any, any>>();
+  private readonly intents = new Map<string, IntentCreator<IntentName, unknown>>();
   private readonly dependencies = new Map<string, Set<string>>();
   private readonly productions = new Map<string, Set<string>>();
 
@@ -66,7 +66,7 @@ export class IntentRegistry {
 
     const creator = fn as IntentCreator<N, P>;
 
-    this.intents.set(name, creator);
+    this.intents.set(name, creator as IntentCreator<IntentName, unknown>);
 
     // Apply initial declared relationships if provided
     if (options?.dependsOn) {
@@ -119,7 +119,7 @@ export class IntentRegistry {
   /**
    * List all registered intent creators.
    */
-  list(): IntentCreator<any, any>[] {
+  list(): IntentCreator<IntentName, unknown>[] {
     return Array.from(this.intents.values());
   }
 

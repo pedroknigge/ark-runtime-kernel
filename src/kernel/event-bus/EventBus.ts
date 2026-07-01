@@ -34,7 +34,7 @@ import {
 
 interface InternalSubscription {
   intentName: string;
-  handler: EventHandler<any, any>;
+  handler: EventHandler<IntentName, unknown>;
 }
 
 export class EventBusImpl<Context = unknown> implements EventBus {
@@ -191,7 +191,7 @@ export class EventBusImpl<Context = unknown> implements EventBus {
 
     const sub: InternalSubscription = {
       intentName,
-      handler: handler as EventHandler<any, any>,
+      handler: handler as EventHandler<IntentName, unknown>,
     };
 
     this.subscriptions.push(sub);

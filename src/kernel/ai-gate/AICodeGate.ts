@@ -15,10 +15,16 @@ import type {
 } from './types';
 import type { Policy } from '../policy';
 import type { IntentCreator } from '../intent';
+import type { IntentName } from '../../domain/types';
+
+export interface AICodeGatePolicyContext<Context = AICodeGateContext> {
+  source: string;
+  context?: Context;
+}
 
 export interface AICodeGateOptions<Context = AICodeGateContext> {
-  policies?: Policy[];
-  intents?: Array<string | IntentCreator<any>>;
+  policies?: Policy<AICodeGatePolicyContext<Context>>[];
+  intents?: Array<string | Pick<IntentCreator<IntentName, unknown>, 'name'>>;
   /**
    * Additional forbidden patterns (regex or strings).
    */
@@ -93,7 +99,7 @@ export function createAICodeGate<Context = AICodeGateContext>(
 
       if (options.policies) {
         for (const policy of options.policies) {
-          const res = policy.check({ source, context } as never);
+          const res = policy.check({ source, context });
           if (res !== true) {
             if (Array.isArray(res)) {
               for (const v of res) {

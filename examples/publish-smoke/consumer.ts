@@ -20,7 +20,7 @@ const OrderPlaced = defineIntent<'Domain.Order.Placed', { id: string; amt: numbe
 const positiveAmount = definePolicy({
   name: 'positive-amount',
   severity: 'hard',
-  check: (ctx: any) => {
+  check: (ctx: { event?: { payload?: { amt?: number } } }) => {
     const p = ctx?.event?.payload;
     if (p && p.amt > 0) return true;
     return { policyName: 'positive-amount', severity: 'hard', message: 'amount must be positive' };
@@ -29,7 +29,7 @@ const positiveAmount = definePolicy({
 
 const bus = createEventBus({ policies: [positiveAmount] });
 
-const received: any[] = [];
+const received: unknown[] = [];
 bus.subscribe(OrderPlaced, (e) => {
   received.push(e);
 });
@@ -49,7 +49,7 @@ async function main() {
     },
   });
 
-  interface Repo { find(id: string): any }
+  interface Repo { find(id: string): { id: string } }
   const repoPort = definePort<Repo>('Repo');
   const impl = { find: (id: string) => ({ id }) };
   const adapter = createAdapter(repoPort, impl, ['find']);
@@ -60,7 +60,7 @@ async function main() {
     steps: [
       {
         name: 'step-1',
-        execute: async (p: any) => ({ ...p, step1: true }),
+        execute: async (p) => ({ ...p, step1: true }),
       },
     ],
   }, bus);

@@ -16,9 +16,7 @@ export function createAdapter<T>(
   requiredKeys?: string[]
 ): Adapter<T> {
   if (requiredKeys && requiredKeys.length > 0) {
-    const missing = requiredKeys.filter(
-      (k) => !(impl as any) || typeof (impl as any)[k] === 'undefined'
-    );
+    const missing = requiredKeys.filter((k) => !hasMember(impl, k));
     if (missing.length > 0) {
       throw new Error(
         `Adapter for port "${port.name}" is missing required members: ${missing.join(', ')}`
@@ -29,11 +27,17 @@ export function createAdapter<T>(
 }
 
 export function checkContract(
-  impl: any,
+  impl: unknown,
   requiredKeys: string[] = []
 ): ContractCheckResult {
-  const missing = requiredKeys.filter(
-    (k) => impl == null || typeof impl[k] === 'undefined'
-  );
+  const missing = requiredKeys.filter((k) => !hasMember(impl, k));
   return missing.length === 0 ? { ok: true } : { ok: false, missing };
+}
+
+function hasMember(value: unknown, key: string): boolean {
+  return (
+    value != null &&
+    (typeof value === 'object' || typeof value === 'function') &&
+    key in value
+  );
 }

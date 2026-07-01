@@ -18,11 +18,18 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-const SCRATCH = process.env.SCRATCH || '/var/folders/02/q6fn08j97gx7bf7s8y25j7sh0000gn/T/grok-goal-feab1526d053/implementer';
+const SCRATCH = process.env.SCRATCH
+  ? path.resolve(process.env.SCRATCH)
+  : fs.mkdtempSync(path.join(os.tmpdir(), 'ark-publish-smoke-'));
 const root = process.cwd();
+process.env.SCRATCH = SCRATCH;
 
 function run(cmd, opts = {}) {
   return execSync(cmd, { cwd: root, stdio: 'pipe', encoding: 'utf8', ...opts });
+}
+
+function quote(value) {
+  return `'${String(value).replace(/'/g, "'\\''")}'`;
 }
 
 function logTo(file, content) {
@@ -39,7 +46,7 @@ const logPath = path.join(SCRATCH, logName);
 run('node scripts/dev-setup.cjs');
 
 console.log('[run-publish-smoke] packing...');
-run(`npm pack --pack-destination ${SCRATCH} --silent`);
+run(`npm pack --pack-destination ${quote(SCRATCH)} --silent`);
 
 const files = fs.readdirSync(SCRATCH).filter(f => f.endsWith('.tgz'));
 if (files.length === 0) throw new Error('No tgz found after pack');
@@ -47,7 +54,8 @@ const tgz = path.join(SCRATCH, files[0]);
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-smoke-'));
 console.log('[run-publish-smoke] installing into', tmp);
-run(`cd ${tmp} && npm init -y && npm install ${tgz} typescript @types/node`, { stdio: 'inherit' });
+run('npm init -y', { cwd: tmp, stdio: 'inherit' });
+run(`npm install ${quote(tgz)} typescript @types/node`, { cwd: tmp, stdio: 'inherit' });
 
 // Copy the committed consumer
 const consumerSrc = path.join(root, 'examples/publish-smoke/consumer.ts');
@@ -74,8 +82,8 @@ pkg.type = 'module';
 fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2));
 
 console.log('[run-publish-smoke] compiling and running...');
-run(`cd ${tmp} && npx tsc`, { stdio: 'inherit' });
-const output = run(`cd ${tmp} && node dist/consumer.js`, { encoding: 'utf8' });
+run('npx tsc', { cwd: tmp, stdio: 'inherit' });
+const output = run('node dist/consumer.js', { cwd: tmp, encoding: 'utf8' });
 
 logTo(logPath, output);
 console.log('[run-publish-smoke] done. Output written to', logPath);
@@ -83,5 +91,5 @@ console.log('[run-publish-smoke] done. Output written to', logPath);
 if (!repeat) {
   // also run repeat for convenience
   console.log('[run-publish-smoke] running repeat for consumer-run2.log ...');
-  run(`node ${path.join(root, 'scripts/run-publish-smoke.mjs')} --repeat`);
+  run(`node ${quote(path.join(root, 'scripts/run-publish-smoke.mjs'))} --repeat`);
 }

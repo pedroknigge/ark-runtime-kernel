@@ -9,20 +9,39 @@
  * - Application.* for use-cases / orchestration
  * - Adapter.* for integration points
  * - Workflow.* for sagas and processes
+ * - Job.* for background jobs and scheduling
+ * - Presentation.* for UI/API adapters
+ * - Reporting.* for read models and projections
+ * - Metadata.* for extensibility contracts
+ * - Security.* / Audit.* / Observability.* for cross-cutting kernel concerns
+ * - Kernel.* for Ark-owned governance signals
  */
 export type IntentName =
   | `Domain.${string}`
   | `Application.${string}`
   | `Adapter.${string}`
-  | `Workflow.${string}`;
+  | `Workflow.${string}`
+  | `Job.${string}`
+  | `Presentation.${string}`
+  | `Reporting.${string}`
+  | `Metadata.${string}`
+  | `Security.${string}`
+  | `Audit.${string}`
+  | `Observability.${string}`
+  | `Kernel.${string}`;
 
 export type CorrelationId = string;
 
 export interface EventMetadata {
   occurredAt: string; // ISO-8601
   source: string; // e.g. "Application.OrderService" or "Adapter.PaymentGateway"
+  eventVersion?: string;
+  schemaVersion?: string;
   correlationId?: CorrelationId;
   causationId?: string;
+  traceId?: string;
+  spanId?: string;
+  parentSpanId?: string;
   [key: string]: unknown;
 }
 

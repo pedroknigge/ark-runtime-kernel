@@ -9,12 +9,16 @@ import type { DomainEvent, EventMetadata, IntentName } from '../../domain/types'
 import type { IntentCreator, IntentRegistry } from '../intent';
 import type { DependencyGraph } from '../graph';
 import type { Policy, PolicyEngine, PolicyEvaluationResult } from '../policy';
+import type { AuditTrail } from '../audit';
+import type { EventContractRegistry } from '../event-contracts';
+import type { OutboxStore } from '../outbox';
 
 export type { IntentCreator };
 
 /** Standard trace record for observability and agent consumption. */
 export type TraceRecordType =
   | 'event.published'
+  | 'policy.hardViolation'
   | 'policy.softViolation'
   | 'handler.error'
   | 'hook.error';
@@ -24,8 +28,12 @@ export interface TraceRecord {
   timestamp: string;
   intent: string;
   correlationId?: string;
+  traceId?: string;
+  spanId?: string;
   details?: unknown;
 }
+
+export type TraceSink = (record: TraceRecord) => void;
 
 /**
  * Options when creating an EventBus.
@@ -33,6 +41,24 @@ export interface TraceRecord {
 export interface EventBusOptions<Context = unknown> {
   /** Optional hook called after every successful publish */
   onPublish?: (event: DomainEvent) => void | Promise<void>;
+
+  /** Native audit trail used to persist publish, policy, and handler events. */
+  auditTrail?: AuditTrail;
+
+  /** Event contracts used to validate payload shape and event versions. */
+  eventContracts?: EventContractRegistry;
+
+  /** When true, events without a registered contract are rejected. */
+  strictEventContracts?: boolean;
+
+  /** When true, metadata.source must be explicit and not "unknown". */
+  requireKnownSource?: boolean;
+
+  /** Optional outbox store for durable delivery handoff. */
+  outbox?: OutboxStore;
+
+  /** Lightweight tracing hooks for OpenTelemetry or custom tracer bridges. */
+  traceSinks?: TraceSink[];
 
   /** Called when soft policies produce violations (publish still proceeds). */
   onSoftViolation?: (result: PolicyEvaluationResult, event: DomainEvent) => void | Promise<void>;

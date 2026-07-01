@@ -5,6 +5,7 @@
 import type { Policy, PolicyViolation } from './types';
 import type { IntentRelationship } from '../intent';
 import type { GraphEdge } from '../graph';
+import type { ArchitectureProfile } from '../layers';
 import { definePolicy } from './definePolicy';
 
 export interface LayerFlowRule {
@@ -19,15 +20,24 @@ export interface LayerPolicyOptions {
   severity?: 'hard' | 'soft';
   /** Prefix rules — e.g. { from: 'Domain', to: 'Adapter', allowed: false } */
   rules: LayerFlowRule[];
+  resolveLayer?: (name: string) => string | undefined;
 }
 
-function layerOf(name: string): string {
+function defaultLayerOf(name: string): string {
   const dot = name.indexOf('.');
   return dot >= 0 ? name.slice(0, dot) : name;
 }
 
-function matchesRule(from: string, to: string, rule: LayerFlowRule): boolean {
-  return layerOf(from) === rule.from && layerOf(to) === rule.to;
+function resolveLayer(name: string, options: LayerPolicyOptions): string {
+  return options.resolveLayer?.(name) ?? defaultLayerOf(name);
+}
+
+function matchesRule(
+  fromLayer: string,
+  toLayer: string,
+  rule: LayerFlowRule
+): boolean {
+  return fromLayer === rule.from && toLayer === rule.to;
 }
 
 /**
@@ -57,14 +67,17 @@ export function defineLayerPolicy<Context extends { edges?: GraphEdge[]; relatio
       const violations: PolicyViolation[] = [];
 
       for (const edge of edges) {
+        const fromLayer = resolveLayer(edge.from, options);
+        const toLayer = resolveLayer(edge.to, options);
+
         for (const rule of options.rules) {
-          if (!rule.allowed && matchesRule(edge.from, edge.to, rule)) {
+          if (!rule.allowed && matchesRule(fromLayer, toLayer, rule)) {
             violations.push({
               policyName: name,
               severity,
               message:
                 rule.message ??
-                `Layer violation: ${edge.from} (${layerOf(edge.from)}) must not relate to ${edge.to} (${layerOf(edge.to)})`,
+                `Layer violation: ${edge.from} (${fromLayer}) must not relate to ${edge.to} (${toLayer})`,
             });
           }
         }
@@ -110,3 +123,14 @@ export const architecturalPolicies = {
     });
   },
 };
+
+export function defineArchitectureProfilePolicy<
+  Context extends { edges?: GraphEdge[]; relationships?: IntentRelationship[] },
+>(profile: ArchitectureProfile, options: Omit<LayerPolicyOptions, 'rules' | 'resolveLayer'> = {}): Policy<Context> {
+  return defineLayerPolicy<Context>({
+    name: options.name ?? `${profile.name} layer policy`,
+    severity: options.severity ?? 'hard',
+    rules: profile.rules,
+    resolveLayer: profile.resolveLayer,
+  });
+}

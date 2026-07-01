@@ -1,0 +1,87 @@
+{
+  "include": ["src"],
+  "layers": [
+    {
+      "name": "DomainModel",
+      "patterns": ["src/domain/**"],
+      "intentPrefixes": ["Domain."]
+    },
+    {
+      "name": "ApplicationOrchestration",
+      "patterns": ["src/application/**"],
+      "intentPrefixes": ["Application."]
+    },
+    {
+      "name": "PersistenceAdapters",
+      "patterns": ["src/adapters/persistence/**"],
+      "intentPrefixes": ["Adapter.Persistence."]
+    },
+    {
+      "name": "IntegrationAdapters",
+      "patterns": ["src/adapters/integration/**"],
+      "intentPrefixes": ["Adapter.Integration."]
+    },
+    {
+      "name": "WorkflowSagaEngine",
+      "patterns": ["src/workflows/**"],
+      "intentPrefixes": ["Workflow."]
+    },
+    {
+      "name": "BackgroundJobsScheduling",
+      "patterns": ["src/jobs/**"],
+      "intentPrefixes": ["Job."]
+    },
+    {
+      "name": "PresentationAdapters",
+      "patterns": ["src/presentation/**"],
+      "intentPrefixes": ["Presentation."]
+    },
+    {
+      "name": "ReportingReadModels",
+      "patterns": ["src/reporting/**"],
+      "intentPrefixes": ["Reporting."]
+    },
+    {
+      "name": "ExtensibilityMetadata",
+      "patterns": ["src/metadata/**"],
+      "intentPrefixes": ["Metadata."]
+    },
+    {
+      "name": "SecurityAuditObservability",
+      "patterns": ["src/security/**", "src/audit/**", "src/observability/**"],
+      "intentPrefixes": ["Security.", "Audit.", "Observability."]
+    },
+    {
+      "name": "Kernel",
+      "patterns": ["src/kernel/**"],
+      "intentPrefixes": ["Kernel."]
+    }
+  ],
+  "rules": [
+    {
+      "from": "DomainModel",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "DomainModel",
+      "to": "IntegrationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "DomainModel",
+      "to": "PresentationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "PresentationAdapters",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "ReportingReadModels",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    }
+  ]
+}

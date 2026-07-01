@@ -2,7 +2,20 @@
  * Runtime validation for semantic intent naming conventions.
  */
 
-const ALLOWED_PREFIXES = ['Domain.', 'Application.', 'Adapter.', 'Workflow.'] as const;
+const ALLOWED_PREFIXES = [
+  'Domain.',
+  'Application.',
+  'Adapter.',
+  'Workflow.',
+  'Job.',
+  'Presentation.',
+  'Reporting.',
+  'Metadata.',
+  'Security.',
+  'Audit.',
+  'Observability.',
+  'Kernel.',
+] as const;
 
 export interface IntentNameValidation {
   valid: boolean;

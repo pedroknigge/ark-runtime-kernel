@@ -24,6 +24,7 @@ export interface AIGateExtension<Context = unknown> {
 export interface AICodeGateContext {
   filePath?: string;
   agentId?: string;
+  layer?: string;
   [key: string]: unknown;
 }
 

@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { createAICodeGate, definePolicy, defineIntent, defaultIntentRegistry } from '../../../src/index';
+import {
+  createAICodeGate,
+  definePolicy,
+  defineIntent,
+  defaultIntentRegistry,
+  elevenLayerProfile,
+} from '../../../src/index';
 
 describe('AI Code Gate (basic)', () => {
   beforeEach(() => {
@@ -65,5 +71,21 @@ describe('AI Code Gate (basic)', () => {
     const res = gate.validate('console.log("hi")');
     expect(res.valid).toBe(false);
     expect(res.violations[0].ruleId).toBe('NO_CONSOLE');
+  });
+
+  it('flags layer reference violations when a profile and context layer are provided', () => {
+    const gate = createAICodeGate({
+      architectureProfile: elevenLayerProfile,
+      enforceIntentAllowlist: false,
+    });
+
+    const res = gate.validate(
+      `const repo = 'Adapter.Persistence.OrderRepository';`,
+      { layer: 'DomainModel' }
+    );
+
+    expect(res.valid).toBe(false);
+    expect(res.violations[0].ruleId).toBe('LAYER_REFERENCE_VIOLATION');
+    expect(res.violations[0].line).toBe(1);
   });
 });

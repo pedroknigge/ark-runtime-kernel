@@ -7,6 +7,8 @@ import {
   createDependencyGraph,
   syncRegistryToGraph,
   architecturalPolicies,
+  definePublishPolicy,
+  createAuditTrail,
 } from '../../../src/index';
 import type { DomainEvent } from '../../../src/index';
 
@@ -51,6 +53,19 @@ describe('Event Bus core (Iteration 3)', () => {
     await bus.publish(OrderPlaced({ orderId: 'o3', amount: 25 }));
     expect(a).toHaveLength(1);
     expect(b).toHaveLength(2);
+  });
+
+  it('removes unsubscribed handlers from the intent index', async () => {
+    const bus = createEventBus();
+    const received: string[] = [];
+
+    const unsubA = bus.subscribe(OrderPlaced, () => received.push('a'));
+    bus.subscribe(OrderPlaced, () => received.push('b'));
+
+    unsubA();
+    await bus.publish(OrderPlaced({ orderId: 'indexed', amount: 1 }));
+
+    expect(received).toEqual(['b']);
   });
 
   it('enriches metadata and keeps history', async () => {
@@ -247,5 +262,52 @@ describe('Event Bus core (Iteration 3)', () => {
     await expect(
       bus.publish(OrderPlaced({ orderId: 'bad', amount: -5 }))
     ).rejects.toThrow(/Hard policy violation/);
+  });
+
+  it('supports typed publish policy helper', async () => {
+    const bus = createEventBus({
+      policies: [
+        definePublishPolicy({
+          name: 'Publish source required',
+          severity: 'hard',
+          check: (ctx) =>
+            ctx.event.metadata.source === 'Application.OrderService'
+              ? true
+              : { message: 'source must identify the application service' },
+        }),
+      ],
+    });
+
+    await expect(
+      bus.publish(OrderPlaced({ orderId: 'source', amount: 1 }), {
+        source: 'Application.OrderService',
+      })
+    ).resolves.toBeUndefined();
+
+    await expect(
+      bus.publish(OrderPlaced({ orderId: 'bad-source', amount: 1 }), {
+        source: 'unknown',
+      })
+    ).rejects.toThrow(/source must identify/);
+  });
+
+  it('records native audit entries and emits trace sink records', async () => {
+    const auditTrail = createAuditTrail();
+    const traces: string[] = [];
+    const bus = createEventBus({
+      auditTrail,
+      traceSinks: [(record) => traces.push(record.type)],
+    });
+
+    await bus.publish(OrderPlaced, { orderId: 'audit', amount: 1 }, {
+      source: 'Application.OrderService',
+      correlationId: 'corr-audit',
+      traceId: 'trace-audit',
+    });
+
+    expect(traces).toContain('event.published');
+    const auditRecords = await auditTrail.query({ type: 'event.published' });
+    expect(auditRecords).toHaveLength(1);
+    expect(auditRecords[0].correlationId).toBe('corr-audit');
   });
 });

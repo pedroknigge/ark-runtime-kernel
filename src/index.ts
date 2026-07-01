@@ -49,10 +49,12 @@ export {
   PolicyEngine,
   PolicyViolationError,
   defineLayerPolicy,
+  defineArchitectureProfilePolicy,
   architecturalPolicies,
   isLayerPolicy,
   type Policy,
   type PolicySeverity,
+  type PolicyEnforcementMode,
   type PolicyViolation,
   type PolicyEvaluationResult,
   type DefinePolicyOptions,
@@ -73,13 +75,57 @@ export {
   type PublishedEventRecord,
   type TraceRecord,
   type TraceRecordType,
+  type TraceSink,
   buildPublishPolicyContext,
+  definePublishPolicy,
   UnregisteredIntentError,
   InvalidIntentNameError,
   LayerPolicyContextError,
+  EventContractViolationError,
+  UnknownEventSourceError,
   type PublishPolicyContext,
+  type GraphPolicyContext,
   type BuildPublishPolicyContextOptions,
 } from './kernel/event-bus';
+
+// =============================================================================
+// Event Contracts & Outbox
+// =============================================================================
+
+export {
+  createEventContractRegistry,
+  EventContractRegistryImpl,
+  type EventContract,
+  type EventContractIssue,
+  type EventContractRegistry,
+  type EventContractValidationResult,
+  type EventPayloadSchema,
+  type EventSchemaField,
+  type EventSchemaFieldType,
+} from './kernel/event-contracts';
+
+export {
+  InMemoryOutboxStore,
+  type OutboxRecord,
+  type OutboxStatus,
+  type OutboxStore,
+} from './kernel/outbox';
+
+// =============================================================================
+// Native Audit & History
+// =============================================================================
+
+export {
+  createAuditTrail,
+  InMemoryAuditStore,
+  type AuditRecord,
+  type AuditRecordInput,
+  type AuditRecordType,
+  type AuditQuery,
+  type AuditStore,
+  type AuditTrail,
+  type CreateAuditTrailOptions,
+} from './kernel/audit';
 
 // =============================================================================
 // Dependency Graph (Iteration 3+)
@@ -93,6 +139,19 @@ export {
   type GraphNode,
   type SyncRegistryOptions,
 } from './kernel/graph';
+
+// =============================================================================
+// Architecture Profiles / 11-Layer Governance
+// =============================================================================
+
+export {
+  createArchitectureProfile,
+  elevenLayerProfile,
+  type ArchitectureLayer,
+  type ArchitectureProfile,
+  type ArchitectureRule,
+  type CreateArchitectureProfileOptions,
+} from './kernel/layers';
 
 // =============================================================================
 // Metadata System (basic)
@@ -128,8 +187,23 @@ export {
   type AICodeGateResult,
   type AICodeGateViolation,
   type AICodeGateContext,
+  type AICodeGateOptions,
   type AIGateExtension,
 } from './kernel/ai-gate';
+
+// =============================================================================
+// Read Models / Projections
+// =============================================================================
+
+export {
+  createProjectionRegistry,
+  InMemoryReadModelStore,
+  type ProjectionCheckpoint,
+  type ProjectionDefinition,
+  type ProjectionRegistry,
+  type ReadModelStore,
+  type CreateProjectionRegistryOptions,
+} from './kernel/projections';
 
 // =============================================================================
 // Ark Manifest (machine-readable contract export)
@@ -143,13 +217,41 @@ export {
   type ArkManifestPolicy,
   type ArkManifestGraph,
   type ArkManifestEntityLink,
+  type ArkManifestArchitecture,
+  type ArkManifestProjection,
   type CreateArkManifestOptions,
   MANIFEST_SCHEMA_VERSION,
 } from './kernel/manifest';
 
 // =============================================================================
-// Thin Saga / Workflow
+// Workflow / Saga
 // =============================================================================
 
-export { createSaga, type SagaDefinition, type SagaStep, type SagaInstance } from './kernel/workflow';
+export {
+  createSaga,
+  createWorkflowEngine,
+  InMemoryWorkflowStore,
+  type CreateWorkflowEngineOptions,
+  type RetryPolicy,
+  type SagaDefinition,
+  type SagaStep,
+  type SagaInstance,
+  type SagaStatus,
+  type WorkflowDefinition,
+  type WorkflowEngine,
+  type WorkflowSnapshot,
+  type WorkflowStatus,
+  type WorkflowStep,
+  type WorkflowStore,
+} from './kernel/workflow';
 
+// =============================================================================
+// Strict Ark Kernel Runtime
+// =============================================================================
+
+export {
+  createArkKernel,
+  createStrictArkKernel,
+  type ArkKernel,
+  type CreateArkKernelOptions,
+} from './kernel/runtime';

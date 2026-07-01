@@ -6,6 +6,7 @@
  */
 
 export type PolicySeverity = 'hard' | 'soft';
+export type PolicyEnforcementMode = 'runtime' | 'static' | 'runtime-and-static' | 'advisory';
 
 /**
  * Represents a single violation of a policy.
@@ -33,6 +34,12 @@ export interface Policy<Context = unknown> {
   readonly severity: PolicySeverity;
   /** Optional tags for policy classification (e.g. 'layer', 'naming') */
   readonly tags?: readonly string[];
+  readonly owner?: string;
+  readonly version?: string;
+  readonly rationale?: string;
+  readonly enforcementMode?: PolicyEnforcementMode;
+  readonly deprecated?: boolean | string;
+  readonly replacedBy?: string;
   /**
    * Evaluates the policy against the given context.
    * Return true / [] for pass, false / single violation / array for failure.

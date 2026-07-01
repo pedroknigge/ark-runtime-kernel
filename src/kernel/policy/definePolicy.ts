@@ -4,12 +4,23 @@
  * Factory function to create architectural policies in a declarative way.
  */
 
-import type { Policy, PolicySeverity, PolicyViolation } from './types';
+import type {
+  Policy,
+  PolicyEnforcementMode,
+  PolicySeverity,
+  PolicyViolation,
+} from './types';
 
 export interface DefinePolicyOptions<Context = unknown> {
   name: string;
   severity?: PolicySeverity;
   tags?: readonly string[];
+  owner?: string;
+  version?: string;
+  rationale?: string;
+  enforcementMode?: PolicyEnforcementMode;
+  deprecated?: boolean | string;
+  replacedBy?: string;
   check: (context: Context) => boolean | PolicyViolation | PolicyViolation[];
 }
 
@@ -42,6 +53,12 @@ export function definePolicy<Context = unknown>(
     name: options.name,
     severity,
     tags: options.tags,
+    owner: options.owner,
+    version: options.version,
+    rationale: options.rationale,
+    enforcementMode: options.enforcementMode,
+    deprecated: options.deprecated,
+    replacedBy: options.replacedBy,
     check: options.check,
   };
 

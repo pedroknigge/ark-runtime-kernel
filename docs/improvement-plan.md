@@ -122,18 +122,18 @@
 
 ## Medium Impact / Medium Effort
 
-*Remaining items for v0.3+; v0.2 shipped the enforcement-critical work.*
+*v0.2 now ships the enforcement-critical and medium-tier readiness work.*
 
-### M1. Saga compensation test + minimal state exposure
+### M1. Saga compensation test + minimal state exposure ✅ shipped in v0.2
 
 **Finding:** §4 — Compensation path untested; no step status.  
-**Change:** Add compensation test; expose `SagaInstance.status` (`'running' | 'completed' | 'compensating' | 'failed'`) and `completedSteps[]`.  
+**Change shipped:** Added compensation coverage and exposed `SagaInstance.status` (`'idle' | 'running' | 'completed' | 'compensating' | 'failed'`) plus `completedSteps[]`.
 **Effort:** ~2 hours.
 
-### M2. Metadata export + entity–intent linking
+### M2. Metadata export + entity–intent linking ✅ shipped in v0.2
 
 **Finding:** §5 — No JSON export; no entity–event link.  
-**Change:** Add `MetadataRegistry.toJSON()`; optional `EntityMeta.emits?: string[]` / `consumes?: string[]` intent name lists.  
+**Change shipped:** Added `MetadataRegistry.toJSON()`; optional `EntityMeta.emits?: string[]` / `consumes?: string[]` intent name lists are included in manifest links.
 **Effort:** ~2 hours.
 
 ### M3. Runtime intent registration validation on publish ✅ shipped in v0.2
@@ -141,22 +141,22 @@
 **Finding:** §3 — Raw events bypass registry.  
 **Change shipped:** `EventBusOptions.strictRegistry` defaults to true when `intentRegistry` is provided and rejects unregistered publish/subscribe paths. Runtime naming validation is available via `validateIntentNaming`.
 
-### M4. Subscriber index by intent name
+### M4. Subscriber index by intent name ✅ shipped in v0.2
 
 **Finding:** §8 — O(n) scan per publish.  
-**Change:** Internal `Map<string, InternalSubscription[]>` keyed by intent name.  
+**Change shipped:** Internal `Map<string, InternalSubscription[]>` keyed by intent name.
 **Effort:** ~1 hour.
 
-### M5. Agent-oriented documentation section
+### M5. Agent-oriented documentation section ✅ shipped in v0.2
 
 **Finding:** §7 — No agent guide.  
-**Change:** Add `docs/agent-guide.md`: manifest usage, naming conventions, extension points, example agent workflow. Update README link.  
+**Change shipped:** Added `docs/agent-guide.md`: manifest usage, naming conventions, extension points, example agent workflow. README links to the guide.
 **Effort:** ~1–2 hours.
 
-### M6. Typed policy context helpers
+### M6. Typed policy context helpers ✅ shipped in v0.2
 
 **Finding:** §2 — `any` in policy checks.  
-**Change:** Export `PublishPolicyContext`, `GraphPolicyContext` types; `definePublishPolicy()` sugar.  
+**Change shipped:** Exported `PublishPolicyContext`, `GraphPolicyContext`, and `definePublishPolicy()` helper.
 **Effort:** ~1 hour.
 
 ---
@@ -204,7 +204,7 @@ Phase 2 — Enforcement & Observability (H4 → H6 → H7)
 Phase 3 — Agent Surface (H5 → M5)
   Complete AI gate, write agent guide
 
-Phase 4 — Polish (remaining M1, M2, M4, L1–L5)
+Phase 4 — Polish (remaining L1–L5)
   As time permits
 ```
 
@@ -212,12 +212,13 @@ Phase 4 — Polish (remaining M1, M2, M4, L1–L5)
 
 ---
 
-## Explicit Non-Goals (This Plan)
+## Explicit Non-Goals (Updated for v0.4)
 
 - Embedding LLM/AI provider SDKs
-- Full TypeScript AST static analyzer (deferred to external `AIGateExtension` plugins)
-- Persistent saga storage / distributed event bus
-- CQRS read-model implementation inside the kernel
+- Full type-aware TypeScript semantic analyzer
+- Owning database persistence for audit, workflow snapshots, or read models
+- Distributed event bus, queue runtime, or cross-service workflow engine
+- Full CQRS command/query framework or reporting database
 - Runtime npm dependencies of any kind
 
 ---
@@ -232,7 +233,7 @@ Phase 4 — Polish (remaining M1, M2, M4, L1–L5)
 | AI gate completeness | Unknown intents flagged; structured violation output |
 | Memory safety | `maxHistorySize` prevents unbounded growth |
 | Zero deps | `package.json` dependencies still `{}` |
-| Tests | All existing + new tests pass; negative paths covered for H4, H5, H3 |
+| Tests | All existing + new tests pass; negative paths covered for H4, H5, H3, M1, M2 |
 
 ---
 
@@ -252,5 +253,53 @@ Phase 4 — Polish (remaining M1, M2, M4, L1–L5)
 | V2 strict registry publish/subscribe validation | ✅ |
 | V2 stricter `IntentName` typing | ✅ |
 | V2 npm scripts and pack workflow | ✅ |
+| V2 package rename to `ark-runtime-kernel` | ✅ |
+| M1 Saga compensation/state | ✅ |
+| M2 Metadata export/entity-intent links | ✅ |
+| M4 Subscriber index | ✅ |
+| M5 Agent guide | ✅ |
+| M6 Typed policy context helpers | ✅ |
 
-**Medium/Low tier:** remaining non-blocking items are M1, M2, M4, and L1–L5.
+## v0.3 Implementation Status (2026-07-01)
+
+The next architecture hardening wave is now implemented:
+
+| Capability | Status |
+|------------|--------|
+| 11-layer architecture profile | ✅ |
+| Strict `createArkKernel()` runtime | ✅ |
+| Native AuditTrail and bounded audit history | ✅ |
+| EventBus audit integration and tracing hooks | ✅ |
+| Workflow engine with snapshots, retries, timeouts, compensation, pluggable store | ✅ |
+| Projection/read-model registry with checkpoints | ✅ |
+| Metadata validation, ownership/version fields, relation checks | ✅ |
+| Layer-grouped graph Mermaid visualization | ✅ |
+| AI Code Gate line numbers and layer-aware checks | ✅ |
+| Manifest exports for architecture and projections | ✅ |
+
+**Low tier:** remaining non-blocking items are L1–L5.
+
+## v0.4 Implementation Status (2026-07-01)
+
+The next phase addresses the strict 11-layer review findings and the Grok report's main recommendations:
+
+| Capability | Status |
+|------------|--------|
+| `createStrictArkKernel()` for stricter default runtime enforcement | ✅ |
+| Event contract registry with event version and payload validation | ✅ |
+| Known-source enforcement for event metadata | ✅ |
+| Basic outbox store and `OutboxStore` extension point | ✅ |
+| `ark-check` CLI for TypeScript AST import checks | ✅ |
+| `ark-check` intent-string layer reference checks | ✅ |
+| Policy lifecycle metadata: owner, version, rationale, enforcement mode, deprecation | ✅ |
+| Manifest export of event contracts and policy lifecycle metadata | ✅ |
+| Package bin coverage in publish/pack tests | ✅ |
+
+Remaining high-value hardening after v0.4:
+
+| Gap | Priority | Notes |
+|-----|----------|-------|
+| Durable production adapters for outbox/audit/workflow/read models | High | Ark exposes interfaces; production deployments still need real stores |
+| Type-aware semantic analyzer | High | `ark-check` is AST-based and path/config driven, not a TypeScript program/type graph |
+| Distributed workflow orchestration | Medium | Keep Ark in-process; integrate Temporal/queues when process boundaries matter |
+| OpenTelemetry bridge package | Medium | Core should keep hooks, not take an OTel runtime dependency |

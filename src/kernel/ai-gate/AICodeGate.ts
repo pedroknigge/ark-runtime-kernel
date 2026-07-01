@@ -16,6 +16,7 @@ import type {
 import type { Policy } from '../policy';
 import type { IntentCreator } from '../intent';
 import type { IntentName } from '../../domain/types';
+import type { ArchitectureProfile } from '../layers';
 
 export interface AICodeGatePolicyContext<Context = AICodeGateContext> {
   source: string;
@@ -34,6 +35,11 @@ export interface AICodeGateOptions<Context = AICodeGateContext> {
    */
   extensions?: AIGateExtension<Context>[];
   /**
+   * Optional architecture profile for layer-aware generated-code checks.
+   * When context.layer is provided, intent references are checked against it.
+   */
+  architectureProfile?: ArchitectureProfile;
+  /**
    * When true, flag string literals that look like intent names but are not registered.
    */
   enforceIntentAllowlist?: boolean;
@@ -47,19 +53,28 @@ function violation(
   return { ruleId, code: ruleId, message, ...extra };
 }
 
+interface StringMatch {
+  value: string;
+  index: number;
+}
+
+function lineOf(source: string, index: number): number {
+  return source.slice(0, index).split('\n').length;
+}
+
 /** Extract quoted string literals from source (naive scan). */
-function extractQuotedStrings(source: string): string[] {
-  const matches: string[] = [];
+function extractQuotedStrings(source: string): StringMatch[] {
+  const matches: StringMatch[] = [];
   const re = /['"`]([A-Za-z][A-Za-z0-9_.]*)['"`]/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(source)) !== null) {
-    matches.push(m[1]);
+    matches.push({ value: m[1], index: m.index });
   }
   return matches;
 }
 
 function looksLikeIntentName(s: string): boolean {
-  return /^(Domain|Application|Adapter|Workflow)\.[A-Za-z0-9_.]+$/.test(s);
+  return /^(Domain|Application|Adapter|Workflow|Job|Presentation|Reporting|Metadata|Security|Audit|Observability|Kernel)\.[A-Za-z0-9_.]+$/.test(s);
 }
 
 export function createAICodeGate<Context = AICodeGateContext>(
@@ -83,16 +98,20 @@ export function createAICodeGate<Context = AICodeGateContext>(
 
       for (const pat of forbidden) {
         if (pat instanceof RegExp) {
-          if (pat.test(source)) {
+          const match = source.match(pat);
+          if (match) {
             violations.push(
               violation('FORBIDDEN_PATTERN', `Forbidden pattern matched: ${pat}`, {
+                line: match.index === undefined ? undefined : lineOf(source, match.index),
                 suggestion: 'Remove infrastructure imports from domain/application layers.',
               })
             );
           }
         } else if (source.includes(pat)) {
           violations.push(
-            violation('FORBIDDEN_SUBSTRING', `Forbidden substring: ${pat}`)
+            violation('FORBIDDEN_SUBSTRING', `Forbidden substring: ${pat}`, {
+              line: lineOf(source, source.indexOf(pat)),
+            })
           );
         }
       }
@@ -124,13 +143,45 @@ export function createAICodeGate<Context = AICodeGateContext>(
 
       if (enforceAllowlist && intentNames.size > 0) {
         for (const literal of extractQuotedStrings(source)) {
-          if (looksLikeIntentName(literal) && !intentNames.has(literal)) {
+          if (looksLikeIntentName(literal.value) && !intentNames.has(literal.value)) {
             violations.push(
               violation(
                 'UNKNOWN_INTENT',
-                `Unknown intent reference: "${literal}"`,
+                `Unknown intent reference: "${literal.value}"`,
                 {
-                  suggestion: `Register intent "${literal}" via defineIntent() or remove the reference.`,
+                  line: lineOf(source, literal.index),
+                  suggestion: `Register intent "${literal.value}" via defineIntent() or remove the reference.`,
+                }
+              )
+            );
+          }
+        }
+      }
+
+      const contextLayer = (context as AICodeGateContext | undefined)?.layer;
+      if (options.architectureProfile && contextLayer) {
+        for (const literal of extractQuotedStrings(source)) {
+          if (!looksLikeIntentName(literal.value)) continue;
+
+          const targetLayer = options.architectureProfile.resolveLayer(literal.value);
+          if (!targetLayer) continue;
+
+          const blocked = options.architectureProfile.rules.find(
+            (rule) =>
+              !rule.allowed &&
+              rule.from === contextLayer &&
+              rule.to === targetLayer
+          );
+
+          if (blocked) {
+            violations.push(
+              violation(
+                'LAYER_REFERENCE_VIOLATION',
+                blocked.message ??
+                  `Layer "${contextLayer}" must not reference "${targetLayer}" through "${literal.value}".`,
+                {
+                  line: lineOf(source, literal.index),
+                  suggestion: 'Route the dependency through an allowed intent, port, or event.',
                 }
               )
             );

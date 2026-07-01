@@ -5,6 +5,10 @@
 import type { IntentRelationship } from '../intent';
 import type { EntityMeta } from '../metadata';
 import type { GraphEdge, GraphNode } from '../graph';
+import type { ArchitectureLayer, ArchitectureRule } from '../layers';
+import type { ProjectionCheckpoint } from '../projections';
+import type { EventContract } from '../event-contracts';
+import type { PolicyEnforcementMode } from '../policy';
 
 export interface ArkManifestIntent {
   name: string;
@@ -19,6 +23,12 @@ export interface ArkManifestPolicy {
   severity: 'hard' | 'soft';
   tags?: string[];
   description?: string;
+  owner?: string;
+  version?: string;
+  rationale?: string;
+  enforcementMode?: PolicyEnforcementMode;
+  deprecated?: boolean | string;
+  replacedBy?: string;
 }
 
 export interface ArkManifestEntityLink {
@@ -32,6 +42,18 @@ export interface ArkManifestGraph {
   edges: GraphEdge[];
 }
 
+export interface ArkManifestArchitecture {
+  profile: string;
+  layers: ArchitectureLayer[];
+  rules: ArchitectureRule[];
+}
+
+export interface ArkManifestProjection {
+  name: string;
+  sourceIntents: string[];
+  checkpoint?: ProjectionCheckpoint;
+}
+
 export interface ArkManifestData {
   /** Manifest schema version for agent/tooling compatibility. */
   schemaVersion: string;
@@ -42,6 +64,9 @@ export interface ArkManifestData {
   policies: ArkManifestPolicy[];
   entities: EntityMeta[];
   graph: ArkManifestGraph;
+  architecture?: ArkManifestArchitecture;
+  projections: ArkManifestProjection[];
+  eventContracts: EventContract[];
   /** Cross-registry links for agent contract discovery. */
   links: {
     entityIntents: ArkManifestEntityLink[];

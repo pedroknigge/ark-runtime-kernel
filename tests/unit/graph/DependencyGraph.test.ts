@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { createDependencyGraph, defineIntent } from '../../../src/index';
+import { createDependencyGraph, elevenLayerProfile } from '../../../src/index';
 
 describe('Dependency Graph', () => {
   it('registers dependencies and produces JSON + Mermaid (valid syntax for kinded edges)', () => {
@@ -34,5 +34,20 @@ describe('Dependency Graph', () => {
     graph.registerDependency('App.X', 'Domain.Y', 'declared');
 
     expect(graph.getEdges().length).toBe(1);
+  });
+
+  it('exports layer-grouped Mermaid for architecture profiles', () => {
+    const graph = createDependencyGraph();
+    graph.registerDependency(
+      'Application.PlaceOrder',
+      'Domain.Order.Placed',
+      'declared'
+    );
+
+    const mermaid = graph.toLayerMermaid(elevenLayerProfile);
+
+    expect(mermaid).toContain('subgraph ApplicationOrchestration');
+    expect(mermaid).toContain('subgraph DomainModel');
+    expect(mermaid).toContain('-->|declared|');
   });
 });

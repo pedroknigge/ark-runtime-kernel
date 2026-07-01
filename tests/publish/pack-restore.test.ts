@@ -67,16 +67,18 @@ describe('publish manifest model (dev-first workflow)', () => {
       fs.readFileSync(path.join(extract, 'package', 'package.json'), 'utf8')
     );
     expect(inner.dependencies).toEqual({});
+    expect(inner.bin['ark-check']).toBe('./bin/ark-check.mjs');
     expect(inner.scripts.test).toBe('vitest');
     expect(inner.scripts.typecheck).toBe('tsc --noEmit');
     expect(inner.scripts.prepack).toBe('npm run build');
     expect(inner.scripts.postpack).toBeUndefined();
+    expect(fs.existsSync(path.join(extract, 'package', 'bin', 'ark-check.mjs'))).toBe(true);
   });
 
   it('dev-setup.cjs restores devDeps from stripped state', () => {
     const stripped = {
-      name: 'ark',
-      version: '0.2.0',
+      name: 'ark-runtime-kernel',
+      version: '0.4.0',
       scripts: { build: 'tsup' },
       dependencies: {},
       files: ['dist'],

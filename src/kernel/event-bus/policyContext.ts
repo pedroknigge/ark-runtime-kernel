@@ -6,6 +6,8 @@ import type { DomainEvent } from '../../domain/types';
 import type { IntentRegistry } from '../intent/IntentRegistry';
 import type { IntentRelationship } from '../intent';
 import type { DependencyGraph, GraphEdge } from '../graph';
+import type { DefinePolicyOptions, Policy } from '../policy';
+import { definePolicy } from '../policy';
 
 /**
  * Standard context for policies evaluated during event publish.
@@ -14,6 +16,11 @@ import type { DependencyGraph, GraphEdge } from '../graph';
  */
 export interface PublishPolicyContext {
   event: DomainEvent;
+  relationships?: IntentRelationship[];
+  edges?: GraphEdge[];
+}
+
+export interface GraphPolicyContext {
   relationships?: IntentRelationship[];
   edges?: GraphEdge[];
 }
@@ -43,4 +50,10 @@ export function buildPublishPolicyContext(
     relationships: options.intentRegistry?.getAllRelationships(),
     edges: options.dependencyGraph?.getEdges(),
   });
+}
+
+export function definePublishPolicy(
+  options: DefinePolicyOptions<PublishPolicyContext>
+): Policy<PublishPolicyContext> {
+  return definePolicy(options);
 }

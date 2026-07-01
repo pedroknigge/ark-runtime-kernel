@@ -1,6 +1,6 @@
 {
-  "name": "ark",
-  "version": "0.2.0",
+  "name": "ark-runtime-kernel",
+  "version": "0.4.0",
   "description": "Architectural Runtime Kernel — governance for Hexagonal + Event-Driven + DDD systems",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -13,7 +13,11 @@
       "require": "./dist/index.cjs"
     }
   },
+  "bin": {
+    "ark-check": "./bin/ark-check.mjs"
+  },
   "files": [
+    "bin",
     "dist",
     "README.md",
     "LICENSE"
@@ -39,6 +43,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pedroknigge/ark"
+    "url": "git+https://github.com/pedroknigge/ark.git"
   }
 }

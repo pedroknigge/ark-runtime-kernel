@@ -35,3 +35,22 @@ export class LayerPolicyContextError extends Error {
     this.name = 'LayerPolicyContextError';
   }
 }
+
+export class EventContractViolationError extends Error {
+  readonly intentName: string;
+  readonly issues: unknown[];
+
+  constructor(intentName: string, issues: unknown[]) {
+    super(`Event contract violation for "${intentName}".`);
+    this.name = 'EventContractViolationError';
+    this.intentName = intentName;
+    this.issues = issues;
+  }
+}
+
+export class UnknownEventSourceError extends Error {
+  constructor(intentName: string) {
+    super(`Event "${intentName}" must include a known metadata.source.`);
+    this.name = 'UnknownEventSourceError';
+  }
+}

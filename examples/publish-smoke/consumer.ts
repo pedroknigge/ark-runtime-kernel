@@ -13,7 +13,8 @@ import {
   createAdapter,
   checkContract,
   createSaga,
-} from 'ark';
+  createArkKernel,
+} from 'ark-runtime-kernel';
 
 const OrderPlaced = defineIntent<'Domain.Order.Placed', { id: string; amt: number }>('Domain.Order.Placed');
 
@@ -22,7 +23,7 @@ const positiveAmount = definePolicy({
   severity: 'hard',
   check: (ctx: { event?: { payload?: { amt?: number } } }) => {
     const p = ctx?.event?.payload;
-    if (p && p.amt > 0) return true;
+    if (typeof p?.amt === 'number' && p.amt > 0) return true;
     return { policyName: 'positive-amount', severity: 'hard', message: 'amount must be positive' };
   },
 });
@@ -35,6 +36,7 @@ bus.subscribe(OrderPlaced, (e) => {
 });
 
 async function main() {
+  const ark = createArkKernel();
   await bus.publish(OrderPlaced, { id: 'smoke-1', amt: 42 });
 
   const g = createDependencyGraph();
@@ -75,6 +77,7 @@ async function main() {
   console.log(g.toMermaid());
   console.log('metadata entities:', m.listEntities().length);
   console.log('adapter contract ok:', contract.ok);
+  console.log('kernel profile:', ark.profile.name);
   console.log('saga completed');
   console.log('=== END ===');
 }

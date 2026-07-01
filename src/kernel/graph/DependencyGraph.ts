@@ -11,6 +11,7 @@ import type {
   GraphEdge,
   GraphNode,
 } from './types';
+import type { ArchitectureProfile } from '../layers';
 
 export class DependencyGraphImpl implements DependencyGraph {
   private nodes = new Map<string, GraphNode>();
@@ -63,6 +64,44 @@ export class DependencyGraphImpl implements DependencyGraph {
         out += `  ${this.safeId(node)}\n`;
       }
     }
+    return out.trim();
+  }
+
+  toLayerMermaid(profile: ArchitectureProfile): string {
+    const nodesByLayer = new Map<string, string[]>();
+
+    for (const node of this.nodes.keys()) {
+      const layer = profile.resolveLayer(node) ?? 'Unclassified';
+      const current = nodesByLayer.get(layer) ?? [];
+      current.push(node);
+      nodesByLayer.set(layer, current);
+    }
+
+    let out = 'flowchart TD\n';
+    for (const layer of profile.layers) {
+      const nodes = nodesByLayer.get(layer.name) ?? [];
+      if (nodes.length === 0) continue;
+      out += `  subgraph ${this.safeId(layer.name)}[${layer.name}]\n`;
+      for (const node of nodes) {
+        out += `    ${this.safeId(node)}[${node}]\n`;
+      }
+      out += '  end\n';
+    }
+
+    const unclassified = nodesByLayer.get('Unclassified') ?? [];
+    if (unclassified.length > 0) {
+      out += '  subgraph Unclassified[Unclassified]\n';
+      for (const node of unclassified) {
+        out += `    ${this.safeId(node)}[${node}]\n`;
+      }
+      out += '  end\n';
+    }
+
+    for (const edge of this.edges) {
+      const label = edge.kind ? `|${edge.kind}|` : '';
+      out += `  ${this.safeId(edge.from)} -->${label} ${this.safeId(edge.to)}\n`;
+    }
+
     return out.trim();
   }
 

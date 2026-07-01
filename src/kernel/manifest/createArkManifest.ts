@@ -6,6 +6,9 @@ import type { IntentRegistry } from '../intent/IntentRegistry';
 import type { PolicyEngine } from '../policy/PolicyEngine';
 import type { MetadataRegistry } from '../metadata/types';
 import type { DependencyGraph } from '../graph/types';
+import type { EventContractRegistry } from '../event-contracts';
+import type { ArchitectureProfile } from '../layers';
+import type { ProjectionRegistry } from '../projections';
 import type { ArkManifest, ArkManifestData } from './types';
 import { version } from '../../version';
 import { MANIFEST_SCHEMA_VERSION } from './constants';
@@ -22,6 +25,9 @@ export interface CreateArkManifestOptions {
   policyEngine?: PolicyEngine;
   metadata?: MetadataRegistry;
   graph?: DependencyGraph;
+  profile?: ArchitectureProfile;
+  projections?: ProjectionRegistry;
+  eventContracts?: EventContractRegistry;
 }
 
 class ArkManifestImpl implements ArkManifest {
@@ -43,6 +49,9 @@ export function createArkManifest(
   const policyEngine = options.policyEngine;
   const metadata = options.metadata;
   const graph = options.graph;
+  const profile = options.profile;
+  const projections = options.projections;
+  const eventContracts = options.eventContracts;
 
   const intents = registry
     ? registry.list().map((creator) => ({
@@ -60,13 +69,19 @@ export function createArkManifest(
         name: p.name,
         severity: p.severity,
         tags: p.tags ? [...p.tags] : undefined,
+        owner: p.owner,
+        version: p.version,
+        rationale: p.rationale,
+        enforcementMode: p.enforcementMode,
+        deprecated: p.deprecated,
+        replacedBy: p.replacedBy,
         description: p.tags?.includes('layer')
           ? 'Enforces clean-architecture layer dependency rules on declared relationships.'
           : undefined,
       }))
     : [];
 
-  const entities = metadata ? metadata.listEntities() : [];
+  const entities = metadata ? metadata.toJSON() : [];
 
   const graphData = graph
     ? graph.toJSON()
@@ -80,6 +95,14 @@ export function createArkManifest(
       consumes: e.consumes,
     }));
 
+  const projectionData = projections
+    ? projections.list().map((projection) => ({
+        name: projection.name,
+        sourceIntents: projection.sourceIntents,
+        checkpoint: projections.getCheckpoint(projection.name),
+      }))
+    : [];
+
   const data: ArkManifestData = {
     schemaVersion: MANIFEST_SCHEMA_VERSION,
     version,
@@ -89,6 +112,15 @@ export function createArkManifest(
     policies,
     entities,
     graph: graphData,
+    architecture: profile
+      ? {
+          profile: profile.name,
+          layers: profile.layers,
+          rules: profile.rules,
+        }
+      : undefined,
+    projections: projectionData,
+    eventContracts: eventContracts?.list() ?? [],
     links: { entityIntents },
   };
 

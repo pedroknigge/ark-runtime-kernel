@@ -1,2 +1,6 @@
 export * from './types';
-export { createSaga } from './Saga';
+export {
+  InMemoryWorkflowStore,
+  createSaga,
+  createWorkflowEngine,
+} from './Saga';

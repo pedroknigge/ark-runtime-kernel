@@ -1,125 +1,198 @@
-# Ark — Architectural Runtime Kernel
+# Ark - Architectural Runtime Kernel
 
-**Zero-dependency governance kernel for Hexagonal + Event-Driven + DDD systems.**
+**Zero-dependency runtime governance kernel for Hexagonal + Event-Driven + DDD systems.**
 
-Ark provides **intent naming**, **policy enforcement**, **event bus observability**, **dependency graphs**, and **agent-oriented contract export**. It helps teams (and AI codegen tools) keep architecture explicit and enforceable — it does **not** implement CQRS read/write models or a full hexagonal runtime.
+Published package name: `ark-runtime-kernel`.
 
-> **Current Status:** v0.2 governance kernel — production-usable with strict registry wiring; not a CQRS framework or full hexagonal runtime.
+Ark exists so architecture is not only a documented intention, but an actively protected runtime property. It helps teams define, enforce, and observe architectural boundaries while a system is running, especially in codebases where changes are frequent and part of the code may be generated or modified by AI agents.
 
-## Philosophy
+> **Current status:** v0.4.0 strict in-process governance kernel plus CI checks. Ark now includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, a basic outbox store, layer-aware AI code checks, an AST-based `ark-check` CLI, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
 
-- Ruthless simplicity
-- No runtime dependencies
-- Types first + runtime guards when `strictRegistry` is enabled
-- Explicit over magical (no experimental decorators)
-- Opt-in enforcement — policies and registry must be wired deliberately
+## The Problem
+
+Architecture in medium and large systems tends to decay over time. Most violations are not intentional: a local change looks reasonable, but it crosses a boundary the global architecture depends on.
+
+That creates growing coupling, weaker layer boundaries, lower visibility, and architectural entropy. Diagrams, reviews, linters, and team discipline help, but they keep architecture mostly passive. They do not make it a protected property of the running system.
+
+Ark moves architectural contracts into the runtime path.
+
+## Mission
+
+Ark is a runtime governance layer for software architecture.
+
+It does not own business logic. It protects the structural rules that business logic must respect:
+
+- which intents exist
+- which events may be published or subscribed to
+- which event contracts and source intents are valid
+- which dependencies are allowed between architectural layers
+- which violations are hard failures and which are observable warnings
+- which contracts should be exported for tools, documentation, and AI agents
+
+In practice, Ark acts as an architectural immune system: when configured rules are violated, the system responds predictably through typed errors, soft-violation hooks, trace records, or bounded history.
+
+## Runtime and CI Enforcement
+
+Ark focuses on real enforcement in runtime, not only guidance during development.
+
+When critical interactions go through Ark:
+
+- hard policies throw `PolicyViolationError`
+- strict registries reject unregistered or invalid intent names on publish/subscribe
+- strict event contracts reject missing or invalid payload contracts
+- known-source enforcement rejects event metadata from unregistered sources
+- layer policies can block invalid declared dependencies
+- soft violations are observable through hooks and traces
+- event history and trace records make architectural behavior inspectable
+- manifests expose the current architectural contract to tools and agents
+- `ark-check` can fail CI on configured layer import and intent-reference violations
+
+Enforcement is only as strong as the paths you wire through Ark. Code that bypasses Ark directly is outside this runtime contract unless you also cover it through registry rules, graph declarations, CI checks, or `AIGateExtension` analyzers.
+
+## What Ark Provides
+
+| Primitive | Purpose |
+|-----------|---------|
+| Intent Registry | Defines semantic system intents and validates naming/registration |
+| Strict Ark Kernel | Wires registry, graph, policies, event bus, audit, event contracts, outbox, projections, metadata, and workflow with strict defaults |
+| 11-Layer Profile | Provides governed layer taxonomy for Hexagonal + Event-Driven systems |
+| Policy Engine | Evaluates hard and soft architectural policies, including profile-driven layer rules |
+| Event Bus | Publishes typed domain events with strict registry checks, source validation, contract validation, traces, audit, outbox handoff, and history |
+| Event Contracts | Validates event versions and payload shape before publish |
+| Outbox | Provides a basic pluggable outbox handoff for dispatched event records |
+| Workflow Engine | Runs in-process workflows/sagas with snapshots, retries, timeouts, compensation, audit, and pluggable stores |
+| Audit Trail | Stores native audit/history records for events, policies, handlers, workflows, projections, and metadata |
+| Dependency Graph | Models declared relationships, event flow, Mermaid output, and layer-grouped Mermaid views |
+| Read Models / Projections | Applies events to lightweight read models with checkpoints and pluggable stores |
+| Metadata System | Describes entities, fields, rules, ownership, versions, entity-intent links, and validation issues |
+| Ark Manifest | Exports a machine-readable architectural contract, including layers, event contracts, policies, and projections |
+| AI Code Gate | Checks generated/reviewed code for unknown intents, forbidden patterns, and layer reference violations |
+| Static Architecture Checker | `ark-check` uses the TypeScript AST to detect configured layer import and intent-reference violations in CI |
 
 ## What Ark Is / Is Not
 
-| Ark provides | Ark does not provide |
-|--------------|---------------------|
-| Semantic intent registry + naming validation | CQRS command/query buses or read models |
-| Hard/soft policy engine on event publish | Automatic hexagonal layer isolation without wiring |
-| Event bus with history, traces, strict registry mode | AST-based static analysis (use `AIGateExtension` plugins) |
-| Dependency graph + manifest export for agents | Distributed sagas or persistence |
+| Ark is | Ark is not |
+|--------|------------|
+| A runtime and CI governance kernel | A database or persistence engine |
+| A way to make architecture enforceable and observable | A complete distributed workflow platform |
+| A contract surface for humans and AI agents | A replacement for domain logic |
+| A policy and intent enforcement layer | A complete type-aware static analysis platform |
+| Zero-dependency TypeScript infrastructure | A full OpenTelemetry implementation |
+| A projection utility for read models | A query API or reporting database |
 
 ## Installation
 
 ```bash
-npm install ark
+npm install ark-runtime-kernel
 ```
 
-## Quick Start — Strict Enforcement Example
+## Quick Start - Strict Kernel
 
-Use an isolated `IntentRegistry` (not the global `defineIntent` singleton) and pass it to the bus so layer policies and registry validation actually work:
+Use `createStrictArkKernel()` when you want the strictest runtime path by default:
 
 ```ts
 import {
-  createIntentRegistry,
-  createEventBus,
-  definePolicy,
-  createDependencyGraph,
-  syncRegistryToGraph,
-  createArkManifest,
-  architecturalPolicies,
-} from 'ark';
+  createStrictArkKernel,
+} from 'ark-runtime-kernel';
 
-const registry = createIntentRegistry();
-const OrderPlaced = registry.define<
+const ark = createStrictArkKernel({ maxHistorySize: 500 });
+
+const OrderPlaced = ark.registry.define<
   'Domain.Order.OrderPlaced',
   { orderId: string; amount: number }
 >('Domain.Order.OrderPlaced');
 
-const graph = createDependencyGraph();
-syncRegistryToGraph(registry, graph);
+ark.registry.define<'Application.PlaceOrder', { orderId: string }>(
+  'Application.PlaceOrder',
+  { produces: ['Domain.Order.OrderPlaced'] }
+);
 
-const bus = createEventBus({
-  intentRegistry: registry,       // enables strictRegistry (default: true)
-  dependencyGraph: graph,           // required for layer policies to inspect edges
-  maxHistorySize: 500,
-  policies: [
-    definePolicy({
-      name: 'Positive amounts',
-      severity: 'hard',
-      check: (ctx: { event: { payload: { amount: number } } }) =>
-        ctx.event.payload.amount >= 0,
-    }),
-    architecturalPolicies.cleanArchitectureMatrix(),
-  ],
+ark.eventContracts.register({
+  intent: 'Domain.Order.OrderPlaced',
+  version: '1',
+  allowAdditionalFields: false,
+  schema: {
+    orderId: { type: 'string', required: true },
+    amount: { type: 'number', required: true },
+  },
 });
 
-bus.subscribe(OrderPlaced, (e) => console.log('Placed:', e.payload.orderId));
+ark.projections.register<{ orderIds: string[] }>({
+  name: 'OrderReadModel',
+  sourceIntents: ['Domain.Order.OrderPlaced'],
+  initialState: { orderIds: [] },
+  project: (event, state) => ({
+    orderIds: [...state.orderIds, event.payload.orderId as string],
+  }),
+});
 
-// Three-arg publish: creator + payload + metadata
-await bus.publish(OrderPlaced, { orderId: 'o1', amount: 99 }, { source: 'App.Orders' });
+ark.eventBus.subscribe(OrderPlaced, (event) => {
+  console.log('Placed:', event.payload.orderId);
+});
 
-const manifest = createArkManifest({ registry, graph });
-console.log(JSON.stringify(manifest.toJSON(), null, 2));
+await ark.eventBus.publish(
+  OrderPlaced,
+  { orderId: 'o1', amount: 99 },
+  {
+    source: 'Application.PlaceOrder',
+    eventVersion: '1',
+    correlationId: 'corr-1',
+  }
+);
+
+console.log(await ark.projections.getState('OrderReadModel'));
+console.log(await ark.auditTrail.query({ correlationId: 'corr-1' }));
+console.log(await ark.outbox.list('pending'));
+console.log(JSON.stringify(ark.manifest().toJSON(), null, 2));
 ```
 
 See `examples/basic/` for a runnable version.
 
-**Documentation:**
-- [Evaluation Report](docs/evaluation-report.md)
-- [Improvement Plan](docs/improvement-plan.md)
-- [Agent Integration Guide](docs/agent-guide.md)
-- [Final Summary](docs/final-summary.md)
+## AI-Augmented Development
 
-## AI Code Gate (Heuristic)
+Ark does not generate code. It gives generated code something concrete to obey.
 
-`createAICodeGate()` performs **regex and string-literal scanning** — not semantic analysis. Treat it as a fast pre-merge heuristic; plug in `AIGateExtension` implementations for AST-level checks in CI.
+`createArkManifest().toJSON()` exports the current architectural contract so agents can inspect registered intents, relationships, policies, entities, graph data, layers, event contracts, and projections before editing. `createAICodeGate()` provides fast string/regex checks for unknown intents, forbidden patterns, and layer reference violations when paired with `elevenLayerProfile`.
 
-## Why Ark?
+For CI, use `ark-check` with an explicit layer configuration:
 
-Modern enterprise systems suffer from architecture drift, especially when AI helps write code.
+```bash
+npx ark-check --root . --config ark.config.json
+```
 
-Ark provides a **governance kernel** that:
-
-- Gives every important concept a semantic name (Intent)
-- Lets you declare hard and soft architectural policies
-- Makes Domain Events the primary communication mechanism with full history
-- Builds dependency + event flow graphs (Mermaid + JSON)
-- Exports a machine-readable manifest for AI agents
-- Validates generated code heuristically before merge
+`ark-check` requires TypeScript to be available in the consuming project. It parses source with the TypeScript AST and currently checks relative imports plus string intent references. It is not a full semantic type checker.
 
 ## Design Constraints
 
-- **Zero runtime dependencies**
-- Works in Node.js and bundlers (Vite, esbuild, etc.)
+- Zero runtime dependencies
 - Strict TypeScript
+- Explicit wiring over magic
+- No experimental decorators
+- Works in Node.js and modern bundlers
 - Dual ESM + CommonJS output
-- Enforcement is opt-in but hard to bypass when `strictRegistry` + policies are wired
+- Enforcement is deliberate: wire registries, policies, and graphs where boundaries matter
+- Static checks require a project-specific `ark.config.json`
+
+## Documentation
+
+- [Evaluation Report](docs/evaluation-report.md)
+- [Improvement Plan](docs/improvement-plan.md)
+- [Agent Integration Guide](docs/agent-guide.md)
+- [ark-check Config Example](docs/ark-check-example.json)
+- [System Readiness Assessment](docs/system-readiness.md)
+- [Final Summary](docs/final-summary.md)
 
 ## Development
 
 ```bash
 npm install
 npm run typecheck
+npm run check:architecture
 npm test
 npm run build
 ```
 
-`package.json` in the repo is the dev manifest. `npm pack` strips devDependencies for the published tarball only.
+`package.json` is the development manifest. `npm pack` builds the published tarball.
 
 ## License
 
@@ -127,4 +200,4 @@ MIT
 
 ---
 
-**Built to protect architecture — not to replace your domain logic.**
+**Built to protect architecture in runtime, not to replace your domain logic.**

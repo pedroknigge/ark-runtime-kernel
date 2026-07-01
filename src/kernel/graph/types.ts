@@ -5,6 +5,8 @@
  * and to generate visualizations (Mermaid) and detect violations.
  */
 
+import type { ArchitectureProfile } from '../layers';
+
 export interface GraphEdge {
   from: string;
   to: string;
@@ -46,6 +48,11 @@ export interface DependencyGraph {
    * Export as Mermaid flowchart.
    */
   toMermaid(): string;
+
+  /**
+   * Export as Mermaid flowchart grouped into profile layers.
+   */
+  toLayerMermaid(profile: ArchitectureProfile): string;
 
   /**
    * Detect violations by running provided policies or simple rules.

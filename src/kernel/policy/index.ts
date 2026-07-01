@@ -9,6 +9,7 @@ export { PolicyViolationError } from './PolicyViolationError';
 export { definePolicy, type DefinePolicyOptions } from './definePolicy';
 export {
   defineLayerPolicy,
+  defineArchitectureProfilePolicy,
   architecturalPolicies,
   isLayerPolicy,
   type LayerPolicyOptions,

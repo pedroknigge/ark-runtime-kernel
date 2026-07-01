@@ -2,6 +2,32 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 0.8.2 — 2026-07-01
+
+### Fixed — second code-review pass (parity + glob correctness)
+
+A re-review of the v0.8.1 fixes found that a couple of them introduced new divergences.
+This closes them and unifies the two gates so they provably can't disagree:
+
+- **ark-mcp / ark-check rule parity.** The write-path gate built its profile with
+  `rules: config.rules ?? []`, so a config that declared layers but omitted `rules` got
+  zero enforcement while CI still applied the default matrix. Both CLIs now share
+  `DEFAULT_RULES` + `DEFAULT_INTENT_PREFIXES` (in `bin/ark-shared.mjs`) and the gate uses
+  `config.rules ?? DEFAULT_RULES` with the same intent-prefix fallback ark-check uses. No
+  layer is built with empty prefixes (which had made it unresolvable).
+- **node_modules exclusion, done right.** `ark-check` now excludes a resolved target only
+  when its path *relative to root* contains a `node_modules` segment — so a broad catch-all
+  pattern (`**`) no longer false-flags third-party imports, while projects living under a
+  `node_modules` segment and monorepo siblings are still governed.
+- **Resolver directory shadowing.** The `.mts`/`.cts` relative fallback now requires the
+  candidate to be a file (`statSync().isFile()`), so a directory named like the specifier
+  can't shadow the real module file.
+- **Brace globs.** `globToRegExp` now supports `{ts,tsx}` alternation (previously treated
+  as literals, silently matching nothing) and caches each compiled pattern.
+- **Docs/CI polish.** Corrected the observed-flow enforcement comment (edge is recorded
+  *after* the check now); scoped the CI `push` trigger to `main` so PR branches don't run
+  the job twice (all PRs are still gated via `pull_request`, any base branch).
+
 ## 0.8.1 — 2026-07-01
 
 ### Fixed — enforcement-defeating bugs found in the v0.8 code review

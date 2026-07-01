@@ -1,17 +1,62 @@
 import path from 'node:path';
 
 /**
- * Convert an ark.config.json layer glob pattern to an anchored RegExp.
+ * Default layer rule matrix + intent-prefix map, shared by both CLIs and by the ark-mcp
+ * write-path gate so they enforce identically. These mirror the elevenLayerProfile in
+ * src/kernel/layers/ArchitectureProfile.ts; kept here (not imported from dist) because the
+ * CLIs run standalone with only `typescript` present, no build step.
+ */
+export const DEFAULT_RULES = [
+  { from: 'DomainModel', to: 'ApplicationOrchestration', allowed: false },
+  { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
+  { from: 'DomainModel', to: 'IntegrationAdapters', allowed: false },
+  { from: 'DomainModel', to: 'WorkflowSagaEngine', allowed: false },
+  { from: 'DomainModel', to: 'BackgroundJobsScheduling', allowed: false },
+  { from: 'DomainModel', to: 'PresentationAdapters', allowed: false },
+  { from: 'DomainModel', to: 'ReportingReadModels', allowed: false },
+  { from: 'DomainModel', to: 'SecurityAuditObservability', allowed: false },
+  { from: 'PersistenceAdapters', to: 'ApplicationOrchestration', allowed: false },
+  { from: 'PersistenceAdapters', to: 'DomainModel', allowed: false },
+  { from: 'IntegrationAdapters', to: 'ApplicationOrchestration', allowed: false },
+  { from: 'IntegrationAdapters', to: 'DomainModel', allowed: false },
+  { from: 'PresentationAdapters', to: 'PersistenceAdapters', allowed: false },
+  { from: 'ReportingReadModels', to: 'PersistenceAdapters', allowed: false },
+];
+
+export const DEFAULT_INTENT_PREFIXES = [
+  { layer: 'DomainModel', prefixes: ['Domain.'] },
+  { layer: 'ApplicationOrchestration', prefixes: ['Application.'] },
+  { layer: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.', 'Adapter.Repository.'] },
+  { layer: 'IntegrationAdapters', prefixes: ['Adapter.Integration.', 'Adapter.External.'] },
+  { layer: 'WorkflowSagaEngine', prefixes: ['Workflow.'] },
+  { layer: 'BackgroundJobsScheduling', prefixes: ['Job.'] },
+  { layer: 'PresentationAdapters', prefixes: ['Presentation.', 'Adapter.Presentation.', 'Adapter.Api.'] },
+  { layer: 'ReportingReadModels', prefixes: ['Reporting.'] },
+  { layer: 'ExtensibilityMetadata', prefixes: ['Metadata.'] },
+  { layer: 'SecurityAuditObservability', prefixes: ['Security.', 'Audit.', 'Observability.'] },
+  { layer: 'Kernel', prefixes: ['Kernel.'] },
+];
+
+const _regexpCache = new Map();
+
+/**
+ * Convert an ark.config.json layer glob pattern to an anchored RegExp (compiled once per
+ * pattern, then cached).
  *
  * IMPORTANT: the double-star is expanded in a SINGLE pass. A chained two-step replace
  * (double-star to dot-star, then single-star to a no-slash class) corrupts the double-star,
  * because the second step re-matches the star inside the substitution the first step just
- * inserted. That made "src/kernel/**" compile to a regex that stopped matching nested paths,
- * silently unclassifying every file in a subdirectory. Scan one character at a time instead.
+ * inserted. That made "src/kernel/**" stop matching nested paths, silently unclassifying
+ * every file in a subdirectory. Scanning one character at a time also lets us support
+ * brace alternation ("*.{ts,tsx}") instead of treating the braces as literals.
  */
 export function globToRegExp(pattern) {
+  const cached = _regexpCache.get(pattern);
+  if (cached) return cached;
+
   const glob = pattern.split(path.sep).join('/');
   let out = '';
+  let braceDepth = 0;
   for (let i = 0; i < glob.length; i += 1) {
     const c = glob[i];
     if (c === '*') {
@@ -28,13 +73,23 @@ export function globToRegExp(pattern) {
       }
     } else if (c === '?') {
       out += '[^/]';
-    } else if ('.+^${}()|[]\\'.includes(c)) {
+    } else if (c === '{') {
+      out += '(?:';
+      braceDepth += 1;
+    } else if (c === '}' && braceDepth > 0) {
+      out += ')';
+      braceDepth -= 1;
+    } else if (c === ',' && braceDepth > 0) {
+      out += '|';
+    } else if ('.+^$()|[]\\'.includes(c)) {
       out += `\\${c}`;
     } else {
       out += c;
     }
   }
-  return new RegExp(`^${out}$`);
+  const re = new RegExp(`^${out}$`);
+  _regexpCache.set(pattern, re);
+  return re;
 }
 
 /** Resolve a file's architecture layer from ark.config.json layer glob patterns. */

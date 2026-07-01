@@ -1,38 +1,12 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
 import path from 'node:path';
-import { layerForFile, looksLikeIntent } from './ark-shared.mjs';
-
-const DEFAULT_RULES = [
-  { from: 'DomainModel', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
-  { from: 'DomainModel', to: 'IntegrationAdapters', allowed: false },
-  { from: 'DomainModel', to: 'WorkflowSagaEngine', allowed: false },
-  { from: 'DomainModel', to: 'BackgroundJobsScheduling', allowed: false },
-  { from: 'DomainModel', to: 'PresentationAdapters', allowed: false },
-  { from: 'DomainModel', to: 'ReportingReadModels', allowed: false },
-  { from: 'DomainModel', to: 'SecurityAuditObservability', allowed: false },
-  { from: 'PersistenceAdapters', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'PersistenceAdapters', to: 'DomainModel', allowed: false },
-  { from: 'IntegrationAdapters', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'IntegrationAdapters', to: 'DomainModel', allowed: false },
-  { from: 'PresentationAdapters', to: 'PersistenceAdapters', allowed: false },
-  { from: 'ReportingReadModels', to: 'PersistenceAdapters', allowed: false },
-];
-
-const DEFAULT_INTENT_PREFIXES = [
-  { layer: 'DomainModel', prefixes: ['Domain.'] },
-  { layer: 'ApplicationOrchestration', prefixes: ['Application.'] },
-  { layer: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.', 'Adapter.Repository.'] },
-  { layer: 'IntegrationAdapters', prefixes: ['Adapter.Integration.', 'Adapter.External.'] },
-  { layer: 'WorkflowSagaEngine', prefixes: ['Workflow.'] },
-  { layer: 'BackgroundJobsScheduling', prefixes: ['Job.'] },
-  { layer: 'PresentationAdapters', prefixes: ['Presentation.', 'Adapter.Presentation.', 'Adapter.Api.'] },
-  { layer: 'ReportingReadModels', prefixes: ['Reporting.'] },
-  { layer: 'ExtensibilityMetadata', prefixes: ['Metadata.'] },
-  { layer: 'SecurityAuditObservability', prefixes: ['Security.', 'Audit.', 'Observability.'] },
-  { layer: 'Kernel', prefixes: ['Kernel.'] },
-];
+import {
+  DEFAULT_INTENT_PREFIXES,
+  DEFAULT_RULES,
+  layerForFile,
+  looksLikeIntent,
+} from './ark-shared.mjs';
 
 function parseArgs(argv) {
   const args = { root: process.cwd(), config: 'ark.config.json', tsconfig: undefined, json: false };
@@ -147,10 +121,18 @@ function loadCompilerOptions(ts, root, tsconfigArg) {
  * extension `ts.resolveModuleName` won't resolve without a matching tsconfig
  * (notably `.mts`/`.cts`). Mirrors the classic candidate list.
  */
+function isFile(candidate) {
+  try {
+    return fs.statSync(candidate).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function resolveRelativeFallback(fromFile, specifier) {
   const base = path.resolve(path.dirname(fromFile), specifier);
   const candidates = [
-    base,
+    base, // only used when the specifier already carries an extension (isFile filters dirs)
     `${base}.ts`,
     `${base}.tsx`,
     `${base}.mts`,
@@ -164,7 +146,9 @@ function resolveRelativeFallback(fromFile, specifier) {
     path.join(base, 'index.mts'),
     path.join(base, 'index.cts'),
   ];
-  return candidates.find((candidate) => fs.existsSync(candidate));
+  // isFile (not existsSync) so a directory named like the specifier never shadows the
+  // real module file — e.g. `./foo` must not resolve to a `foo/` directory before `foo.mts`.
+  return candidates.find(isFile);
 }
 
 /**
@@ -172,13 +156,13 @@ function resolveRelativeFallback(fromFile, specifier) {
  * file using TypeScript's module resolver, returning the resolved file (or undefined for
  * unresolved / declaration-only targets).
  *
- * We intentionally do NOT filter by node_modules or by root here: the configured layer
- * patterns are the single authority on what is governed (layerForFile returns undefined
- * for anything they don't match, which naturally excludes third-party deps). A path
- * substring test wrongly discarded projects living under a node_modules segment, and a
- * hard root boundary wrongly discarded monorepo sibling packages a config may govern.
+ * Third-party dependencies are excluded by testing for a `node_modules` segment in the
+ * target's path RELATIVE TO ROOT — not as an absolute substring (which wrongly discarded
+ * a whole project living under a node_modules segment) and not via a hard root boundary
+ * (which wrongly discarded monorepo sibling packages a config may govern). This also keeps
+ * a broad catch-all pattern (e.g. `**` / `**​/*.ts`) from false-flagging vendored code.
  */
-function resolveImport(ts, specifier, containingFile, options, host) {
+function resolveImport(ts, specifier, containingFile, options, host, root) {
   const res = ts.resolveModuleName(specifier, containingFile, options, host);
   let file = res.resolvedModule?.resolvedFileName;
   if (!file && specifier.startsWith('.')) {
@@ -186,7 +170,9 @@ function resolveImport(ts, specifier, containingFile, options, host) {
   }
   if (!file) return undefined;
   if (file.endsWith('.d.ts')) return undefined;
-  return path.resolve(file);
+  const abs = path.resolve(file);
+  if (path.relative(root, abs).split(path.sep).includes('node_modules')) return undefined;
+  return abs;
 }
 
 function lineOf(sourceFile, pos) {
@@ -232,7 +218,7 @@ async function main() {
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
         const specifier = textOfModuleSpecifier(node);
         if (specifier) {
-          const target = resolveImport(ts, specifier, file, compilerOptions, moduleHost);
+          const target = resolveImport(ts, specifier, file, compilerOptions, moduleHost, root);
           const targetLayer = target ? layerForFile(root, target, config.layers) : undefined;
           const rule = targetLayer ? isBlocked(config.rules, sourceLayer, targetLayer) : undefined;
           if (rule) {

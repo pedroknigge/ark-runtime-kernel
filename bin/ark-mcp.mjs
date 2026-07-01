@@ -19,7 +19,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
-import { layerForFile } from './ark-shared.mjs';
+import { DEFAULT_INTENT_PREFIXES, DEFAULT_RULES, layerForFile } from './ark-shared.mjs';
 
 function parseArgs(argv) {
   const args = {
@@ -109,20 +109,32 @@ async function main() {
     ? projectManifest.intents.map((i) => (typeof i === 'string' ? i : i?.name)).filter(Boolean)
     : [];
 
-  // Build the enforcement profile from the PROJECT's config so validate_code uses the same
-  // layer names and rules as ark-check (CI). Falling back to elevenLayerProfile only when
-  // the project declares no layers keeps a sensible default contract.
-  const profile =
-    config.layers && config.layers.length > 0
-      ? ark.createArchitectureProfile({
-          name: 'project',
-          layers: config.layers.map((layer) => ({
-            name: layer.name,
-            prefixes: layer.intentPrefixes ?? [],
-          })),
-          rules: config.rules ?? [],
-        })
-      : ark.elevenLayerProfile;
+  // Build the enforcement profile with the SAME semantics ark-check (CI) applies to the
+  // config, so the write-path gate and CI can't disagree:
+  //   - rules: config.rules ?? DEFAULT_RULES  (ark-check readConfig substitutes DEFAULT_RULES)
+  //   - intent prefixes: the config layers that declare intentPrefixes; when none do, fall
+  //     back to DEFAULT_INTENT_PREFIXES (mirrors ark-check's layerForIntent fallback).
+  // Only layers WITH prefixes enter the profile, so no layer has empty prefixes (which would
+  // also make it unresolvable). A project with no layers at all gets the 11-layer default.
+  const configLayers = Array.isArray(config.layers) ? config.layers : [];
+  const usedProjectConfig = configLayers.length > 0;
+  let profile;
+  if (!usedProjectConfig) {
+    profile = ark.elevenLayerProfile;
+  } else {
+    const layersWithPrefixes = configLayers.filter(
+      (layer) => (layer.intentPrefixes ?? []).length > 0
+    );
+    const profileLayers =
+      layersWithPrefixes.length > 0
+        ? layersWithPrefixes.map((layer) => ({ name: layer.name, prefixes: layer.intentPrefixes }))
+        : DEFAULT_INTENT_PREFIXES.map((d) => ({ name: d.layer, prefixes: d.prefixes }));
+    profile = ark.createArchitectureProfile({
+      name: 'ark.config',
+      layers: profileLayers,
+      rules: config.rules ?? DEFAULT_RULES,
+    });
+  }
 
   const gate = ark.createAICodeGate({
     architectureProfile: profile,

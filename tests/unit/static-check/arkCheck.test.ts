@@ -146,6 +146,62 @@ describe('ark-check CLI', () => {
     expect(result.violations.some((v) => v.ruleId === 'LAYER_IMPORT_VIOLATION')).toBe(true);
   });
 
+  it('matches brace-expansion glob patterns like **/*.{ts,tsx}', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-brace-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = {};');
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      "import { db } from '../infra/db';\nexport const v = db;\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**/*.{ts,tsx}'], intentPrefixes: ['Domain.'] },
+          { name: 'PersistenceAdapters', patterns: ['src/infra/**'], intentPrefixes: ['Adapter.Persistence.'] },
+        ],
+        rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
+      })
+    );
+
+    const result = runArkCheck(root);
+    expect(result.ok).toBe(false);
+    expect(result.violations.some((v) => v.ruleId === 'LAYER_IMPORT_VIOLATION')).toBe(true);
+  });
+
+  it('does NOT false-positive on a third-party (node_modules) import under a catch-all pattern', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-vendor-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'node_modules/lodashy'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'node_modules/lodashy/package.json'),
+      JSON.stringify({ name: 'lodashy', version: '1.0.0', main: 'index.js' })
+    );
+    fs.writeFileSync(path.join(root, 'node_modules/lodashy/index.js'), 'module.exports = {};');
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      "import x from 'lodashy';\nexport const v = x;\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+          { name: 'Vendor', patterns: ['**'], intentPrefixes: [] },
+        ],
+        rules: [{ from: 'DomainModel', to: 'Vendor', allowed: false }],
+      })
+    );
+
+    const result = runArkCheck(root);
+    // A node_modules dependency must never be classified into a governed layer.
+    expect(result.ok).toBe(true);
+  });
+
   it('resolves extensionless relative imports whose target is a .mts file', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-mts-'));
     fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });

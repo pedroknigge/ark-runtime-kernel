@@ -511,8 +511,9 @@ export class EventBusImpl<Context = unknown> implements EventBus {
   /**
    * Enforce the OBSERVED producer→event flow (metadata.source → intent) against the
    * architecture profile's layer rules. This is the runtime counterpart to the
-   * declared-model layer policy: it checks what the system actually did, using the same
-   * flow edge already recorded via registerEventFlow.
+   * declared-model layer policy: it checks what the system actually did, resolving both
+   * layers directly from the profile. It runs BEFORE the flow is recorded via
+   * registerEventFlow, so in hard mode a rejected flow leaves no edge in the graph.
    */
   private async assertObservedLayerFlowAllowed(event: DomainEvent): Promise<void> {
     if (this.enforceObservedLayerFlowMode === 'off' || !this.architectureProfile) {

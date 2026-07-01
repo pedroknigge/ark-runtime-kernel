@@ -154,6 +154,43 @@ describe('ark-mcp server (write-path gate)', () => {
     expect(client.allMessages.every((m) => 'id' in m && m.id != null)).toBe(true);
   });
 
+  it('applies DEFAULT_RULES when the config declares layers but omits rules (parity with ark-check)', async () => {
+    const noRulesRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-mcp-norules-'));
+    fs.writeFileSync(
+      path.join(noRulesRoot, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+          {
+            name: 'PersistenceAdapters',
+            patterns: ['src/infra/**'],
+            intentPrefixes: ['Adapter.Persistence.'],
+          },
+        ],
+        // no "rules" key — ark-check substitutes DEFAULT_RULES; the gate must match.
+      })
+    );
+    const c = createClient(noRulesRoot);
+    try {
+      await c.request('initialize', { protocolVersion: '2024-11-05' });
+      const res = await c.request('tools/call', {
+        name: 'validate_code',
+        arguments: {
+          source: "export const ref = 'Adapter.Persistence.Save';\n",
+          filePath: 'src/domain/order.ts',
+        },
+      });
+      expect(res.result.isError).toBe(true);
+      const payload = JSON.parse(res.result.content[0].text);
+      expect(
+        payload.violations.some((v: { code: string }) => v.code === 'LAYER_REFERENCE_VIOLATION')
+      ).toBe(true);
+    } finally {
+      c.close();
+    }
+  });
+
   it('falls back to the 11-layer default contract when the project has no config', async () => {
     const defaultClient = createClient(emptyRoot);
     try {

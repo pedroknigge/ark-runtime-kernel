@@ -1,9 +1,11 @@
 name: CI
 
-# Gate every push and every pull request regardless of base branch — a branch-filtered
-# gate silently skips PRs whose base is not main (release/integration/stacked branches).
+# pull_request (no branch filter) gates EVERY PR regardless of base branch; push is scoped
+# to main so direct commits to main are gated without double-running the job on PR branches
+# (which would fire both push and pull_request for the same commit).
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:

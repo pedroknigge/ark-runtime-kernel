@@ -6,7 +6,7 @@ Published package name: `ark-runtime-kernel`.
 
 Ark exists so architecture is not only a documented intention, but an actively protected runtime property. It helps teams define, enforce, and observe architectural boundaries while a system is running, especially in codebases where changes are frequent and part of the code may be generated or modified by AI agents.
 
-> **Current status:** v0.4.0 strict in-process governance kernel plus CI checks. Ark now includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, a basic outbox store, layer-aware AI code checks, an AST-based `ark-check` CLI, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
+> **Current status:** v0.5.0 strict in-process governance kernel plus CI checks. Ark now includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, event interceptors, a basic outbox store, observed-vs-declared observability reports, a test harness, layer-aware AI code checks, an AST-based `ark-check` CLI, an `ark-runtime-kernel/eslint` plugin, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
 
 ## The Problem
 
@@ -41,11 +41,14 @@ When critical interactions go through Ark:
 - strict registries reject unregistered or invalid intent names on publish/subscribe
 - strict event contracts reject missing or invalid payload contracts
 - known-source enforcement rejects event metadata from unregistered sources
+- event interceptors can enrich payloads without overwriting existing fields
 - layer policies can block invalid declared dependencies
 - soft violations are observable through hooks and traces
 - event history and trace records make architectural behavior inspectable
+- observability reports show declared-vs-observed flow drift
 - manifests expose the current architectural contract to tools and agents
 - `ark-check` can fail CI on configured layer import and intent-reference violations
+- `ark-runtime-kernel/eslint` can flag common bypass patterns during development
 
 Enforcement is only as strong as the paths you wire through Ark. Code that bypasses Ark directly is outside this runtime contract unless you also cover it through registry rules, graph declarations, CI checks, or `AIGateExtension` analyzers.
 
@@ -58,6 +61,7 @@ Enforcement is only as strong as the paths you wire through Ark. Code that bypas
 | 11-Layer Profile | Provides governed layer taxonomy for Hexagonal + Event-Driven systems |
 | Policy Engine | Evaluates hard and soft architectural policies, including profile-driven layer rules |
 | Event Bus | Publishes typed domain events with strict registry checks, source validation, contract validation, traces, audit, outbox handoff, and history |
+| Event Interceptors | Add-only payload enrichment before delivery, with audit/trace records and contract protection |
 | Event Contracts | Validates event versions and payload shape before publish |
 | Outbox | Provides a basic pluggable outbox handoff for dispatched event records |
 | Workflow Engine | Runs in-process workflows/sagas with snapshots, retries, timeouts, compensation, audit, and pluggable stores |
@@ -66,8 +70,11 @@ Enforcement is only as strong as the paths you wire through Ark. Code that bypas
 | Read Models / Projections | Applies events to lightweight read models with checkpoints and pluggable stores |
 | Metadata System | Describes entities, fields, rules, ownership, versions, entity-intent links, and validation issues |
 | Ark Manifest | Exports a machine-readable architectural contract, including layers, event contracts, policies, and projections |
+| Observability Reporter | Compares declared productions against observed runtime event flows |
+| Test Harness | Exposes events, traces, audit records, outbox records, and observability snapshots for tests |
 | AI Code Gate | Checks generated/reviewed code for unknown intents, forbidden patterns, and layer reference violations |
 | Static Architecture Checker | `ark-check` uses the TypeScript AST to detect configured layer import and intent-reference violations in CI |
+| ESLint Plugin | Optional development-time guardrails for domain imports and unsafe publish calls |
 
 ## What Ark Is / Is Not
 
@@ -114,6 +121,7 @@ ark.eventContracts.register({
   schema: {
     orderId: { type: 'string', required: true },
     amount: { type: 'number', required: true },
+    observedBy: { type: 'string' },
   },
 });
 
@@ -125,6 +133,10 @@ ark.projections.register<{ orderIds: string[] }>({
     orderIds: [...state.orderIds, event.payload.orderId as string],
   }),
 });
+
+ark.eventBus.registerInterceptor(OrderPlaced, ({ intercept }) => {
+  intercept({ observedBy: 'ark' });
+}, 'demo-interceptor');
 
 ark.eventBus.subscribe(OrderPlaced, (event) => {
   console.log('Placed:', event.payload.orderId);
@@ -143,6 +155,7 @@ await ark.eventBus.publish(
 console.log(await ark.projections.getState('OrderReadModel'));
 console.log(await ark.auditTrail.query({ correlationId: 'corr-1' }));
 console.log(await ark.outbox.list('pending'));
+console.log(ark.observability.report());
 console.log(JSON.stringify(ark.manifest().toJSON(), null, 2));
 ```
 
@@ -162,6 +175,19 @@ npx ark-check --root . --config ark.config.json
 
 `ark-check` requires TypeScript to be available in the consuming project. It parses source with the TypeScript AST and currently checks relative imports plus string intent references. It is not a full semantic type checker.
 
+For editor/CI linting, use the optional ESLint subpath:
+
+```js
+// eslint.config.js
+import ark from 'ark-runtime-kernel/eslint';
+
+export default [
+  ark.configs.recommended,
+];
+```
+
+The bundled rules are intentionally narrow: `ark/no-domain-infra-imports`, `ark/no-raw-event-publish`, and `ark/require-publish-source`.
+
 ## Design Constraints
 
 - Zero runtime dependencies
@@ -172,6 +198,7 @@ npx ark-check --root . --config ark.config.json
 - Dual ESM + CommonJS output
 - Enforcement is deliberate: wire registries, policies, and graphs where boundaries matter
 - Static checks require a project-specific `ark.config.json`
+- ESLint checks are heuristics and complement runtime enforcement; they do not replace `ark-check`
 
 ## Documentation
 

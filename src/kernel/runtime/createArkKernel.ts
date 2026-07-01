@@ -6,6 +6,7 @@ import { createIntentRegistry } from '../intent';
 import { elevenLayerProfile } from '../layers';
 import { createArkManifest } from '../manifest';
 import { createMetadataRegistry } from '../metadata';
+import { createObservabilityReporter } from '../observability';
 import { InMemoryOutboxStore } from '../outbox';
 import {
   PolicyEngine,
@@ -15,7 +16,15 @@ import { createProjectionRegistry } from '../projections';
 import { createWorkflowEngine } from '../workflow';
 import type { ArkKernel, CreateArkKernelOptions } from './types';
 
+let kernelSequence = 0;
+
+function nextKernelInstanceId(): string {
+  kernelSequence += 1;
+  return `ark-kernel-${Date.now()}-${kernelSequence}`;
+}
+
 export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel {
+  const instanceId = options.instanceId ?? nextKernelInstanceId();
   const profile = options.profile ?? elevenLayerProfile;
   const registry = createIntentRegistry();
   const graph = createDependencyGraph();
@@ -45,6 +54,7 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
     strictEventContracts: options.strictEventContracts ?? false,
     requireKnownSource: options.requireKnownSource ?? true,
     outbox,
+    instanceId,
     maxHistorySize: options.maxHistorySize,
     onPublish: options.autoApplyProjections === false
       ? undefined
@@ -54,8 +64,14 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
   });
 
   const workflowEngine = createWorkflowEngine(eventBus, { auditTrail });
+  const observability = createObservabilityReporter({
+    registry,
+    eventBus,
+    graph,
+  });
 
   return {
+    instanceId,
     profile,
     registry,
     graph,
@@ -67,6 +83,7 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
     policyEngine,
     eventBus,
     workflowEngine,
+    observability,
     syncGraph,
     manifest() {
       syncGraph();
@@ -78,6 +95,7 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
         profile,
         projections,
         eventContracts,
+        observability,
       });
     },
   };

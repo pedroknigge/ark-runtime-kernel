@@ -8,6 +8,7 @@ import type { GraphEdge, GraphNode } from '../graph';
 import type { ArchitectureLayer, ArchitectureRule } from '../layers';
 import type { ProjectionCheckpoint } from '../projections';
 import type { EventContract } from '../event-contracts';
+import type { ObservabilityDriftReport } from '../observability';
 import type { PolicyEnforcementMode } from '../policy';
 
 export interface ArkManifestIntent {
@@ -67,6 +68,7 @@ export interface ArkManifestData {
   architecture?: ArkManifestArchitecture;
   projections: ArkManifestProjection[];
   eventContracts: EventContract[];
+  observability?: ObservabilityDriftReport;
   /** Cross-registry links for agent contract discovery. */
   links: {
     entityIntents: ArkManifestEntityLink[];

@@ -15,6 +15,8 @@ export * from './ai-gate';
 export * from './workflow';
 export * from './manifest';
 export * from './audit';
+export * from './observability';
 export * from './outbox';
 export * from './projections';
 export * from './runtime';
+export * from './testing';

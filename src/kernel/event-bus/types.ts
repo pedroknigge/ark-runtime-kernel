@@ -18,6 +18,8 @@ export type { IntentCreator };
 /** Standard trace record for observability and agent consumption. */
 export type TraceRecordType =
   | 'event.published'
+  | 'event.intercepted'
+  | 'interceptor.error'
   | 'policy.hardViolation'
   | 'policy.softViolation'
   | 'handler.error'
@@ -56,6 +58,9 @@ export interface EventBusOptions<Context = unknown> {
 
   /** Optional outbox store for durable delivery handoff. */
   outbox?: OutboxStore;
+
+  /** Stable id stamped into event metadata for this kernel/event bus instance. */
+  instanceId?: string;
 
   /** Lightweight tracing hooks for OpenTelemetry or custom tracer bridges. */
   traceSinks?: TraceSink[];
@@ -128,6 +133,25 @@ export type EventHandler<N extends IntentName, P = unknown> = (
   event: DomainEvent<N, P>
 ) => void | Promise<void>;
 
+export type EventPayloadPatch = Record<string, unknown> | unknown[];
+
+export interface EventInterceptorContext<N extends IntentName = IntentName, P = unknown> {
+  readonly event: Readonly<DomainEvent<N, P>>;
+  intercept(patch: EventPayloadPatch): void;
+}
+
+export type EventInterceptor<N extends IntentName = IntentName, P = unknown> = (
+  context: EventInterceptorContext<N, P>
+) => void | Promise<void>;
+
+export interface EventInterceptionInfo {
+  registrationId: string;
+  interceptorId: string;
+  intent: string;
+  createdAt: string;
+  lastInterceptedAt?: string;
+}
+
 /**
  * Unsubscribe function returned by subscribe.
  */
@@ -164,6 +188,26 @@ export interface EventBus {
     intent: N | IntentCreator<N, P>,
     handler: EventHandler<N, P>
   ): Unsubscribe;
+
+  /**
+   * Register an add-only interceptor for one intent.
+   * Interceptors may enrich payloads, but cannot overwrite existing payload fields.
+   */
+  registerInterceptor<N extends IntentName, P>(
+    intent: N | IntentCreator<N, P>,
+    interceptor: EventInterceptor<N, P>,
+    interceptorId?: string
+  ): string;
+
+  /**
+   * Remove a registered interceptor by registration id.
+   */
+  unregisterInterceptor(registrationId: string): boolean;
+
+  /**
+   * List registered interceptors.
+   */
+  listInterceptors(intent?: string): EventInterceptionInfo[];
 
   /**
    * Returns the history of published events (for observability and testing).

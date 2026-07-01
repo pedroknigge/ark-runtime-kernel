@@ -8,6 +8,7 @@ import type { MetadataRegistry } from '../metadata/types';
 import type { DependencyGraph } from '../graph/types';
 import type { EventContractRegistry } from '../event-contracts';
 import type { ArchitectureProfile } from '../layers';
+import type { ObservabilityReporter } from '../observability';
 import type { ProjectionRegistry } from '../projections';
 import type { ArkManifest, ArkManifestData } from './types';
 import { version } from '../../version';
@@ -28,6 +29,7 @@ export interface CreateArkManifestOptions {
   profile?: ArchitectureProfile;
   projections?: ProjectionRegistry;
   eventContracts?: EventContractRegistry;
+  observability?: ObservabilityReporter;
 }
 
 class ArkManifestImpl implements ArkManifest {
@@ -52,6 +54,7 @@ export function createArkManifest(
   const profile = options.profile;
   const projections = options.projections;
   const eventContracts = options.eventContracts;
+  const observability = options.observability;
 
   const intents = registry
     ? registry.list().map((creator) => ({
@@ -121,6 +124,7 @@ export function createArkManifest(
       : undefined,
     projections: projectionData,
     eventContracts: eventContracts?.list() ?? [],
+    observability: observability?.report(),
     links: { entityIntents },
   };
 

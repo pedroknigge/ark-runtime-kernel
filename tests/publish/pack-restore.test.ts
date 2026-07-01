@@ -67,18 +67,24 @@ describe('publish manifest model (dev-first workflow)', () => {
       fs.readFileSync(path.join(extract, 'package', 'package.json'), 'utf8')
     );
     expect(inner.dependencies).toEqual({});
+    expect(inner.exports['./eslint']).toEqual({
+      types: './dist/eslint/index.d.ts',
+      import: './dist/eslint/index.js',
+      require: './dist/eslint/index.cjs',
+    });
     expect(inner.bin['ark-check']).toBe('./bin/ark-check.mjs');
     expect(inner.scripts.test).toBe('vitest');
     expect(inner.scripts.typecheck).toBe('tsc --noEmit');
     expect(inner.scripts.prepack).toBe('npm run build');
     expect(inner.scripts.postpack).toBeUndefined();
     expect(fs.existsSync(path.join(extract, 'package', 'bin', 'ark-check.mjs'))).toBe(true);
+    expect(fs.existsSync(path.join(extract, 'package', 'dist', 'eslint', 'index.js'))).toBe(true);
   });
 
   it('dev-setup.cjs restores devDeps from stripped state', () => {
     const stripped = {
       name: 'ark-runtime-kernel',
-      version: '0.4.0',
+      version: '0.5.0',
       scripts: { build: 'tsup' },
       dependencies: {},
       files: ['dist'],

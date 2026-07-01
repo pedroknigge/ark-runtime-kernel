@@ -11,6 +11,10 @@ describe('Strict Ark kernel phase hardening', () => {
     const OrderPlaced = ark.registry.define<'Domain.Order.Placed', { id: string }>(
       'Domain.Order.Placed'
     );
+    ark.registry.define<'Application.PlaceOrder', { id: string }>(
+      'Application.PlaceOrder',
+      { produces: ['Domain.Order.Placed'] }
+    );
 
     await expect(
       ark.eventBus.publish(OrderPlaced, { id: 'o1' }, { source: 'Application.PlaceOrder' })
@@ -24,6 +28,13 @@ describe('Strict Ark kernel phase hardening', () => {
 
     await expect(
       ark.eventBus.publish(OrderPlaced, { id: 'o1' })
+    ).rejects.toThrow(UnknownEventSourceError);
+
+    await expect(
+      ark.eventBus.publish(OrderPlaced, { id: 'o1' }, {
+        source: 'Application.Unknown',
+        eventVersion: '1',
+      })
     ).rejects.toThrow(UnknownEventSourceError);
 
     await ark.eventBus.publish(OrderPlaced, { id: 'o1' }, {

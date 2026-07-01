@@ -35,8 +35,14 @@ export type CorrelationId = string;
 export interface EventMetadata {
   occurredAt: string; // ISO-8601
   source: string; // e.g. "Application.OrderService" or "Adapter.PaymentGateway"
+  kernelInstanceId?: string;
   eventVersion?: string;
   schemaVersion?: string;
+  allowInterception?: boolean;
+  interceptions?: Array<{
+    interceptorId: string;
+    timestamp: string;
+  }>;
   correlationId?: CorrelationId;
   causationId?: string;
   traceId?: string;

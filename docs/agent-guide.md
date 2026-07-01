@@ -5,8 +5,8 @@ This guide describes how AI agents and codegen tools can safely interact with Ar
 ## Contract Discovery
 
 Prefer `createStrictArkKernel()` for strict projects. It wires the registry, graph,
-policies, event bus, audit trail, event contracts, outbox, projections, metadata,
-workflow engine, and 11-layer architecture profile:
+policies, event bus, audit trail, event contracts, outbox, observability,
+projections, metadata, workflow engine, and 11-layer architecture profile:
 
 ```ts
 import {
@@ -17,10 +17,11 @@ const ark = createStrictArkKernel();
 // ... define intents, event contracts, metadata, projections, and workflows through ark.*
 
 const contract = ark.manifest().toJSON();
-// contract.intents, policies, entities, graph, architecture, eventContracts, projections
+// contract.intents, policies, entities, graph, architecture, eventContracts,
+// contract.observability, projections
 ```
 
-Agents should read `contract` before generating or modifying code.
+Agents should read `contract` and `ark.observability.report()` before generating or modifying code.
 
 ## Naming Conventions
 
@@ -75,6 +76,17 @@ await ark.eventBus.publish(OrderPlaced, { orderId: 'o1', amount: 99 }, {
   eventVersion: '1',
 });
 ```
+
+Interceptors may enrich event payloads, but they must remain add-only:
+
+```ts
+ark.eventBus.registerInterceptor(OrderPlaced, ({ intercept }) => {
+  intercept({ auditTag: 'checkout' });
+}, 'audit-tag');
+```
+
+If an interceptor overwrites an existing field or violates the registered event
+contract, Ark records `interceptor.error` and keeps delivering the original event.
 
 ## Code Generation Validation
 
@@ -143,6 +155,19 @@ Example config:
 `ark-check` uses the TypeScript AST for imports and string intent references.
 It is intentionally not a full type-aware semantic analyzer.
 
+Use the optional ESLint plugin for fast local feedback:
+
+```js
+import ark from 'ark-runtime-kernel/eslint';
+
+export default [
+  ark.configs.recommended,
+];
+```
+
+Rules: `ark/no-domain-infra-imports`, `ark/no-raw-event-publish`, and
+`ark/require-publish-source`.
+
 ## Runtime Observability
 
 The event bus exposes a standard trace format:
@@ -158,11 +183,18 @@ const bus = createEventBus({
 
 await bus.publish(intent, payload);
 const trace = bus.getTrace();
-// trace[].type: 'event.published' | 'policy.hardViolation' | 'policy.softViolation' | 'handler.error'
+// trace[].type includes 'event.published', 'event.intercepted',
+// 'interceptor.error', 'policy.hardViolation', 'policy.softViolation', 'handler.error'
 ```
 
 Native audit records are available through `auditTrail.query()`. Projection
 state and checkpoints are available through `ProjectionRegistry`.
+
+`ark.observability.report()` compares declared productions with observed runtime
+flows. Use `observedButUndeclared` as a high-signal review queue for hidden coupling.
+
+For tests, use `createArkTestHarness(ark)` to inspect events, traces, audit,
+outbox, and observability snapshots without reaching into private internals.
 
 ## Extension Points (External Layers)
 
@@ -177,6 +209,7 @@ Implement these interfaces in **external** packages — not inside the Ark core:
 | `ReadModelStore` | Persist projection/read-model state outside memory |
 | `AuditStore` | Persist audit records outside memory |
 | `OutboxStore` | Persist event outbox records outside memory |
+| `EventInterceptor` | Add-only event enrichment before delivery |
 
 Preset: `elevenLayerProfile` plus `defineArchitectureProfilePolicy()` forbids invalid declared dependencies across the 11-layer profile. `architecturalPolicies.cleanArchitectureMatrix()` remains available for the older four-prefix model.
 
@@ -186,6 +219,7 @@ Preset: `elevenLayerProfile` plus `defineArchitectureProfilePolicy()` forbids in
 2. **Generate** code using registered intents, profiles, metadata, projections, and workflow definitions
 3. **Validate snippets** with `createAICodeGate().validate(source, { layer })`
 4. **Validate repository** with `ark-check --root . --config ark.config.json`
-5. **Wire** relationships via `registry.define(..., { dependsOn, produces })`
-6. **Register** event contracts before publishing in strict mode
-7. **Observe** runtime via `bus.getTrace()`, `auditTrail.query()`, outbox records, and projection checkpoints
+5. **Lint** with `ark-runtime-kernel/eslint` recommended rules
+6. **Wire** relationships via `registry.define(..., { dependsOn, produces })`
+7. **Register** event contracts before publishing in strict mode
+8. **Observe** runtime via `bus.getTrace()`, `auditTrail.query()`, outbox records, projection checkpoints, and `ark.observability.report()`

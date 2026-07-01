@@ -17,6 +17,9 @@ import type {
   EventBus,
   EventBusOptions,
   EventHandler,
+  EventInterceptor,
+  EventInterceptionInfo,
+  EventPayloadPatch,
   IntentCreator,
   PublishedEventRecord,
   TraceRecord,
@@ -24,6 +27,7 @@ import type {
   Unsubscribe,
 } from './types';
 import type { IntentRegistry } from '../intent/IntentRegistry';
+import type { DependencyGraph } from '../graph';
 import type { AuditRecordType, AuditTrail } from '../audit';
 import type { EventContractRegistry } from '../event-contracts';
 import type { OutboxStore } from '../outbox';
@@ -48,9 +52,121 @@ interface InternalSubscription {
   handler: EventHandler<IntentName, unknown>;
 }
 
+interface InternalInterceptor {
+  registrationId: string;
+  interceptorId: string;
+  intentName: string;
+  interceptor: EventInterceptor<IntentName, unknown>;
+  createdAt: string;
+  lastInterceptedAt?: string;
+}
+
+let interceptorSequence = 0;
+
+function nextInterceptorRegistrationId(): string {
+  interceptorSequence += 1;
+  return `interceptor-${Date.now()}-${interceptorSequence}`;
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+}
+
+function clonePatchValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(clonePatchValue);
+  if (isPlainRecord(value)) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [key, clonePatchValue(child)])
+    );
+  }
+  return value;
+}
+
+function mergeRecordPatch(
+  target: Record<string, unknown>,
+  patch: Record<string, unknown>,
+  path = 'payload'
+): Record<string, unknown> {
+  const next = { ...target };
+
+  for (const [key, value] of Object.entries(patch)) {
+    const childPath = `${path}.${key}`;
+    if (!(key in next) || next[key] === undefined) {
+      next[key] = clonePatchValue(value);
+      continue;
+    }
+
+    if (isPlainRecord(next[key]) && isPlainRecord(value)) {
+      next[key] = mergeRecordPatch(next[key] as Record<string, unknown>, value, childPath);
+      continue;
+    }
+
+    if (Array.isArray(next[key]) && Array.isArray(value)) {
+      next[key] = mergeArrayPatch(next[key] as unknown[], value, childPath);
+      continue;
+    }
+
+    throw new Error(`Interceptor patch cannot overwrite existing ${childPath}.`);
+  }
+
+  return next;
+}
+
+function mergeArrayPatch(
+  target: unknown[],
+  patch: unknown[],
+  path = 'payload'
+): unknown[] {
+  const next = [...target];
+
+  patch.forEach((value, index) => {
+    const childPath = `${path}[${index}]`;
+    if (index >= next.length || next[index] === undefined) {
+      next[index] = clonePatchValue(value);
+      return;
+    }
+
+    if (isPlainRecord(next[index]) && isPlainRecord(value)) {
+      next[index] = mergeRecordPatch(next[index] as Record<string, unknown>, value, childPath);
+      return;
+    }
+
+    if (Array.isArray(next[index]) && Array.isArray(value)) {
+      next[index] = mergeArrayPatch(next[index] as unknown[], value, childPath);
+      return;
+    }
+
+    throw new Error(`Interceptor patch cannot overwrite existing ${childPath}.`);
+  });
+
+  return next;
+}
+
+function applyPayloadPatch(payload: unknown, patch: EventPayloadPatch): unknown {
+  if (Array.isArray(patch)) {
+    if (payload === undefined) return clonePatchValue(patch);
+    if (!Array.isArray(payload)) {
+      throw new Error('Array interceptor patch requires an array payload.');
+    }
+    return mergeArrayPatch(payload, patch);
+  }
+
+  if (payload === undefined) return clonePatchValue(patch);
+  if (!isPlainRecord(payload)) {
+    throw new Error('Object interceptor patch requires an object payload.');
+  }
+  return mergeRecordPatch(payload, patch);
+}
+
 export class EventBusImpl<Context = unknown> implements EventBus {
   private readonly subscriptions: InternalSubscription[] = [];
   private readonly subscriptionsByIntent = new Map<string, InternalSubscription[]>();
+  private readonly interceptors: InternalInterceptor[] = [];
+  private readonly interceptorsByIntent = new Map<string, InternalInterceptor[]>();
   private readonly history: PublishedEventRecord[] = [];
   private readonly trace: TraceRecord[] = [];
   private readonly onPublish?: (event: DomainEvent) => void | Promise<void>;
@@ -61,12 +177,14 @@ export class EventBusImpl<Context = unknown> implements EventBus {
   private readonly strictEventContracts: boolean;
   private readonly requireKnownSource: boolean;
   private readonly outbox?: OutboxStore;
+  private readonly instanceId?: string;
   private readonly traceSinks: TraceSink[];
   private readonly rethrowHandlerErrors: boolean;
   private readonly policyEngine?: PolicyEngine<Context>;
   private readonly getPolicyContext: (event: DomainEvent) => Context;
   private readonly maxHistorySize?: number;
   private readonly intentRegistry?: IntentRegistry;
+  private readonly dependencyGraph?: DependencyGraph;
   private readonly strictRegistry: boolean;
   private readonly validateIntentNaming: boolean;
 
@@ -79,10 +197,12 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     this.strictEventContracts = options.strictEventContracts ?? false;
     this.requireKnownSource = options.requireKnownSource ?? false;
     this.outbox = options.outbox;
+    this.instanceId = options.instanceId;
     this.traceSinks = [...(options.traceSinks ?? [])];
     this.rethrowHandlerErrors = options.rethrowHandlerErrors ?? false;
     this.maxHistorySize = options.maxHistorySize;
     this.intentRegistry = options.intentRegistry;
+    this.dependencyGraph = options.dependencyGraph;
     this.strictRegistry =
       options.strictRegistry ?? options.intentRegistry !== undefined;
     this.validateIntentNaming =
@@ -148,6 +268,9 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     this.assertIntentAllowed(event.intent);
     this.assertSourceAllowed(event as DomainEvent);
     this.assertContractAllowed(event as DomainEvent);
+    event = await this.applyInterceptors(event as DomainEvent<N, P>);
+    this.assertContractAllowed(event as DomainEvent);
+    this.dependencyGraph?.registerEventFlow(event.metadata.source, event.intent);
 
     const matching = [...(this.subscriptionsByIntent.get(event.intent) ?? [])];
 
@@ -266,6 +389,63 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     };
   }
 
+  registerInterceptor<N extends IntentName, P>(
+    intent: N | IntentCreator<N, P>,
+    interceptor: EventInterceptor<N, P>,
+    interceptorId?: string
+  ): string {
+    const intentName =
+      typeof intent === 'string' ? intent : (intent as IntentCreator<N, P>).name;
+
+    this.assertIntentAllowed(intentName);
+
+    const registration: InternalInterceptor = {
+      registrationId: nextInterceptorRegistrationId(),
+      interceptorId: interceptorId ?? intentName,
+      intentName,
+      interceptor: interceptor as EventInterceptor<IntentName, unknown>,
+      createdAt: new Date().toISOString(),
+    };
+
+    this.interceptors.push(registration);
+    const interceptorsForIntent = this.interceptorsByIntent.get(intentName) ?? [];
+    interceptorsForIntent.push(registration);
+    this.interceptorsByIntent.set(intentName, interceptorsForIntent);
+
+    return registration.registrationId;
+  }
+
+  unregisterInterceptor(registrationId: string): boolean {
+    const interceptor = this.interceptors.find(
+      (candidate) => candidate.registrationId === registrationId
+    );
+    if (!interceptor) return false;
+
+    const idx = this.interceptors.indexOf(interceptor);
+    if (idx >= 0) this.interceptors.splice(idx, 1);
+
+    const byIntent = this.interceptorsByIntent.get(interceptor.intentName);
+    if (byIntent) {
+      const intentIdx = byIntent.indexOf(interceptor);
+      if (intentIdx >= 0) byIntent.splice(intentIdx, 1);
+      if (byIntent.length === 0) this.interceptorsByIntent.delete(interceptor.intentName);
+    }
+
+    return true;
+  }
+
+  listInterceptors(intent?: string): EventInterceptionInfo[] {
+    return this.interceptors
+      .filter((interceptor) => !intent || interceptor.intentName === intent)
+      .map((interceptor) => ({
+        registrationId: interceptor.registrationId,
+        interceptorId: interceptor.interceptorId,
+        intent: interceptor.intentName,
+        createdAt: interceptor.createdAt,
+        lastInterceptedAt: interceptor.lastInterceptedAt,
+      }));
+  }
+
   getHistory(): PublishedEventRecord[] {
     return [...this.history];
   }
@@ -304,6 +484,9 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     if (!event.metadata.source || event.metadata.source === 'unknown') {
       throw new UnknownEventSourceError(event.intent);
     }
+    if (this.intentRegistry && !this.intentRegistry.has(event.metadata.source)) {
+      throw new UnknownEventSourceError(event.intent);
+    }
   }
 
   private assertContractAllowed(event: DomainEvent): void {
@@ -313,6 +496,82 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     if (!result.ok && (this.strictEventContracts || result.contract)) {
       throw new EventContractViolationError(event.intent, result.issues);
     }
+  }
+
+  private async applyInterceptors<N extends IntentName, P>(
+    event: DomainEvent<N, P>
+  ): Promise<DomainEvent<N, P>> {
+    if (event.metadata.allowInterception === false) {
+      return event;
+    }
+
+    const matching = [...(this.interceptorsByIntent.get(event.intent) ?? [])];
+    let current = event as DomainEvent<N, P>;
+
+    for (const registration of matching) {
+      const patches: EventPayloadPatch[] = [];
+      try {
+        await Promise.resolve(
+          registration.interceptor({
+            event: current as Readonly<DomainEvent<IntentName, unknown>>,
+            intercept: (patch) => {
+              patches.push(patch);
+            },
+          })
+        );
+
+        if (patches.length === 0) {
+          continue;
+        }
+
+        const timestamp = new Date().toISOString();
+        let candidate = {
+          ...current,
+          metadata: {
+            ...current.metadata,
+            interceptions: [
+              ...(current.metadata.interceptions ?? []),
+              { interceptorId: registration.interceptorId, timestamp },
+            ],
+          },
+        } as DomainEvent<N, P>;
+
+        for (const patch of patches) {
+          candidate = {
+            ...candidate,
+            payload: applyPayloadPatch(candidate.payload, patch) as P,
+            metadata: { ...candidate.metadata },
+          };
+        }
+
+        this.assertContractAllowed(candidate as DomainEvent);
+        current = candidate;
+        registration.lastInterceptedAt = timestamp;
+
+        this.appendTrace({
+          type: 'event.intercepted',
+          timestamp,
+          intent: current.intent,
+          correlationId: current.metadata.correlationId,
+          traceId: current.metadata.traceId,
+          spanId: current.metadata.spanId,
+          details: {
+            registrationId: registration.registrationId,
+            interceptorId: registration.interceptorId,
+            patchesApplied: patches.length,
+          },
+        });
+        await this.recordAudit('event.intercepted', current as DomainEvent, {
+          registrationId: registration.registrationId,
+          interceptorId: registration.interceptorId,
+          patchesApplied: patches.length,
+        });
+      } catch (err) {
+        await this.recordInterceptorError(registration, current as DomainEvent, err);
+      }
+    }
+
+    return current;
   }
 
   private async invokeHandler(
@@ -375,6 +634,32 @@ export class EventBusImpl<Context = unknown> implements EventBus {
         error: err instanceof Error ? err.message : String(err),
       });
     }
+  }
+
+  private async recordInterceptorError(
+    interceptor: InternalInterceptor,
+    event: DomainEvent,
+    error: unknown
+  ): Promise<void> {
+    const message = error instanceof Error ? error.message : String(error);
+    this.appendTrace({
+      type: 'interceptor.error',
+      timestamp: new Date().toISOString(),
+      intent: event.intent,
+      correlationId: event.metadata.correlationId,
+      traceId: event.metadata.traceId,
+      spanId: event.metadata.spanId,
+      details: {
+        registrationId: interceptor.registrationId,
+        interceptorId: interceptor.interceptorId,
+        error: message,
+      },
+    });
+    await this.recordAudit('interceptor.error', event, {
+      registrationId: interceptor.registrationId,
+      interceptorId: interceptor.interceptorId,
+      error: message,
+    });
   }
 
   private appendHistory(record: PublishedEventRecord): void {
@@ -446,8 +731,14 @@ export class EventBusImpl<Context = unknown> implements EventBus {
       occurredAt:
         extra.occurredAt || base.occurredAt || new Date().toISOString(),
       source: extra.source || base.source || 'unknown',
+      kernelInstanceId:
+        extra.kernelInstanceId ?? base.kernelInstanceId ?? this.instanceId,
       eventVersion: extra.eventVersion ?? base.eventVersion,
       schemaVersion: extra.schemaVersion ?? base.schemaVersion,
+      allowInterception:
+        extra.allowInterception ?? base.allowInterception,
+      interceptions:
+        extra.interceptions ?? base.interceptions,
       correlationId: extra.correlationId ?? base.correlationId,
       causationId: extra.causationId ?? base.causationId,
       traceId: extra.traceId ?? base.traceId,

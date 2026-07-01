@@ -5,6 +5,7 @@ import type { IntentRegistry } from '../intent';
 import type { ArchitectureProfile } from '../layers';
 import type { ArkManifest } from '../manifest';
 import type { MetadataRegistry } from '../metadata';
+import type { ObservabilityReporter } from '../observability';
 import type { Policy, PolicyEngine } from '../policy';
 import type { ProjectionRegistry } from '../projections';
 import type { EventBus } from '../event-bus';
@@ -12,6 +13,7 @@ import type { OutboxStore } from '../outbox';
 import type { WorkflowEngine } from '../workflow';
 
 export interface ArkKernel {
+  instanceId: string;
   profile: ArchitectureProfile;
   registry: IntentRegistry;
   graph: DependencyGraph;
@@ -23,6 +25,7 @@ export interface ArkKernel {
   policyEngine: PolicyEngine;
   eventBus: EventBus;
   workflowEngine: WorkflowEngine;
+  observability: ObservabilityReporter;
   syncGraph(): void;
   manifest(): ArkManifest;
 }
@@ -39,4 +42,5 @@ export interface CreateArkKernelOptions {
   autoApplyProjections?: boolean;
   strictEventContracts?: boolean;
   requireKnownSource?: boolean;
+  instanceId?: string;
 }

@@ -1,10 +1,10 @@
 # Ark System Readiness Assessment
 
-**Date:** 2026-07-01  
-**Version:** 0.4.0  
+**Date:** 2026-07-01
+**Version:** 0.5.0
 **Package:** `ark-runtime-kernel`
 
-Ark is ready to use as an in-process architectural governance kernel when teams deliberately route important interactions through its strict kernel, registry, event bus, event contracts, policies, graph, audit trail, workflow engine, projection registry, metadata system, outbox, static checks, and manifest. It is not a replacement for durable infrastructure, type-aware semantic analysis, external compliance tooling, databases, or distributed queues.
+Ark is ready to use as an in-process architectural governance kernel when teams deliberately route important interactions through its strict kernel, registry, event bus, event contracts, interceptors, policies, graph, audit trail, workflow engine, projection registry, metadata system, outbox, static checks, ESLint rules, test harness, observability reports, and manifest. It is not a replacement for durable infrastructure, type-aware semantic analysis, external compliance tooling, databases, or distributed queues.
 
 ## 1. Simple PYME / SMB Systems
 
@@ -26,7 +26,7 @@ Ark can be useful in small systems when architecture is expected to grow, but it
 
 **Recommended approach**
 
-Use only the Intent Registry, Event Bus, EventContractRegistry, AuditTrail, `ark-check`, and a small number of hard policies. Avoid projections/workflows until the system has real event-driven complexity.
+Use only the Intent Registry, Event Bus, EventContractRegistry, AuditTrail, `ark-check`, the ESLint plugin, and a small number of hard policies. Avoid projections/workflows until the system has real event-driven complexity.
 
 ## 2. Growing / Mid-size Systems
 
@@ -48,19 +48,19 @@ This is Ark's strongest current fit. Mid-size systems have enough architectural 
 
 **Recommended approach**
 
-Use `createStrictArkKernel()` as the core architectural kernel for event naming, source validation, event contracts, publish/subscribe validation, hard policies, audit, graph sync, projections, workflow snapshots, outbox records, and manifest export. Add `ark-check` in CI, then add `AIGateExtension` analyzers where the project needs deeper semantic checks.
+Use `createStrictArkKernel()` as the core architectural kernel for event naming, source validation, event contracts, add-only interceptors, publish/subscribe validation, hard policies, audit, graph sync, observability drift reports, projections, workflow snapshots, outbox records, and manifest export. Add `ark-check` and `ark-runtime-kernel/eslint` in CI, then add `AIGateExtension` analyzers where the project needs deeper semantic checks.
 
 ## 3. Complex OMS
 
 **Readiness level:** Ready for in-process workflows, Conditionally Ready for distributed OMS
 
-Ark is valuable for an OMS as a governance layer and can now run in-process workflows with snapshots, retries, timeouts, compensation, audit, event contracts, outbox handoff, and pluggable stores. Distributed order orchestration, inventory reservations across services, replay at scale, and exception operations still need dedicated production infrastructure.
+Ark is valuable for an OMS as a governance layer and can now run in-process workflows with snapshots, retries, timeouts, compensation, audit, event contracts, interceptors, outbox handoff, drift reporting, and pluggable stores. Distributed order orchestration, inventory reservations across services, replay at scale, and exception operations still need dedicated production infrastructure.
 
 **Main risks**
 
 - The included workflow engine is in-process; durability depends on the configured `WorkflowStore`.
 - OMS flows often need replay, distributed locks, queue backpressure, and operational dashboards outside Ark's scope.
-- Runtime enforcement only covers interactions routed through Ark; `ark-check` covers configured file imports and intent strings, not all semantic coupling.
+- Runtime enforcement only covers interactions routed through Ark; `ark-check` and the ESLint plugin cover configured file imports, intent strings, and common publish bypasses, not all semantic coupling.
 
 **When it makes sense**
 
@@ -76,7 +76,7 @@ Use Ark as the bounded-context workflow and governance kernel. Pair it with queu
 
 **Readiness level:** Ready for Modular CRMs, Conditionally Ready for Enterprise CRMs
 
-Ark fits CRM systems with growing integrations and automation because intent naming, event contracts, metadata, manifests, policy hooks, audit records, workflows, outbox handoff, and projections help keep customer workflows explicit. Enterprise-grade permissioning and data consistency still require dedicated layers.
+Ark fits CRM systems with growing integrations and automation because intent naming, event contracts, interceptors, metadata, manifests, policy hooks, audit records, workflows, outbox handoff, drift reporting, and projections help keep customer workflows explicit. Enterprise-grade permissioning and data consistency still require dedicated layers.
 
 **Main risks**
 
@@ -92,7 +92,7 @@ Ark fits CRM systems with growing integrations and automation because intent nam
 
 **Recommended approach**
 
-Use Ark for intent governance, event bus validation, event contracts, metadata export, audit history, workflow snapshots, projections, `ark-check`, and AI gate checks. Pair it with existing auth, durable storage, and job orchestration systems.
+Use Ark for intent governance, event bus validation, event contracts, metadata export, audit history, workflow snapshots, projections, `ark-check`, ESLint checks, test harness snapshots, and AI gate checks. Pair it with existing auth, durable storage, and job orchestration systems.
 
 ## 5. Enterprise ERP / Large Platforms
 

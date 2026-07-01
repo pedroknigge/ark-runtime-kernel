@@ -71,6 +71,10 @@ export {
   type EventBus,
   type EventBusOptions,
   type EventHandler,
+  type EventInterceptionInfo,
+  type EventInterceptor,
+  type EventInterceptorContext,
+  type EventPayloadPatch,
   type Unsubscribe,
   type PublishedEventRecord,
   type TraceRecord,
@@ -110,6 +114,28 @@ export {
   type OutboxStatus,
   type OutboxStore,
 } from './kernel/outbox';
+
+// =============================================================================
+// Observability
+// =============================================================================
+
+export {
+  createObservabilityReporter,
+  type CreateObservabilityReporterOptions,
+  type ObservabilityDriftReport,
+  type ObservabilityFlow,
+  type ObservabilityReporter,
+} from './kernel/observability';
+
+// =============================================================================
+// Testing
+// =============================================================================
+
+export {
+  createArkTestHarness,
+  type ArkTestHarness,
+  type ArkTestSnapshot,
+} from './kernel/testing';
 
 // =============================================================================
 // Native Audit & History

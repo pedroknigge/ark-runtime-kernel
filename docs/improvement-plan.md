@@ -212,7 +212,7 @@ Phase 4 — Polish (remaining L1–L5)
 
 ---
 
-## Explicit Non-Goals (Updated for v0.4)
+## Explicit Non-Goals (Updated for v0.5)
 
 - Embedding LLM/AI provider SDKs
 - Full type-aware TypeScript semantic analyzer
@@ -303,3 +303,29 @@ Remaining high-value hardening after v0.4:
 | Type-aware semantic analyzer | High | `ark-check` is AST-based and path/config driven, not a TypeScript program/type graph |
 | Distributed workflow orchestration | Medium | Keep Ark in-process; integrate Temporal/queues when process boundaries matter |
 | OpenTelemetry bridge package | Medium | Core should keep hooks, not take an OTel runtime dependency |
+
+## v0.5 Implementation Status (2026-07-01)
+
+The dcouplr-inspired hardening wave is now implemented:
+
+| Capability | Status |
+|------------|--------|
+| Add-only EventBus interceptors | ✅ |
+| Interceptor audit and trace records | ✅ |
+| Contract-safe interceptor failure behavior | ✅ |
+| Kernel instance id stamping in event metadata | ✅ |
+| Observability drift report: declared vs observed productions | ✅ |
+| Runtime graph observed source-to-event flows | ✅ |
+| `createArkTestHarness()` for runtime signal inspection | ✅ |
+| `ark-runtime-kernel/eslint` plugin export | ✅ |
+| ESLint rules for domain infra imports, raw publish, missing source | ✅ |
+| Package subpath coverage for `./eslint` | ✅ |
+
+Remaining high-value hardening after v0.5:
+
+| Gap | Priority | Notes |
+|-----|----------|-------|
+| Type-aware semantic analyzer | High | ESLint and `ark-check` are useful heuristics, not a full program graph |
+| Durable adapters | High | Outbox, audit, workflow, and read model stores still need production adapters |
+| Directed message bus | Medium | Useful for workflow/job commands, but should not blur Domain Events |
+| Queue/backpressure runtime | Medium | Keep core thin unless queue semantics become central to Ark's governance model |

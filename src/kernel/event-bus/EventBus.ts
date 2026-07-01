@@ -21,6 +21,7 @@ import type {
   EventInterceptionInfo,
   EventPayloadPatch,
   IntentCreator,
+  ObservedLayerFlowMode,
   PublishedEventRecord,
   TraceRecord,
   TraceSink,
@@ -28,6 +29,7 @@ import type {
 } from './types';
 import type { IntentRegistry } from '../intent/IntentRegistry';
 import type { DependencyGraph } from '../graph';
+import type { ArchitectureProfile } from '../layers';
 import type { AuditRecordType, AuditTrail } from '../audit';
 import type { EventContractRegistry } from '../event-contracts';
 import type { OutboxStore } from '../outbox';
@@ -45,6 +47,7 @@ import {
   LayerPolicyContextError,
   EventContractViolationError,
   UnknownEventSourceError,
+  ObservedLayerFlowViolationError,
 } from './errors';
 
 interface InternalSubscription {
@@ -176,6 +179,8 @@ export class EventBusImpl<Context = unknown> implements EventBus {
   private readonly eventContracts?: EventContractRegistry;
   private readonly strictEventContracts: boolean;
   private readonly requireKnownSource: boolean;
+  private readonly architectureProfile?: ArchitectureProfile;
+  private readonly enforceObservedLayerFlowMode: ObservedLayerFlowMode;
   private readonly outbox?: OutboxStore;
   private readonly instanceId?: string;
   private readonly traceSinks: TraceSink[];
@@ -196,6 +201,8 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     this.eventContracts = options.eventContracts;
     this.strictEventContracts = options.strictEventContracts ?? false;
     this.requireKnownSource = options.requireKnownSource ?? false;
+    this.architectureProfile = options.architectureProfile;
+    this.enforceObservedLayerFlowMode = options.enforceObservedLayerFlow ?? 'off';
     this.outbox = options.outbox;
     this.instanceId = options.instanceId;
     this.traceSinks = [...(options.traceSinks ?? [])];
@@ -271,6 +278,7 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     event = await this.applyInterceptors(event as DomainEvent<N, P>);
     this.assertContractAllowed(event as DomainEvent);
     this.dependencyGraph?.registerEventFlow(event.metadata.source, event.intent);
+    await this.assertObservedLayerFlowAllowed(event as DomainEvent);
 
     const matching = [...(this.subscriptionsByIntent.get(event.intent) ?? [])];
 
@@ -495,6 +503,52 @@ export class EventBusImpl<Context = unknown> implements EventBus {
 
     if (!result.ok && (this.strictEventContracts || result.contract)) {
       throw new EventContractViolationError(event.intent, result.issues);
+    }
+  }
+
+  /**
+   * Enforce the OBSERVED producer→event flow (metadata.source → intent) against the
+   * architecture profile's layer rules. This is the runtime counterpart to the
+   * declared-model layer policy: it checks what the system actually did, using the same
+   * flow edge already recorded via registerEventFlow.
+   */
+  private async assertObservedLayerFlowAllowed(event: DomainEvent): Promise<void> {
+    if (this.enforceObservedLayerFlowMode === 'off' || !this.architectureProfile) {
+      return;
+    }
+
+    const source = event.metadata.source;
+    if (!source || source === 'unknown') return;
+
+    const profile = this.architectureProfile;
+    const fromLayer = profile.resolveLayer(source);
+    const toLayer = profile.resolveLayer(event.intent);
+    if (!fromLayer || !toLayer) return;
+
+    const blocked = profile.rules.find(
+      (rule) => !rule.allowed && rule.from === fromLayer && rule.to === toLayer
+    );
+    if (!blocked) return;
+
+    const severity = this.enforceObservedLayerFlowMode;
+    const message =
+      blocked.message ??
+      `Observed layer violation: "${source}" (${fromLayer}) must not produce "${event.intent}" (${toLayer}).`;
+    const details = { source, intent: event.intent, fromLayer, toLayer, severity, message };
+
+    this.appendTrace({
+      type: 'layer.observedViolation',
+      timestamp: new Date().toISOString(),
+      intent: event.intent,
+      correlationId: event.metadata.correlationId,
+      traceId: event.metadata.traceId,
+      spanId: event.metadata.spanId,
+      details,
+    });
+    await this.recordAudit('layer.observedViolation', event, details);
+
+    if (severity === 'hard') {
+      throw new ObservedLayerFlowViolationError(source, event.intent, fromLayer, toLayer, message);
     }
   }
 

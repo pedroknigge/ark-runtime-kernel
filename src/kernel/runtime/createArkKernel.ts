@@ -53,6 +53,8 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
     eventContracts,
     strictEventContracts: options.strictEventContracts ?? false,
     requireKnownSource: options.requireKnownSource ?? true,
+    architectureProfile: profile,
+    enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'off',
     outbox,
     instanceId,
     maxHistorySize: options.maxHistorySize,
@@ -108,5 +110,6 @@ export function createStrictArkKernel(
     ...options,
     strictEventContracts: true,
     requireKnownSource: true,
+    enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'hard',
   });
 }

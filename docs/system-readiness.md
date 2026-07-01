@@ -1,8 +1,13 @@
 # Ark System Readiness Assessment
 
 **Date:** 2026-07-01
-**Version:** 0.5.0
+**Version:** 0.6.0
 **Package:** `ark-runtime-kernel`
+
+> v0.6 note: `createStrictArkKernel()` now enforces observed producer→event layer flows at
+> runtime by default (`enforceObservedLayerFlow: 'hard'`). This strengthens the mid-size and
+> OMS fits below: the recommended strict path rejects real cross-layer event flows, not just
+> declared-model violations.
 
 Ark is ready to use as an in-process architectural governance kernel when teams deliberately route important interactions through its strict kernel, registry, event bus, event contracts, interceptors, policies, graph, audit trail, workflow engine, projection registry, metadata system, outbox, static checks, ESLint rules, test harness, observability reports, and manifest. It is not a replacement for durable infrastructure, type-aware semantic analysis, external compliance tooling, databases, or distributed queues.
 

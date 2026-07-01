@@ -48,6 +48,14 @@ registry.define('Application.PlaceOrder', {
 });
 ```
 
+Strict kernels also enforce the **observed** producer→event layer flow at publish time
+(`enforceObservedLayerFlow: 'hard'` by default). If a published event's real source and
+intent cross a forbidden layer boundary — e.g. a `Adapter.Persistence.*` source producing
+a `Domain.*` event — the publish throws `ObservedLayerFlowViolationError` before the event
+reaches history, outbox, or subscribers. Use `'soft'` to record `layer.observedViolation`
+trace/audit records without blocking, or `'off'` to disable. Agents should name the event's
+`source` honestly: it is checked against the layer matrix, not just the intent name.
+
 Strict kernels also require published events to have a registered source intent
 and a matching event contract:
 

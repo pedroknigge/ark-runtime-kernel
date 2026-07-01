@@ -8,6 +8,7 @@
 import type { DomainEvent, EventMetadata, IntentName } from '../../domain/types';
 import type { IntentCreator, IntentRegistry } from '../intent';
 import type { DependencyGraph } from '../graph';
+import type { ArchitectureProfile } from '../layers';
 import type { Policy, PolicyEngine, PolicyEvaluationResult } from '../policy';
 import type { AuditTrail } from '../audit';
 import type { EventContractRegistry } from '../event-contracts';
@@ -22,8 +23,18 @@ export type TraceRecordType =
   | 'interceptor.error'
   | 'policy.hardViolation'
   | 'policy.softViolation'
+  | 'layer.observedViolation'
   | 'handler.error'
   | 'hook.error';
+
+/**
+ * Runtime enforcement mode for observed producer→event layer flows.
+ * - 'off': flows are recorded (for drift reports) but never enforced.
+ * - 'soft': a `layer.observedViolation` trace + audit record is emitted; publish proceeds.
+ * - 'hard': publish throws `ObservedLayerFlowViolationError` before the event reaches
+ *   history, outbox, or subscribers.
+ */
+export type ObservedLayerFlowMode = 'off' | 'soft' | 'hard';
 
 export interface TraceRecord {
   type: TraceRecordType;
@@ -55,6 +66,19 @@ export interface EventBusOptions<Context = unknown> {
 
   /** When true, metadata.source must be explicit and not "unknown". */
   requireKnownSource?: boolean;
+
+  /**
+   * Architecture profile used to enforce the OBSERVED producer→event layer flow at
+   * publish time. Required for `enforceObservedLayerFlow` to have effect.
+   */
+  architectureProfile?: ArchitectureProfile;
+
+  /**
+   * Enforce each published event's real producer→event flow (metadata.source → intent)
+   * against `architectureProfile` layer rules at runtime. Unlike the declared-model layer
+   * policy, this checks what the system actually did. Default: 'off'.
+   */
+  enforceObservedLayerFlow?: ObservedLayerFlowMode;
 
   /** Optional outbox store for durable delivery handoff. */
   outbox?: OutboxStore;

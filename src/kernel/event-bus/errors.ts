@@ -54,3 +54,33 @@ export class UnknownEventSourceError extends Error {
     this.name = 'UnknownEventSourceError';
   }
 }
+
+/**
+ * Thrown when the OBSERVED producer→event flow crosses a forbidden layer boundary
+ * under `enforceObservedLayerFlow: 'hard'`. Unlike declared-model policy errors, this
+ * reflects what the running system actually did at publish time.
+ */
+export class ObservedLayerFlowViolationError extends Error {
+  readonly source: string;
+  readonly intentName: string;
+  readonly fromLayer: string;
+  readonly toLayer: string;
+
+  constructor(
+    source: string,
+    intentName: string,
+    fromLayer: string,
+    toLayer: string,
+    message?: string
+  ) {
+    super(
+      message ??
+        `Observed layer violation: "${source}" (${fromLayer}) must not produce "${intentName}" (${toLayer}).`
+    );
+    this.name = 'ObservedLayerFlowViolationError';
+    this.source = source;
+    this.intentName = intentName;
+    this.fromLayer = fromLayer;
+    this.toLayer = toLayer;
+  }
+}

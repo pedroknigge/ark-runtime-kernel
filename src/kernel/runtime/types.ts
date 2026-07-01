@@ -8,7 +8,7 @@ import type { MetadataRegistry } from '../metadata';
 import type { ObservabilityReporter } from '../observability';
 import type { Policy, PolicyEngine } from '../policy';
 import type { ProjectionRegistry } from '../projections';
-import type { EventBus } from '../event-bus';
+import type { EventBus, ObservedLayerFlowMode } from '../event-bus';
 import type { OutboxStore } from '../outbox';
 import type { WorkflowEngine } from '../workflow';
 
@@ -42,5 +42,10 @@ export interface CreateArkKernelOptions {
   autoApplyProjections?: boolean;
   strictEventContracts?: boolean;
   requireKnownSource?: boolean;
+  /**
+   * Enforce observed producer→event layer flows against the profile at runtime.
+   * Defaults to 'off' for createArkKernel and 'hard' for createStrictArkKernel.
+   */
+  enforceObservedLayerFlow?: ObservedLayerFlowMode;
   instanceId?: string;
 }

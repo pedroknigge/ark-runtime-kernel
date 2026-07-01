@@ -321,11 +321,31 @@ The dcouplr-inspired hardening wave is now implemented:
 | ESLint rules for domain infra imports, raw publish, missing source | ✅ |
 | Package subpath coverage for `./eslint` | ✅ |
 
-Remaining high-value hardening after v0.5:
+## v0.6 Implementation Status (2026-07-01)
+
+The strategic-audit hardening wave lands the highest-leverage enforcement gap:
+
+| Capability | Status |
+|------------|--------|
+| Runtime enforcement of observed producer→event layer flows (`enforceObservedLayerFlow`) | ✅ |
+| `off` / `soft` / `hard` modes with `layer.observedViolation` trace + audit records | ✅ |
+| `createStrictArkKernel()` enforces observed flows `hard` by default | ✅ |
+| `ObservedLayerFlowViolationError` thrown before history/outbox/subscribers | ✅ |
+| Honest enforcement-scope section in README (hard-failed / observable / out of scope) | ✅ |
+
+**Why this mattered:** before v0.6 the observed source→event edge was recorded on every
+publish (`EventBus.registerEventFlow`) but read *only* by the drift report — never by an
+enforcement path. Runtime "layer governance" therefore checked the declared model, not the
+running system. v0.6 makes the flagship claim literal using data already in hand.
+
+Remaining high-value hardening after v0.6:
 
 | Gap | Priority | Notes |
 |-----|----------|-------|
-| Type-aware semantic analyzer | High | ESLint and `ark-check` are useful heuristics, not a full program graph |
+| Mandatory CI chokepoint | High | Promote `ark-check` from opt-in script to a merge gate backed by a real `ts.Program` (resolve alias/package/absolute imports, not just relative) |
+| Write-path gate for AI agents | High | Ship an MCP server (manifest as resource + `validate` tool bound to `PreToolUse` on Write/Edit) so generated code is checked before it lands |
+| Layer identity from code, not name prefix | High | Derive layer from file location/imports; treat the intent-name prefix as a cross-check and flag mismatches |
+| Type-aware semantic analyzer | High | ESLint and `ark-check` are useful heuristics, not a full program graph — ship as opt-in `ark-tsmorph` behind the `AIGateExtension` seam |
 | Durable adapters | High | Outbox, audit, workflow, and read model stores still need production adapters |
 | Directed message bus | Medium | Useful for workflow/job commands, but should not blur Domain Events |
 | Queue/backpressure runtime | Medium | Keep core thin unless queue semantics become central to Ark's governance model |

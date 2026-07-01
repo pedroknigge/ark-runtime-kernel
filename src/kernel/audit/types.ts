@@ -6,6 +6,7 @@ export type AuditRecordType =
   | 'interceptor.error'
   | 'policy.softViolation'
   | 'policy.hardViolation'
+  | 'layer.observedViolation'
   | 'handler.error'
   | 'hook.error'
   | 'workflow.started'

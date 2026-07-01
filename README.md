@@ -6,7 +6,7 @@ Published package name: `ark-runtime-kernel`.
 
 Ark exists so architecture is not only a documented intention, but an actively protected runtime property. It helps teams define, enforce, and observe architectural boundaries while a system is running, especially in codebases where changes are frequent and part of the code may be generated or modified by AI agents.
 
-> **Current status:** v0.5.0 strict in-process governance kernel plus CI checks. Ark now includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, event interceptors, a basic outbox store, observed-vs-declared observability reports, a test harness, layer-aware AI code checks, an AST-based `ark-check` CLI, an `ark-runtime-kernel/eslint` plugin, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
+> **Current status:** v0.6.0 strict in-process governance kernel plus CI checks. v0.6 adds **runtime enforcement of observed layer flows**: strict kernels now check the real producer→event flow of every published event against the 11-layer profile and reject (or flag) events that cross a forbidden boundary — enforcement over what the system *did*, not only over what was *declared*. Ark also includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, event interceptors, a basic outbox store, observed-vs-declared observability reports, a test harness, layer-aware AI code checks, an AST-based `ark-check` CLI, an `ark-runtime-kernel/eslint` plugin, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
 
 ## The Problem
 
@@ -43,6 +43,7 @@ When critical interactions go through Ark:
 - known-source enforcement rejects event metadata from unregistered sources
 - event interceptors can enrich payloads without overwriting existing fields
 - layer policies can block invalid declared dependencies
+- observed-flow layer enforcement rejects (or flags) real producer→event flows that cross a forbidden layer boundary at publish time
 - soft violations are observable through hooks and traces
 - event history and trace records make architectural behavior inspectable
 - observability reports show declared-vs-observed flow drift
@@ -52,6 +53,16 @@ When critical interactions go through Ark:
 
 Enforcement is only as strong as the paths you wire through Ark. Code that bypasses Ark directly is outside this runtime contract unless you also cover it through registry rules, graph declarations, CI checks, or `AIGateExtension` analyzers.
 
+### Enforcement scope (be explicit)
+
+Ark governs the **event/intent runtime** it mediates, and the rest of the codebase **by contract + CI + drift**. Concretely:
+
+- **Hard-failed at runtime** (on the governed publish path): unregistered/misnamed intents, unknown event sources, event-contract breaches, hard policy violations, and — new in v0.6 — observed producer→event flows that cross a forbidden layer boundary.
+- **Observable** (recorded, not blocked): soft policy/layer violations and declared-vs-observed drift via `ark.observability.report()`.
+- **Out of runtime scope** (covered only by `ark-check`/ESLint in CI, if wired): direct cross-layer imports, direct DB/HTTP calls, and any coupling that never transits the event bus.
+
+Ark is unavoidable **only on the paths you route through it**. Treat it as the runtime kernel for your event/intent layer plus a machine-readable architectural contract (`createArkManifest()`) that CI and AI agents enforce against — not as an OS-style choke point over all code.
+
 ## What Ark Provides
 
 | Primitive | Purpose |
@@ -60,6 +71,7 @@ Enforcement is only as strong as the paths you wire through Ark. Code that bypas
 | Strict Ark Kernel | Wires registry, graph, policies, event bus, audit, event contracts, outbox, projections, metadata, and workflow with strict defaults |
 | 11-Layer Profile | Provides governed layer taxonomy for Hexagonal + Event-Driven systems |
 | Policy Engine | Evaluates hard and soft architectural policies, including profile-driven layer rules |
+| Observed-Flow Layer Enforcement | Checks each published event's real producer→event flow against the profile at runtime (`off` / `soft` / `hard`); strict kernels default to `hard` |
 | Event Bus | Publishes typed domain events with strict registry checks, source validation, contract validation, traces, audit, outbox handoff, and history |
 | Event Interceptors | Add-only payload enrichment before delivery, with audit/trace records and contract protection |
 | Event Contracts | Validates event versions and payload shape before publish |

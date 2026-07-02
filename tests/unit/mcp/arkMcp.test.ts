@@ -117,6 +117,23 @@ describe('ark-mcp server (write-path gate)', () => {
     expect(JSON.parse(res.result.content[0].text).valid).toBe(true);
   });
 
+  it('uses the AST-backed gate to flag Ark publish calls without source metadata', async () => {
+    const res = await client.request('tools/call', {
+      name: 'validate_code',
+      arguments: {
+        source: 'bus.publish(OrderPlaced, { id: "o1" });\n',
+        filePath: 'src/app/placeOrder.ts',
+      },
+    });
+
+    expect(res.result.isError).toBe(true);
+    const payload = JSON.parse(res.result.content[0].text);
+    expect(payload.layer).toBe('app');
+    expect(
+      payload.violations.some((v: { code: string }) => v.code === 'PUBLISH_MISSING_SOURCE')
+    ).toBe(true);
+  });
+
   it("enforces the PROJECT's layer names + rules on a nested file (not elevenLayerProfile)", async () => {
     // core -> app is forbidden by the project's ark.config.json (custom rule, non-canonical
     // names). The file is nested (src/core/sub/...) so layer inference must match `src/core/**`

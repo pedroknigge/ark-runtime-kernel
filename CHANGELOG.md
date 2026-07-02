@@ -30,6 +30,15 @@ All notable changes to `ark-runtime-kernel` are documented here.
 - Generated layers are optional by default so teams can adopt the full profile
   incrementally without warnings for unused folders.
 
+### Added — AST-backed AI publish checks
+
+- `createAICodeGate()` can now run built-in TypeScript AST checks when the caller passes
+  the `typescript` module.
+- AST checks flag raw publish calls, publish calls missing `metadata.source`, and source
+  intent literals whose layer differs from the target file layer.
+- `ark-mcp` passes TypeScript into AICodeGate when available so the write-path gate blocks
+  the same publish misuse patterns earlier.
+
 ## 1.0.0 — 2026-07-01
 
 ### Changed — strict runtime baseline and governance roadmap

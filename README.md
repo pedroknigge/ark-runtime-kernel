@@ -193,7 +193,7 @@ still help catch suspicious manual source literals in direct publish calls.
 
 Ark does not generate code. It gives generated code something concrete to obey.
 
-`createArkManifest().toJSON()` exports the current architectural contract so agents can inspect registered intents, relationships, policies, entities, graph data, layers, event contracts, and projections before editing. `createAICodeGate()` provides fast string/regex checks for unknown intents, forbidden patterns, and layer reference violations when paired with `elevenLayerProfile`.
+`createArkManifest().toJSON()` exports the current architectural contract so agents can inspect registered intents, relationships, policies, entities, graph data, layers, event contracts, and projections before editing. `createAICodeGate()` provides fast checks for unknown intents, forbidden patterns, and layer reference violations when paired with `elevenLayerProfile`. Pass the `typescript` module to enable additional AST-backed publish checks without adding a runtime dependency to Ark.
 
 For CI, use `ark-check` with an explicit layer configuration:
 
@@ -232,6 +232,9 @@ one step earlier — at the moment an agent writes a file — by exposing Ark ov
 ```bash
 npx ark-mcp --root . --config ark.config.json [--manifest ark.manifest.json]
 ```
+
+When TypeScript is available in the project, `ark-mcp` uses AICodeGate's AST-backed publish
+checks in addition to the lightweight source checks.
 
 The server (zero dependencies, JSON-RPC over stdio) provides:
 

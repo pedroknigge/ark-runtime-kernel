@@ -52,7 +52,8 @@ database access, and unclassified files remain outside runtime control.
   teams must adopt that API on the governed path.
 - `ark-check` covers configured import/export edges and intent references. It is not yet a
   full call-graph, DI, type-symbol, or package-boundary analyzer.
-- AICodeGate is still heuristic and source-string based.
+- AICodeGate still has heuristic source-string checks by default, but now supports optional
+  TypeScript AST checks for publish misuse when callers pass the `typescript` module.
 - ESLint rules are intentionally narrow guardrails.
 - Event contracts are shallow field/type validators, not full schema validation.
 - Workflow, projection, audit, and outbox defaults are in-memory and should be treated as
@@ -110,6 +111,7 @@ Recommended production posture:
 3. Add source-authenticity APIs so publishers cannot freely spoof `metadata.source`.
 4. Continue improving profile synchronization for existing projects beyond the current
    generated starter config.
-5. Replace AICodeGate heuristics with AST-backed shared analyzer behavior.
+5. Continue expanding AST-backed AI checks beyond publish misuse and keep MCP/CI parity
+   tests in place.
 6. Add deeper ports/adapters governance.
 7. Strengthen event contracts and production storage recipes.

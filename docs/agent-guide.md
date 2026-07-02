@@ -106,10 +106,13 @@ contract, Ark records `interceptor.error` and keeps delivering the original even
 Use `createAICodeGate()` before merging agent-generated source snippets:
 
 ```ts
+import * as ts from 'typescript';
+
 const gate = createAICodeGate({
   intents: registry.list(),
   enforceIntentAllowlist: true,
   architectureProfile: elevenLayerProfile,
+  typescript: ts,
   extensions: [/* optional external AST analyzers implementing AIGateExtension */],
 });
 
@@ -124,6 +127,10 @@ if (!result.valid) {
   }
 }
 ```
+
+Passing the `typescript` module enables built-in AST checks for raw publish calls, missing
+`metadata.source`, and source-layer mismatches. `ark-mcp` enables these checks
+automatically when TypeScript is available.
 
 Violation codes: `FORBIDDEN_PATTERN`, `FORBIDDEN_SUBSTRING`, `POLICY_VIOLATION`, `UNKNOWN_INTENT`, `LAYER_REFERENCE_VIOLATION`, `EXTENSION_ERROR`.
 

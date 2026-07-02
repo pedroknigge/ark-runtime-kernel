@@ -84,9 +84,18 @@ async function loadArk() {
   }
 }
 
+async function loadOptionalTypeScript() {
+  try {
+    return await import('typescript');
+  } catch {
+    return undefined;
+  }
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   const ark = await loadArk();
+  const ts = await loadOptionalTypeScript();
 
   const configPath = resolveInRoot(args.root, args.config);
   const config =
@@ -153,6 +162,7 @@ async function main() {
     architectureProfile: profile,
     intents,
     enforceIntentAllowlist: intents.length > 0,
+    typescript: ts,
   });
 
   const SERVER_INFO = { name: 'ark-runtime-kernel', version: ark.version };

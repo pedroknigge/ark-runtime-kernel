@@ -43,6 +43,11 @@ export interface AICodeGateOptions<Context = AICodeGateContext> {
    * When true, flag string literals that look like intent names but are not registered.
    */
   enforceIntentAllowlist?: boolean;
+  /**
+   * Optional TypeScript module object. When provided, AICodeGate adds AST-backed checks
+   * for publish misuse without taking a runtime dependency on TypeScript.
+   */
+  typescript?: unknown;
 }
 
 function violation(
@@ -139,6 +144,163 @@ function isKnownInfrastructurePackage(specifier: string): boolean {
   return ['sequelize', 'prisma', 'typeorm', 'mongoose', 'knex'].some(
     (name) => normalized === name || normalized.startsWith(`${name}/`)
   );
+}
+
+function tsStringLiteralText(ts: any, node: unknown): string | undefined {
+  return node && ts.isStringLiteralLike(node) ? (node as { text: string }).text : undefined;
+}
+
+function tsPropertyName(ts: any, node: any): string | undefined {
+  if (!node) return undefined;
+  if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) return node.text;
+  return undefined;
+}
+
+function tsObjectProperty(ts: any, node: any, name: string): any | undefined {
+  if (!node || !ts.isObjectLiteralExpression(node)) return undefined;
+  return node.properties.find((property: any) => {
+    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
+      return false;
+    }
+    return tsPropertyName(ts, property.name) === name;
+  });
+}
+
+function tsObjectHasProperty(ts: any, node: any, name: string): boolean {
+  return tsObjectProperty(ts, node, name) !== undefined;
+}
+
+function tsObjectPropertyValue(ts: any, node: any, name: string): any | undefined {
+  const property = tsObjectProperty(ts, node, name);
+  return property && ts.isPropertyAssignment(property)
+    ? property.initializer
+    : undefined;
+}
+
+function tsObjectHasMetadataSource(ts: any, node: any): boolean {
+  const metadata = tsObjectPropertyValue(ts, node, 'metadata');
+  return tsObjectHasProperty(ts, metadata, 'source');
+}
+
+function tsLooksLikeIntentCreatorExpression(ts: any, node: any): boolean {
+  if (!node) return false;
+  if (ts.isIdentifier(node)) return /^[A-Z]/.test(node.text);
+  if (ts.isPropertyAccessExpression(node)) {
+    return tsLooksLikeIntentCreatorExpression(ts, node.name);
+  }
+  return false;
+}
+
+function tsIsPublishCall(ts: any, node: any): boolean {
+  if (!ts.isCallExpression(node)) return false;
+  const expression = node.expression;
+  if (ts.isPropertyAccessExpression(expression)) {
+    return expression.name.text === 'publish';
+  }
+  return ts.isIdentifier(expression) && expression.text === 'publish';
+}
+
+function tsIsArkPublishCandidate(ts: any, node: any): boolean {
+  if (!ts.isCallExpression(node)) return false;
+  const firstArg = node.arguments[0];
+  const rawIntent = tsStringLiteralText(ts, firstArg);
+  return (
+    (rawIntent !== undefined && looksLikeIntentName(rawIntent)) ||
+    tsObjectHasProperty(ts, firstArg, 'intent') ||
+    tsLooksLikeIntentCreatorExpression(ts, firstArg)
+  );
+}
+
+function tsPublishHasSource(ts: any, node: any): boolean {
+  if (!ts.isCallExpression(node)) return false;
+  const [firstArg, secondArg, thirdArg] = node.arguments;
+  return (
+    tsObjectHasMetadataSource(ts, firstArg) ||
+    tsObjectHasProperty(ts, secondArg, 'source') ||
+    tsObjectHasProperty(ts, thirdArg, 'source')
+  );
+}
+
+function tsPublishSourceLiteral(ts: any, node: any): string | undefined {
+  if (!ts.isCallExpression(node)) return undefined;
+  const [firstArg, secondArg, thirdArg] = node.arguments;
+  const rawMetadata = tsObjectPropertyValue(ts, firstArg, 'metadata');
+  return (
+    tsStringLiteralText(ts, tsObjectPropertyValue(ts, rawMetadata, 'source')) ??
+    tsStringLiteralText(ts, tsObjectPropertyValue(ts, secondArg, 'source')) ??
+    tsStringLiteralText(ts, tsObjectPropertyValue(ts, thirdArg, 'source'))
+  );
+}
+
+function analyzePublishAst<Context>(
+  ts: any,
+  source: string,
+  context: Context | undefined,
+  profile: ArchitectureProfile | undefined
+): AICodeGateViolation[] {
+  const sourceFile = ts.createSourceFile(
+    'generated.ts',
+    source,
+    ts.ScriptTarget.Latest,
+    true
+  );
+  const gateContext = context as AICodeGateContext | undefined;
+  const filePath = gateContext?.filePath;
+  const contextLayer = gateContext?.layer;
+  const violations: AICodeGateViolation[] = [];
+  const lineForNode = (node: any) =>
+    sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
+
+  const visit = (node: any) => {
+    if (tsIsPublishCall(ts, node)) {
+      const firstArg = node.arguments[0];
+      const rawIntent = tsStringLiteralText(ts, firstArg);
+      if (
+        (rawIntent && looksLikeIntentName(rawIntent)) ||
+        tsObjectHasProperty(ts, firstArg, 'intent')
+      ) {
+        violations.push(
+          violation('RAW_EVENT_PUBLISH', 'Publish through a registered intent creator; raw event objects or intent strings bypass Ark contracts and tooling.', {
+            line: lineForNode(node),
+            filePath,
+          })
+        );
+      }
+
+      if (tsIsArkPublishCandidate(ts, node) && !tsPublishHasSource(ts, node)) {
+        violations.push(
+          violation('PUBLISH_MISSING_SOURCE', 'Strict Ark publish calls must include metadata.source.', {
+            line: lineForNode(node),
+            filePath,
+          })
+        );
+      }
+
+      const sourceIntent = tsPublishSourceLiteral(ts, node);
+      if (profile && contextLayer && sourceIntent && looksLikeIntentName(sourceIntent)) {
+        const sourceLayer = profile.resolveLayer(sourceIntent);
+        if (sourceLayer && sourceLayer !== contextLayer) {
+          violations.push(
+            violation(
+              'PUBLISH_SOURCE_LAYER_MISMATCH',
+              `Publish source "${sourceIntent}" resolves to ${sourceLayer}, but the target file is classified as ${contextLayer}.`,
+              {
+                line: lineForNode(node),
+                filePath,
+                target: sourceIntent,
+                fromLayer: contextLayer,
+                toLayer: sourceLayer,
+              }
+            )
+          );
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return violations;
 }
 
 export function createAICodeGate<Context = AICodeGateContext>(
@@ -299,6 +461,26 @@ export function createAICodeGate<Context = AICodeGateContext>(
               )
             );
           }
+        }
+      }
+
+      if (options.typescript) {
+        try {
+          violations.push(
+            ...analyzePublishAst(
+              options.typescript,
+              source,
+              context,
+              options.architectureProfile
+            )
+          );
+        } catch (err) {
+          violations.push(
+            violation(
+              'AST_ANALYZER_ERROR',
+              `TypeScript AST analyzer failed: ${err instanceof Error ? err.message : String(err)}`
+            )
+          );
         }
       }
 

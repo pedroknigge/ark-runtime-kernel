@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import * as ts from 'typescript';
 import {
   createAICodeGate,
   definePolicy,
@@ -111,5 +112,41 @@ describe('AI Code Gate (basic)', () => {
     expect(res.violations[0].fromLayer).toBe('DomainModel');
     expect(res.violations[0].toLayer).toBe('PersistenceAdapters');
     expect(res.violations[0].target).toBe('Adapter.Persistence.OrderRepository');
+  });
+
+  it('uses TypeScript AST checks for Ark publish misuse when provided', () => {
+    const gate = createAICodeGate({
+      typescript: ts,
+      architectureProfile: elevenLayerProfile,
+      enforceIntentAllowlist: false,
+    });
+
+    const res = gate.validate(
+      [
+        "bus.publish('Domain.Order.Placed', {});",
+        'bus.publish(OrderPlaced, { id: "o1" });',
+        "bus.publish(OrderPlaced, { id: 'o2' }, { source: 'Application.PlaceOrder' });",
+      ].join('\n'),
+      { filePath: 'src/domain/order.ts', layer: 'DomainModel' }
+    );
+
+    expect(res.valid).toBe(false);
+    expect(res.violations.map((v) => v.ruleId)).toContain('RAW_EVENT_PUBLISH');
+    expect(res.violations.filter((v) => v.ruleId === 'PUBLISH_MISSING_SOURCE')).toHaveLength(2);
+    expect(res.violations.map((v) => v.ruleId)).toContain('PUBLISH_SOURCE_LAYER_MISMATCH');
+  });
+
+  it('does not treat unrelated publish APIs as Ark publish calls in AST mode', () => {
+    const gate = createAICodeGate({
+      typescript: ts,
+      enforceIntentAllowlist: false,
+    });
+
+    const res = gate.validate("pubsub.publish(topicName, { id: 'm1' });", {
+      filePath: 'src/app/notifications.ts',
+      layer: 'ApplicationOrchestration',
+    });
+
+    expect(res.valid).toBe(true);
   });
 });

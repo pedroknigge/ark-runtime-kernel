@@ -319,6 +319,105 @@ describe('ark-check CLI', () => {
     expect(result.violations.map((v) => v.ruleId)).toContain('LAYER_INTENT_REFERENCE_VIOLATION');
   });
 
+  it('detects dynamic import and require cross-layer violations', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-dynamic-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = {};');
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      [
+        "const dynamicDb = await import('../infra/db');",
+        "const requiredDb = require('../infra/db');",
+        'export const refs = [dynamicDb, requiredDb];',
+      ].join('\n')
+    );
+    fs.writeFileSync(path.join(root, 'ark.config.json'), TWO_LAYER_CONFIG);
+
+    const result = runArkCheck(root);
+    const layerViolations = result.violations.filter(
+      (v) => v.ruleId === 'LAYER_IMPORT_VIOLATION'
+    );
+    expect(result.ok).toBe(false);
+    expect(layerViolations).toHaveLength(2);
+  });
+
+  it('flags raw publishes and publish calls without metadata.source', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-publish-'));
+    fs.mkdirSync(path.join(root, 'src/app'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'src/app/placeOrder.ts'),
+      [
+        "bus.publish('Domain.Order.Placed', {});",
+        "bus.publish({ intent: 'Domain.Order.Placed', payload: {}, metadata: { occurredAt: 'now' } });",
+        'bus.publish(OrderPlaced, { id: "o1" });',
+      ].join('\n')
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'ApplicationOrchestration', patterns: ['src/app/**'], intentPrefixes: ['Application.'] },
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+        ],
+        rules: [],
+      })
+    );
+
+    const result = runArkCheck(root);
+    expect(result.ok).toBe(false);
+    expect(result.violations.filter((v) => v.ruleId === 'RAW_EVENT_PUBLISH')).toHaveLength(2);
+    expect(result.violations.filter((v) => v.ruleId === 'PUBLISH_MISSING_SOURCE')).toHaveLength(3);
+  });
+
+  it('does not require Ark metadata on unrelated publish APIs', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-publish-fp-'));
+    fs.mkdirSync(path.join(root, 'src/app'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'src/app/notifications.ts'),
+      "pubsub.publish(topicName, { id: 'm1' });\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'ApplicationOrchestration', patterns: ['src/app/**'], intentPrefixes: ['Application.'] },
+        ],
+        rules: [],
+      })
+    );
+
+    const result = runArkCheck(root);
+    expect(result.ok).toBe(true);
+    expect(result.violations).toHaveLength(0);
+  });
+
+  it('flags publish source literals that do not match the publishing file layer', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-source-layer-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      "bus.publish(OrderPlaced, { id: 'o1' }, { source: 'Application.PlaceOrder' });\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+          { name: 'ApplicationOrchestration', patterns: ['src/app/**'], intentPrefixes: ['Application.'] },
+        ],
+        rules: [],
+      })
+    );
+
+    const result = runArkCheck(root);
+    expect(result.ok).toBe(false);
+    expect(result.violations.map((v) => v.ruleId)).toContain('PUBLISH_SOURCE_LAYER_MISMATCH');
+  });
+
   it('reports config warnings without failing architecture checks by default', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-config-warn-'));
     fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });

@@ -2,6 +2,18 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## Unreleased
+
+### Added — broader static governance checks
+
+- `ark-check` now checks dynamic `import()` and `require()` module edges against configured
+  layer rules.
+- `ark-check` now flags raw `publish()` calls that pass an intent string or raw event
+  object.
+- `ark-check` now flags publish calls missing `metadata.source`.
+- `ark-check` now flags source intent literals whose resolved layer does not match the
+  publishing file's configured layer.
+
 ## 1.0.0 — 2026-07-01
 
 ### Changed — strict runtime baseline and governance roadmap

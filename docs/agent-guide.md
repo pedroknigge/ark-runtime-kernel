@@ -161,8 +161,10 @@ Example config:
 ```
 
 `ark-check` resolves imports through the TypeScript module resolver against your
-`tsconfig.json` — relative, path-alias (e.g. `@infra/db`), and package imports — plus
-string intent references. Pass `--tsconfig <path>` to point at a specific config
+`tsconfig.json` — relative, path-alias (e.g. `@infra/db`), package imports, dynamic
+`import()`, and `require()` — plus string intent references. It also flags raw
+`publish()` calls, publish calls without `metadata.source`, and source intent literals
+whose resolved layer differs from the publishing file layer. Pass `--tsconfig <path>` to point at a specific config
 (otherwise the nearest `tsconfig.json` from `--root` is used). It resolves modules the way
 your build does, but is intentionally not yet a full type-graph analyzer (cross-layer
 type-only references beyond the import specifier are out of scope).

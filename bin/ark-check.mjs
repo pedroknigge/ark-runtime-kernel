@@ -370,6 +370,112 @@ function textOfModuleSpecifier(node) {
     : undefined;
 }
 
+function propertyName(ts, node) {
+  if (!node) return undefined;
+  if (ts.isIdentifier(node) || ts.isStringLiteralLike(node)) return node.text;
+  return undefined;
+}
+
+function objectProperty(ts, node, name) {
+  if (!node || !ts.isObjectLiteralExpression(node)) return undefined;
+  return node.properties.find((property) => {
+    if (!ts.isPropertyAssignment(property) && !ts.isShorthandPropertyAssignment(property)) {
+      return false;
+    }
+    return propertyName(ts, property.name) === name;
+  });
+}
+
+function objectHasProperty(ts, node, name) {
+  return objectProperty(ts, node, name) !== undefined;
+}
+
+function objectPropertyValue(ts, node, name) {
+  const property = objectProperty(ts, node, name);
+  return property && ts.isPropertyAssignment(property)
+    ? property.initializer
+    : undefined;
+}
+
+function objectHasMetadataSource(ts, node) {
+  const metadata = objectPropertyValue(ts, node, 'metadata');
+  return objectHasProperty(ts, metadata, 'source');
+}
+
+function stringLiteralText(ts, node) {
+  return node && ts.isStringLiteralLike(node) ? node.text : undefined;
+}
+
+function isPublishCall(ts, node) {
+  if (!ts.isCallExpression(node)) return false;
+  const expression = node.expression;
+  if (ts.isPropertyAccessExpression(expression)) {
+    return expression.name.text === 'publish';
+  }
+  return ts.isIdentifier(expression) && expression.text === 'publish';
+}
+
+function looksLikeIntentCreatorExpression(ts, node) {
+  if (!node) return false;
+  if (ts.isIdentifier(node)) {
+    return /^[A-Z]/.test(node.text);
+  }
+  if (ts.isPropertyAccessExpression(node)) {
+    return looksLikeIntentCreatorExpression(ts, node.name);
+  }
+  return false;
+}
+
+function isArkPublishCandidate(ts, node) {
+  if (!ts.isCallExpression(node)) return false;
+  const firstArg = node.arguments[0];
+  const rawIntent = stringLiteralText(ts, firstArg);
+  return (
+    (rawIntent !== undefined && looksLikeIntent(rawIntent)) ||
+    objectHasProperty(ts, firstArg, 'intent') ||
+    looksLikeIntentCreatorExpression(ts, firstArg)
+  );
+}
+
+function publishSourceLiteral(ts, node) {
+  if (!ts.isCallExpression(node)) return undefined;
+  const [firstArg, secondArg, thirdArg] = node.arguments;
+  const rawMetadata = objectPropertyValue(ts, firstArg, 'metadata');
+  return (
+    stringLiteralText(ts, objectPropertyValue(ts, rawMetadata, 'source')) ??
+    stringLiteralText(ts, objectPropertyValue(ts, secondArg, 'source')) ??
+    stringLiteralText(ts, objectPropertyValue(ts, thirdArg, 'source'))
+  );
+}
+
+function publishHasSource(ts, node) {
+  if (!ts.isCallExpression(node)) return false;
+  const [firstArg, secondArg, thirdArg] = node.arguments;
+  return (
+    objectHasMetadataSource(ts, firstArg) ||
+    objectHasProperty(ts, secondArg, 'source') ||
+    objectHasProperty(ts, thirdArg, 'source')
+  );
+}
+
+function moduleSpecifierFromCall(ts, node) {
+  if (!ts.isCallExpression(node)) return undefined;
+
+  if (node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+    const first = node.arguments[0];
+    const value = stringLiteralText(ts, first);
+    return value ? { value, kind: 'dynamic-import' } : undefined;
+  }
+
+  if (ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+    const first = node.arguments[0];
+    const value = stringLiteralText(ts, first);
+    return value ? { value, kind: 'require' } : undefined;
+  }
+
+  return undefined;
+}
+
 async function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
@@ -403,25 +509,84 @@ async function main() {
     const sourceLayer = layerForFile(root, file, config.layers);
     if (!sourceLayer) continue;
 
+    const checkModuleEdge = (specifier, node, kind) => {
+      const target = resolveImport(ts, specifier, file, compilerOptions, moduleHost, root);
+      const targetLayer = target ? layerForFile(root, target, config.layers) : undefined;
+      const rule = targetLayer ? isBlocked(rules, sourceLayer, targetLayer) : undefined;
+      if (rule) {
+        violations.push({
+          ruleId: 'LAYER_IMPORT_VIOLATION',
+          file: normalize(path.relative(root, file)),
+          line: lineOf(sourceFile, node.getStart(sourceFile)),
+          fromLayer: sourceLayer,
+          toLayer: targetLayer,
+          target: normalize(path.relative(root, target)),
+          message:
+            rule.message ??
+            `${sourceLayer} must not ${kind} ${targetLayer}.`,
+        });
+      }
+    };
+
     const visit = (node) => {
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
         const specifier = textOfModuleSpecifier(node);
         if (specifier) {
-          const target = resolveImport(ts, specifier, file, compilerOptions, moduleHost, root);
-          const targetLayer = target ? layerForFile(root, target, config.layers) : undefined;
-          const rule = targetLayer ? isBlocked(rules, sourceLayer, targetLayer) : undefined;
-          if (rule) {
+          checkModuleEdge(specifier, node, ts.isImportDeclaration(node) ? 'import' : 'export');
+        }
+      }
+
+      if (ts.isCallExpression(node)) {
+        const moduleCall = moduleSpecifierFromCall(ts, node);
+        if (moduleCall) {
+          checkModuleEdge(moduleCall.value, node, moduleCall.kind);
+        }
+
+        if (isPublishCall(ts, node)) {
+          const firstArg = node.arguments[0];
+          const rawIntent = stringLiteralText(ts, firstArg);
+          if (
+            (rawIntent && looksLikeIntent(rawIntent)) ||
+            objectHasProperty(ts, firstArg, 'intent')
+          ) {
             violations.push({
-              ruleId: 'LAYER_IMPORT_VIOLATION',
+              ruleId: 'RAW_EVENT_PUBLISH',
+              file: normalize(path.relative(root, file)),
+              line: lineOf(sourceFile, node.getStart(sourceFile)),
+              message:
+                'Publish through a registered intent creator; raw event objects or intent strings bypass Ark contracts and tooling.',
+            });
+          }
+
+          if (isArkPublishCandidate(ts, node) && !publishHasSource(ts, node)) {
+            violations.push({
+              ruleId: 'PUBLISH_MISSING_SOURCE',
               file: normalize(path.relative(root, file)),
               line: lineOf(sourceFile, node.getStart(sourceFile)),
               fromLayer: sourceLayer,
-              toLayer: targetLayer,
-              target: normalize(path.relative(root, target)),
-              message:
-                rule.message ??
-                `${sourceLayer} must not import ${targetLayer}.`,
+              message: 'Strict Ark publish calls must include metadata.source.',
             });
+          }
+
+          const sourceIntent = publishSourceLiteral(ts, node);
+          if (sourceIntent && looksLikeIntent(sourceIntent)) {
+            const sourceIntentLayer = layerForIntent(
+              sourceIntent,
+              config.layers,
+              manifestIntentLayers
+            );
+            if (sourceIntentLayer && sourceIntentLayer !== sourceLayer) {
+              violations.push({
+                ruleId: 'PUBLISH_SOURCE_LAYER_MISMATCH',
+                file: normalize(path.relative(root, file)),
+                line: lineOf(sourceFile, node.getStart(sourceFile)),
+                fromLayer: sourceLayer,
+                toLayer: sourceIntentLayer,
+                target: sourceIntent,
+                message:
+                  `Publish source "${sourceIntent}" resolves to ${sourceIntentLayer}, but the publishing file is classified as ${sourceLayer}.`,
+              });
+            }
           }
         }
       }

@@ -76,7 +76,7 @@ Ark is unavoidable **only on the paths you route through it**. Treat it as the r
 | Observed-Flow Layer Enforcement | Checks each published event's real producer→event flow against the profile at runtime (`off` / `soft` / `hard`); strict kernels default to `hard` |
 | Event Bus | Publishes typed domain events with strict registry checks, source validation, contract validation, traces, audit, outbox handoff, and history |
 | Event Interceptors | Add-only payload enrichment before delivery, with audit/trace records and contract protection |
-| Event Contracts | Validates event versions and payload shape before publish |
+| Event Contracts | Validates event versions and payload shape before publish, including nested object fields, typed arrays, and enum values |
 | Outbox | Provides a basic pluggable outbox handoff for dispatched event records |
 | Workflow Engine | Runs in-process workflows/sagas with snapshots, retries, timeouts, compensation, audit, and pluggable stores |
 | Audit Trail | Stores native audit/history records for events, policies, handlers, workflows, projections, and metadata |
@@ -306,6 +306,7 @@ npx ark-check --root . --config ark.config.json --strict-config
 
 - [Evaluation Report](docs/evaluation-report.md)
 - [Improvement Plan](docs/improvement-plan.md)
+- [Production Hardening](docs/production-hardening.md)
 - [Agent Integration Guide](docs/agent-guide.md)
 - [ark-check Config Example](docs/ark-check-example.json)
 - [System Readiness Assessment](docs/system-readiness.md)

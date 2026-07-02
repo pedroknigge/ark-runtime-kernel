@@ -12,6 +12,12 @@ export interface EventSchemaField {
   type: EventSchemaFieldType;
   required?: boolean;
   description?: string;
+  /** Allowed literal values for this field. Compared with Object.is. */
+  enum?: unknown[];
+  /** Nested object fields when type is "object". */
+  fields?: EventPayloadSchema;
+  /** Array item schema when type is "array". */
+  items?: EventSchemaField;
 }
 
 export type EventPayloadSchema = Record<string, EventSchemaField>;

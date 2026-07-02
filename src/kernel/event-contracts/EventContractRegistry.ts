@@ -2,8 +2,10 @@ import type { DomainEvent } from '../../domain/types';
 import type {
   EventContract,
   EventContractIssue,
+  EventPayloadSchema,
   EventContractRegistry,
   EventContractValidationResult,
+  EventSchemaField,
   EventSchemaFieldType,
 } from './types';
 
@@ -15,6 +17,99 @@ function actualType(value: unknown): EventSchemaFieldType {
     return type;
   }
   return 'unknown';
+}
+
+function formatPath(parent: string | undefined, field: string): string {
+  return parent ? `${parent}.${field}` : field;
+}
+
+function validateSchemaField(
+  value: unknown,
+  fieldSchema: EventSchemaField,
+  path: string,
+  contract: EventContract,
+  issues: EventContractIssue[]
+): void {
+  const valueType = actualType(value);
+
+  if (fieldSchema.type !== 'unknown' && valueType !== fieldSchema.type) {
+    issues.push({
+      intent: contract.intent,
+      version: contract.version,
+      field: path,
+      message: `Expected ${fieldSchema.type}, received ${valueType}.`,
+    });
+    return;
+  }
+
+  if (
+    fieldSchema.enum &&
+    !fieldSchema.enum.some((allowed) => Object.is(allowed, value))
+  ) {
+    issues.push({
+      intent: contract.intent,
+      version: contract.version,
+      field: path,
+      message: 'Value is not allowed by event contract enum.',
+    });
+  }
+
+  if (fieldSchema.type === 'object' && fieldSchema.fields) {
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      issues.push({
+        intent: contract.intent,
+        version: contract.version,
+        field: path,
+        message: 'Nested object field must be a non-array object.',
+      });
+      return;
+    }
+    validateObjectSchema(
+      value as Record<string, unknown>,
+      fieldSchema.fields,
+      contract,
+      issues,
+      path
+    );
+  }
+
+  if (fieldSchema.type === 'array' && fieldSchema.items && Array.isArray(value)) {
+    value.forEach((item, index) => {
+      validateSchemaField(
+        item,
+        fieldSchema.items!,
+        `${path}[${index}]`,
+        contract,
+        issues
+      );
+    });
+  }
+}
+
+function validateObjectSchema(
+  payload: Record<string, unknown>,
+  schema: EventPayloadSchema,
+  contract: EventContract,
+  issues: EventContractIssue[],
+  parentPath?: string
+): void {
+  for (const [field, fieldSchema] of Object.entries(schema)) {
+    const path = formatPath(parentPath, field);
+    const value = payload[field];
+    if (value === undefined) {
+      if (fieldSchema.required) {
+        issues.push({
+          intent: contract.intent,
+          version: contract.version,
+          field: path,
+          message: 'Required field is missing.',
+        });
+      }
+      continue;
+    }
+
+    validateSchemaField(value, fieldSchema, path, contract, issues);
+  }
 }
 
 export class EventContractRegistryImpl implements EventContractRegistry {
@@ -83,29 +178,7 @@ export class EventContractRegistryImpl implements EventContractRegistry {
           message: 'Payload must be an object for schema validation.',
         });
       } else {
-        for (const [field, schema] of Object.entries(contract.schema)) {
-          const value = payload[field];
-          if (value === undefined) {
-            if (schema.required) {
-              issues.push({
-                intent: event.intent,
-                version: contract.version,
-                field,
-                message: 'Required field is missing.',
-              });
-            }
-            continue;
-          }
-
-          if (schema.type !== 'unknown' && actualType(value) !== schema.type) {
-            issues.push({
-              intent: event.intent,
-              version: contract.version,
-              field,
-              message: `Expected ${schema.type}, received ${actualType(value)}.`,
-            });
-          }
-        }
+        validateObjectSchema(payload, contract.schema, contract, issues);
 
         if (contract.allowAdditionalFields === false) {
           for (const field of Object.keys(payload)) {

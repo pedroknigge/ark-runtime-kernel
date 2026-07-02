@@ -47,6 +47,12 @@ All notable changes to `ark-runtime-kernel` are documented here.
   the port.
 - Added `checkAdapterGovernance()` for non-throwing adapter allowlist checks.
 
+### Added — production hardening
+
+- Event contracts now support nested object fields, typed array items, and enum values.
+- Added `docs/production-hardening.md` with store-interface guidance for durable audit,
+  outbox, projection, and workflow implementations.
+
 ## 1.0.0 — 2026-07-01
 
 ### Changed — strict runtime baseline and governance roadmap

@@ -56,7 +56,8 @@ database access, and unclassified files remain outside runtime control.
 - AICodeGate still has heuristic source-string checks by default, but now supports optional
   TypeScript AST checks for publish misuse when callers pass the `typescript` module.
 - ESLint rules are intentionally narrow guardrails.
-- Event contracts are shallow field/type validators, not full schema validation.
+- Event contracts cover field types, nested object fields, typed arrays, and enum values,
+  but they are still intentionally lighter than JSON Schema or Zod.
 - Workflow, projection, audit, and outbox defaults are in-memory and should be treated as
   development/test defaults unless callers provide production stores.
 
@@ -116,4 +117,5 @@ Recommended production posture:
    tests in place.
 6. Continue deepening ports/adapters governance beyond the current metadata and allowlist
    checks.
-7. Strengthen event contracts and production storage recipes.
+7. Continue production hardening with real storage adapters outside the zero-dependency
+   core.

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { spawn, execSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, spawnSync, execSync, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -256,5 +256,108 @@ describe('ark-mcp server (write-path gate)', () => {
     } finally {
       manifestClient.close();
     }
+  });
+});
+
+/**
+ * One-shot hook mode (Claude Code PreToolUse contract): payload on stdin, exit 2 +
+ * violations on stderr blocks the write, exit 0 allows it. Plumbing failures must
+ * fail open (never block the agent on gate errors).
+ */
+function runHook(root: string, payload: unknown) {
+  const result = spawnSync(
+    'node',
+    [path.resolve('bin/ark-mcp.mjs'), '--hook', '--root', root],
+    {
+      input: typeof payload === 'string' ? payload : JSON.stringify(payload),
+      encoding: 'utf8',
+    }
+  );
+  return { status: result.status, stderr: result.stderr };
+}
+
+describe('ark-mcp --hook (PreToolUse gate)', () => {
+  let root: string;
+
+  beforeAll(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [{ name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] }],
+        rules: [],
+      })
+    );
+  });
+
+  it('blocks a Write that violates the architecture (exit 2, violations on stderr)', () => {
+    const result = runHook(root, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: path.join(root, 'src/domain/customer.ts'),
+        content: "import { PrismaClient } from 'prisma';\nexport const repo = new PrismaClient();\n",
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('FORBIDDEN_IMPORT');
+    expect(result.stderr).toContain('DomainModel');
+  });
+
+  it('allows a clean Write (exit 0)', () => {
+    const result = runHook(root, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: path.join(root, 'src/domain/customer.ts'),
+        content: 'export interface Customer { id: string }\n',
+      },
+    });
+    expect(result.status).toBe(0);
+  });
+
+  it('validates the post-edit file state for Edit, not the snippet alone', () => {
+    const result = runHook(root, {
+      tool_name: 'Edit',
+      tool_input: {
+        file_path: path.join(root, 'src/domain/order.ts'),
+        old_string: 'export const a = 1;',
+        new_string: "import { db } from 'typeorm';\nexport const a = db;",
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('typeorm');
+  });
+
+  it('ignores non-source files and tools other than Write/Edit', () => {
+    const readme = runHook(root, {
+      tool_name: 'Write',
+      tool_input: { file_path: path.join(root, 'README.md'), content: '# prisma' },
+    });
+    expect(readme.status).toBe(0);
+
+    const bash = runHook(root, {
+      tool_name: 'Bash',
+      tool_input: { command: "echo 'import prisma'" },
+    });
+    expect(bash.status).toBe(0);
+  });
+
+  it('fails open on malformed stdin payloads', () => {
+    const result = runHook(root, 'not json at all');
+    expect(result.status).toBe(0);
+  });
+
+  it('ignores files outside the governed root', () => {
+    const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-outside-'));
+    const result = runHook(root, {
+      tool_name: 'Write',
+      tool_input: {
+        file_path: path.join(outside, 'anything.ts'),
+        content: "import { PrismaClient } from 'prisma';\n",
+      },
+    });
+    expect(result.status).toBe(0);
   });
 });

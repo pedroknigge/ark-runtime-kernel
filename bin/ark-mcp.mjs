@@ -15,6 +15,12 @@
  *                                 { valid, violations } and sets isError when invalid
  *
  * Usage: ark-mcp [--root <dir>] [--config ark.config.json] [--manifest <manifest.json>]
+ *        ark-mcp --hook [--root <dir>] [--config ark.config.json]
+ *
+ * --hook runs one-shot instead of serving: it reads a Claude Code PreToolUse payload from
+ * stdin, validates the file content a Write/Edit/MultiEdit is about to produce, and exits
+ * 2 with the violations on stderr when the write must be blocked (0 otherwise). This is
+ * the copy-paste integration for agent runtimes whose hooks run shell commands.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -27,10 +33,12 @@ function parseArgs(argv) {
     config: 'ark.config.json',
     configExplicit: false,
     manifest: undefined,
+    hook: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
-    if (a === '--root') args.root = path.resolve(argv[++i]);
+    if (a === '--hook') args.hook = true;
+    else if (a === '--root') args.root = path.resolve(argv[++i]);
     else if (a === '--config') {
       args.config = argv[++i];
       args.configExplicit = true;
@@ -90,6 +98,83 @@ async function loadOptionalTypeScript() {
   } catch {
     return undefined;
   }
+}
+
+const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
+
+/**
+ * Compute the file content a Write/Edit/MultiEdit is about to produce. Edits are applied
+ * to the CURRENT on-disk file so the gate judges the real post-edit state, not the edit
+ * snippet out of context. Replacement uses a function argument so `$&`-style sequences in
+ * generated code are inserted literally, never interpreted as replacement patterns.
+ */
+function proposedSource(toolName, toolInput) {
+  if (toolName === 'Write') return toolInput.content;
+
+  let text = '';
+  try {
+    text = fs.readFileSync(toolInput.file_path, 'utf8');
+  } catch {
+    // New file created via Edit: fall through with an empty base.
+  }
+  const edits = toolName === 'MultiEdit' ? toolInput.edits ?? [] : [toolInput];
+  for (const edit of edits) {
+    const from = edit.old_string ?? '';
+    const to = edit.new_string ?? '';
+    if (from === '') {
+      text = to;
+    } else if (edit.replace_all) {
+      text = text.split(from).join(to);
+    } else {
+      text = text.replace(from, () => to);
+    }
+  }
+  return text;
+}
+
+/**
+ * One-shot PreToolUse gate (Claude Code hook contract): payload on stdin, exit 2 +
+ * violations on stderr to block, exit 0 to allow. Gate plumbing problems (no stdin,
+ * malformed JSON, non-file tools, non-source files) never block the agent.
+ */
+function runHook(gate, config, args) {
+  let payload;
+  try {
+    payload = JSON.parse(fs.readFileSync(0, 'utf8'));
+  } catch {
+    return;
+  }
+
+  const toolName = payload?.tool_name;
+  const toolInput = payload?.tool_input ?? {};
+  const filePath = toolInput.file_path;
+  if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) return;
+  if (typeof filePath !== 'string' || !SOURCE_FILE.test(filePath) || filePath.endsWith('.d.ts')) {
+    return;
+  }
+  const rel = path.relative(args.root, path.resolve(filePath));
+  const segments = rel.split(path.sep);
+  if (segments[0] === '..' || segments.includes('node_modules')) return;
+
+  const source = proposedSource(toolName, toolInput);
+  if (typeof source !== 'string') return;
+
+  const layer = inferLayer(filePath, config, args.root);
+  const result = gate.validate(source, { layer, filePath });
+  if (result.valid) return;
+
+  const lines = result.violations.map(
+    (violation) =>
+      `- [${violation.ruleId}] ${violation.message}${violation.line ? ` (line ${violation.line})` : ''}`
+  );
+  process.stderr.write(
+    [
+      `Ark architecture gate blocked this write to ${rel}${layer ? ` (layer: ${layer})` : ''}:`,
+      ...lines,
+      'Fix the violations and retry. The architecture contract is available as the ark://manifest MCP resource.',
+    ].join('\n') + '\n'
+  );
+  process.exitCode = 2;
 }
 
 async function main() {
@@ -164,6 +249,11 @@ async function main() {
     enforceIntentAllowlist: intents.length > 0,
     typescript: ts,
   });
+
+  if (args.hook) {
+    runHook(gate, config, args);
+    return;
+  }
 
   const SERVER_INFO = { name: 'ark-runtime-kernel', version: ark.version };
   const DEFAULT_PROTOCOL = '2024-11-05';

@@ -4,6 +4,20 @@ All notable changes to `ark-runtime-kernel` are documented here.
 
 ## Unreleased
 
+### Added — working pre-write hook mode (`ark-mcp --hook`)
+
+- `ark-mcp --hook` runs one-shot instead of serving: it reads a Claude Code PreToolUse
+  payload from stdin, validates the file content a Write/Edit/MultiEdit is about to
+  produce, and exits `2` with the violations on stderr to block the write (`0` to allow).
+- Edits are validated against the post-edit file state (current file with the edit applied
+  in memory), not the edit snippet in isolation.
+- Fail-open plumbing: non-source files, other tools, files outside `--root`, and malformed
+  payloads never block the agent.
+- Fixed the Claude Code integration examples in README and the agent guide: they showed a
+  hook `"type": "mcp"` that does not exist in Claude Code. The documented configuration now
+  uses a real `"type": "command"` hook running `ark-mcp --hook`, plus `.mcp.json` for the
+  manifest resource and `validate_code` tool.
+
 ### Added — one-command onboarding (`ark-check --init`)
 
 - `ark-check --init` scans the project for the built-in layer directory conventions

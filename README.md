@@ -272,36 +272,62 @@ The bundled rules are intentionally narrow: `ark/no-domain-infra-imports`, `ark/
 ### AI write-path gate (`ark-mcp`)
 
 `ark-check` and the ESLint plugin catch violations at CI. The write-path gate catches them
-one step earlier — at the moment an agent writes a file — by exposing Ark over MCP:
+one step earlier — at the moment an agent writes a file. It has two integration surfaces
+that share the same config and gate.
+
+**1. Pre-write hook (blocks invalid writes).** `ark-mcp --hook` runs one-shot: it reads a
+PreToolUse payload from stdin, validates the file content the Write/Edit is about to
+produce, and exits `2` with the violations on stderr when the write must be blocked.
+Edits are validated against the post-edit file state, not the snippet in isolation.
+Working Claude Code configuration (`.claude/settings.json`):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx ark-mcp --hook --root \"$CLAUDE_PROJECT_DIR\""
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+When a write is blocked, the violations are fed back to the model as context, so the agent
+fixes the code and retries instead of landing the violation. Non-source files, tools other
+than Write/Edit/MultiEdit, files outside `--root`, and malformed payloads are always
+allowed through — plumbing problems never block the agent.
+
+**2. MCP server (contract + on-demand validation).** Run without `--hook` and `ark-mcp`
+serves JSON-RPC over stdio (zero dependencies):
 
 ```bash
 npx ark-mcp --root . --config ark.config.json [--manifest ark.manifest.json]
 ```
-
-When TypeScript is available in the project, `ark-mcp` uses AICodeGate's AST-backed publish
-checks in addition to the lightweight source checks.
-
-The server (zero dependencies, JSON-RPC over stdio) provides:
 
 - resource `ark://manifest` — the architectural contract (layers + rules, or your project
   manifest) for agents to read before generating code.
 - tool `validate_code` — validates a source snippet against the architecture and returns
   `{ valid, violations }` (with `isError` set when invalid).
 
-Bind `validate_code` to your agent runtime's pre-write hook so invalid generated code is
-blocked before it lands. Example Claude Code hook (`.claude/settings.json`) that validates
-every Write/Edit through the running MCP tool:
+Register it for a project in `.mcp.json`:
 
 ```json
 {
-  "mcpServers": { "ark": { "command": "npx", "args": ["ark-mcp", "--root", "."] } },
-  "hooks": {
-    "PreToolUse": [
-      { "matcher": "Write|Edit", "hooks": [{ "type": "mcp", "tool": "ark.validate_code" }] }
-    ]
+  "mcpServers": {
+    "ark": { "command": "npx", "args": ["ark-mcp", "--root", ".", "--config", "ark.config.json"] }
   }
 }
 ```
+
+When TypeScript is available in the project, `ark-mcp` uses AICodeGate's AST-backed publish
+checks in addition to the lightweight source checks — in both modes.
 
 ### Mandatory CI gate
 

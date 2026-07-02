@@ -295,16 +295,36 @@ npx ark-mcp --root . --config ark.config.json [--manifest ark.manifest.json]
   Returns `{ valid, violations, layer }`; `isError` is `true` when invalid. If `layer` is
   omitted it is inferred from `filePath` via the config's layer patterns.
 
-Bind the tool to your runtime's pre-write hook so invalid code never lands. Claude Code
-example (`.claude/settings.json`):
+For hook-based enforcement, `ark-mcp --hook` runs one-shot: it reads a PreToolUse payload
+from stdin, validates the post-edit file content, and exits `2` with violations on stderr
+to block the write (`0` to allow). Working Claude Code configuration
+(`.claude/settings.json`):
 
 ```json
 {
-  "mcpServers": { "ark": { "command": "npx", "args": ["ark-mcp", "--root", "."] } },
   "hooks": {
     "PreToolUse": [
-      { "matcher": "Write|Edit", "hooks": [{ "type": "mcp", "tool": "ark.validate_code" }] }
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx ark-mcp --hook --root \"$CLAUDE_PROJECT_DIR\""
+          }
+        ]
+      }
     ]
+  }
+}
+```
+
+Register the server itself in `.mcp.json` so the agent can read `ark://manifest` and call
+`validate_code` on demand:
+
+```json
+{
+  "mcpServers": {
+    "ark": { "command": "npx", "args": ["ark-mcp", "--root", ".", "--config", "ark.config.json"] }
   }
 }
 ```

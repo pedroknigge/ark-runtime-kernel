@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   DEFAULT_INTENT_PREFIXES,
+  DEFAULT_LAYER_DIRECTORIES,
   DEFAULT_RULES,
   createElevenLayerConfig,
   globToRegExp,
@@ -20,11 +21,15 @@ function parseArgs(argv) {
     tsconfig: undefined,
     json: false,
     strictConfig: false,
+    init: false,
+    force: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') args.json = true;
     else if (arg === '--strict-config') args.strictConfig = true;
+    else if (arg === '--init') args.init = true;
+    else if (arg === '--force') args.force = true;
     else if (arg === '--root') args.root = path.resolve(argv[++i]);
     else if (arg === '--config') args.config = argv[++i];
     else if (arg === '--manifest') args.manifest = argv[++i];
@@ -38,7 +43,12 @@ function parseArgs(argv) {
 function usage() {
   return [
     'Usage: ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict-config] [--json]',
+    '       ark-check --init [--force]',
     '       ark-check --print-config eleven-layer',
+    '',
+    '--init scans the project for the built-in layer directory conventions (src/domain,',
+    'src/application, src/adapters/persistence, ...) and writes an ark.config.json covering',
+    'only the layers that actually exist, with the default rules filtered to those layers.',
     '',
     'Resolves relative, tsconfig path-alias, and package imports via the TypeScript',
     'module resolver, then checks each resolved cross-layer import against the rules.',
@@ -83,6 +93,103 @@ function readConfig(root, configPath) {
     layers: raw.layers ?? [],
     rules: raw.rules ?? DEFAULT_RULES,
   };
+}
+
+/**
+ * Infer an ark.config.json from the directories that actually exist in the project,
+ * using the same layer→directory conventions as the eleven-layer template. A directory
+ * only counts when it contains at least one source file, so an empty scaffold dir can't
+ * produce a layer whose pattern matches nothing (which --strict-config would fail).
+ */
+function detectConfig(root) {
+  const srcDir = fs.existsSync(path.join(root, 'src')) ? 'src' : '.';
+  const layers = [];
+
+  for (const entry of DEFAULT_INTENT_PREFIXES) {
+    const directories = (DEFAULT_LAYER_DIRECTORIES[entry.layer] ?? []).filter(
+      (directory) => walk(path.join(root, srcDir, directory)).length > 0
+    );
+    if (directories.length === 0) continue;
+    layers.push({
+      name: entry.layer,
+      patterns: directories.map((directory) => `${normalize(path.join(srcDir, directory))}/**`),
+      intentPrefixes: entry.prefixes,
+    });
+  }
+
+  const names = new Set(layers.map((layer) => layer.name));
+  const rules = DEFAULT_RULES.filter((rule) => names.has(rule.from) && names.has(rule.to));
+
+  return { srcDir, config: { include: [srcDir], layers, rules } };
+}
+
+/** Top-level directories under srcDir not covered by any detected layer pattern. */
+function uncoveredDirectories(root, srcDir, layers) {
+  const base = path.join(root, srcDir);
+  if (!fs.existsSync(base)) return [];
+  return fs
+    .readdirSync(base, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== 'node_modules' &&
+        entry.name !== 'dist' &&
+        !entry.name.startsWith('.')
+    )
+    .map((entry) => entry.name)
+    .filter((name) => {
+      const prefix = `${normalize(path.join(srcDir, name))}/`;
+      return !layers.some((layer) =>
+        layer.patterns.some((pattern) => pattern.startsWith(prefix))
+      );
+    });
+}
+
+function runInit(args) {
+  const configPath = path.isAbsolute(args.config)
+    ? args.config
+    : path.join(args.root, args.config);
+
+  if (fs.existsSync(configPath) && !args.force) {
+    console.error(`${configPath} already exists. Re-run with --force to overwrite it.`);
+    process.exitCode = 2;
+    return;
+  }
+
+  const { srcDir, config } = detectConfig(args.root);
+  if (config.layers.length === 0) {
+    console.error(
+      [
+        'No conventional layer directories found (looked for src/domain, src/application,',
+        'src/adapters/persistence, ...). Generate the full template instead and adapt the',
+        'patterns to your layout:',
+        '  ark-check --print-config eleven-layer > ark.config.json',
+      ].join('\n')
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+
+  console.log(`Wrote ${configPath}`);
+  console.log('');
+  console.log('Detected layers:');
+  for (const layer of config.layers) {
+    console.log(`  ${layer.name}: ${layer.patterns.join(', ')}`);
+  }
+  const uncovered = uncoveredDirectories(args.root, srcDir, config.layers);
+  if (uncovered.length > 0) {
+    console.log('');
+    console.log(
+      `Not covered by any layer (add patterns for these or they stay ungoverned): ${uncovered.join(', ')}`
+    );
+  }
+  console.log('');
+  console.log('Next steps:');
+  console.log('  1. CI gate:        npx ark-check --root . --config ark.config.json --strict-config');
+  console.log('  2. AI write gate:  npx ark-mcp --root . --config ark.config.json');
+  console.log('     (bind its validate_code tool to your agent\'s pre-write hook — see README)');
 }
 
 function readManifest(root, manifestPath) {
@@ -162,14 +269,6 @@ function collectConfigWarnings(root, config, files, rules, manifest) {
       configWarning(
         'CONFIG_NO_LAYERS',
         'No file layers are configured; ark-check cannot classify files for import-boundary enforcement.'
-      )
-    );
-  } else if (layers.length < DEFAULT_INTENT_PREFIXES.length) {
-    warnings.push(
-      configWarning(
-        'CONFIG_PARTIAL_LAYER_MAP',
-        `Only ${layers.length} file layer(s) are configured. Import checks only govern files matched by configured layer patterns; the built-in profile has ${DEFAULT_INTENT_PREFIXES.length} layers.`,
-        { configuredLayers: layers.length, builtInLayers: DEFAULT_INTENT_PREFIXES.length }
       )
     );
   }
@@ -487,6 +586,10 @@ async function main() {
   const args = parseArgs(process.argv);
   if (args.help) {
     console.log(usage());
+    return;
+  }
+  if (args.init) {
+    runInit(args);
     return;
   }
   if (args.printConfig) {

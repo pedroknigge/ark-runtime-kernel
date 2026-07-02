@@ -4,6 +4,28 @@ All notable changes to `ark-runtime-kernel` are documented here.
 
 ## Unreleased
 
+### Added — one-command onboarding (`ark-check --init`)
+
+- `ark-check --init` scans the project for the built-in layer directory conventions
+  (`src/domain`, `src/application`, `src/adapters/persistence`, ...) and writes an
+  `ark.config.json` covering only the layers that actually contain source files, with the
+  default rule matrix filtered to those layers.
+- The generated config passes `--strict-config` out of the box; `--init` also lists the
+  top-level directories left uncovered so governance gaps are explicit from day one.
+- `--init` refuses to overwrite an existing config unless `--force` is passed, and fails
+  with guidance (instead of writing a useless config) when no conventional directories
+  are found.
+
+### Changed — real dogfooding and less warning noise
+
+- Ark's own `ark.config.json` now classifies 100% of `src/` (DomainModel, Kernel, and
+  Tooling layers with real boundary rules) instead of a symbolic two-layer config, and
+  `npm run check:architecture` / CI run with `--strict-config` so coverage can never
+  silently rot.
+- Removed the `CONFIG_PARTIAL_LAYER_MAP` warning: it flagged every project with fewer
+  than 11 layers even at 100% file coverage. `CONFIG_UNCLASSIFIED_FILES` already reports
+  the real coverage gap.
+
 ### Added — broader static governance checks
 
 - `ark-check` now checks dynamic `import()` and `require()` module edges against configured

@@ -1,10 +1,26 @@
 {
   "include": ["src"],
   "layers": [
-    { "name": "DomainModel", "patterns": ["src/domain/**"], "intentPrefixes": ["Domain."] },
-    { "name": "ApplicationOrchestration", "patterns": ["src/app/**"], "intentPrefixes": ["Application."] }
+    {
+      "name": "DomainModel",
+      "patterns": ["src/domain/**"],
+      "intentPrefixes": ["Domain."]
+    },
+    {
+      "name": "Kernel",
+      "patterns": ["src/kernel/**", "src/index.ts", "src/version.ts"],
+      "intentPrefixes": ["Kernel."]
+    },
+    {
+      "name": "Tooling",
+      "patterns": ["src/eslint/**"]
+    }
   ],
   "rules": [
-    { "from": "DomainModel", "to": "ApplicationOrchestration", "allowed": false }
+    { "from": "DomainModel", "to": "Kernel", "allowed": false },
+    { "from": "DomainModel", "to": "Tooling", "allowed": false },
+    { "from": "Kernel", "to": "Tooling", "allowed": false },
+    { "from": "Tooling", "to": "Kernel", "allowed": false },
+    { "from": "Tooling", "to": "DomainModel", "allowed": false }
   ]
 }

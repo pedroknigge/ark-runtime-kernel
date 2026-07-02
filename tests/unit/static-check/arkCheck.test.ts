@@ -34,6 +34,88 @@ const TWO_LAYER_CONFIG = JSON.stringify({
   rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
 });
 
+function runInit(root: string, extraArgs: string[] = []) {
+  try {
+    const stdout = execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--init', '--root', root, ...extraArgs],
+      { encoding: 'utf8', stdio: 'pipe' }
+    );
+    return { status: 0, stdout, stderr: '' };
+  } catch (error) {
+    const e = error as { status: number; stdout: string; stderr: string };
+    return { status: e.status, stdout: e.stdout ?? '', stderr: e.stderr ?? '' };
+  }
+}
+
+describe('ark-check --init', () => {
+  it('detects existing layer directories and writes a config that passes strict check', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-init-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/application'), { recursive: true });
+    // Empty conventional dir: must NOT become a layer (its pattern would match nothing).
+    fs.mkdirSync(path.join(root, 'src/workflows'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, 'src/application/place.ts'), 'export const b = 1;\n');
+
+    const init = runInit(root);
+    expect(init.status).toBe(0);
+
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8'));
+    expect(config.layers.map((l: { name: string }) => l.name)).toEqual([
+      'DomainModel',
+      'ApplicationOrchestration',
+    ]);
+    // Rules are filtered to detected layers, minus the allowed App→Domain flow.
+    expect(config.rules).toEqual([
+      { from: 'DomainModel', to: 'ApplicationOrchestration', allowed: false },
+    ]);
+
+    const result = runArkCheck(root, ['--strict-config']);
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('refuses to overwrite an existing config unless --force is passed', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-init-force-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, 'ark.config.json'), '{"custom": true}');
+
+    const refused = runInit(root);
+    expect(refused.status).toBe(2);
+    expect(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8')).toBe('{"custom": true}');
+
+    const forced = runInit(root, ['--force']);
+    expect(forced.status).toBe(0);
+    const config = JSON.parse(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8'));
+    expect(config.layers.map((l: { name: string }) => l.name)).toEqual(['DomainModel']);
+  });
+
+  it('fails honestly when no conventional layer directories exist', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-init-none-'));
+    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'lib/util.ts'), 'export const a = 1;\n');
+
+    const init = runInit(root);
+    expect(init.status).toBe(1);
+    expect(init.stderr).toContain('--print-config eleven-layer');
+    expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(false);
+  });
+
+  it('reports top-level directories left uncovered by the detected layers', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-init-uncovered-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/lib'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, 'src/lib/util.ts'), 'export const b = 1;\n');
+
+    const init = runInit(root);
+    expect(init.status).toBe(0);
+    expect(init.stdout).toContain('lib');
+  });
+});
+
 describe('ark-check CLI', () => {
   it('prints a starter 11-layer config', () => {
     const output = execFileSync('node', [

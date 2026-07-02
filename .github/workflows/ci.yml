@@ -30,7 +30,9 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Mandatory architecture gate: ark-check exits non-zero on any layer
-      # violation, which fails the job and blocks the merge.
+      # Mandatory architecture gate: ark-check exits non-zero on any layer violation,
+      # which fails the job and blocks the merge. --strict-config also fails the job on
+      # governance-coverage warnings (e.g. unclassified source files), so the config can
+      # never silently rot below 100% coverage of src.
       - name: Architecture gate (ark-check)
         run: npm run check:architecture

@@ -1,10 +1,31 @@
 # Ark - Architectural Runtime Kernel
 
-**Zero-dependency runtime governance kernel for Hexagonal + Event-Driven + DDD systems.**
+**Make your architecture a machine-readable contract that AI agents and CI must obey — enforced when code is written, when it merges, and while it runs.**
 
-Published package name: `ark-runtime-kernel`.
+Published package name: `ark-runtime-kernel`. Zero runtime dependencies.
 
-Ark exists so architecture is not only a documented intention, but an actively protected runtime property. It helps teams define, enforce, and observe architectural boundaries while a system is running, especially in codebases where changes are frequent and part of the code may be generated or modified by AI agents.
+Most architecture "enforcement" is a diagram and a review checklist. Ark turns the same rules into three executable gates that share one config:
+
+1. **Write time** — `ark-mcp` exposes your architecture over MCP; bind its `validate_code` tool to your agent's pre-write hook and architecturally invalid generated code is blocked before it lands on disk.
+2. **Merge time** — `ark-check` resolves every import through the TypeScript module resolver and fails CI on cross-layer violations and governance-coverage gaps.
+3. **Runtime** — an optional in-process kernel enforces event contracts, intent registration, and observed layer flow on the paths you route through it.
+
+## 60-second setup
+
+```bash
+npm install -D ark-runtime-kernel typescript
+
+# 1. Generate ark.config.json from the layer directories your repo already has
+npx ark-check --init
+
+# 2. Gate CI: fails on violations and (with --strict-config) on coverage gaps
+npx ark-check --root . --config ark.config.json --strict-config
+
+# 3. Gate your AI agent's write path (see "AI write-path gate" below)
+npx ark-mcp --root . --config ark.config.json
+```
+
+`--init` detects conventional layer directories (`src/domain`, `src/application`, `src/adapters/persistence`, ...), writes a config covering only the layers that actually exist, and lists the directories that remain ungoverned so coverage gaps are explicit from day one.
 
 > **Current status:** v1.0.0 strict in-process governance kernel plus CI and AI write-path gates. `createArkKernel()` now uses hardened defaults: strict event contracts, known-source enforcement, and hard observed layer-flow enforcement unless explicitly relaxed. `createStrictArkKernel()` remains the explicit strict factory, while `createLenientArkKernel()` exists for migration/legacy paths. `ark-check` resolves imports through the TypeScript module resolver, checks configured layer imports and intent references, and reports non-blocking config warnings for incomplete layer coverage. `ark-mcp` exposes the same architecture contract to AI write-path hooks. Ark is useful today as an event/intent governance kernel plus static governance aid, but it is still not a database, distributed queue, complete semantic analyzer, source-authenticity system, or OpenTelemetry implementation.
 
@@ -66,6 +87,8 @@ Ark governs the **event/intent runtime** it mediates, and the rest of the codeba
 Ark is unavoidable **only on the paths you route through it**. Treat it as the runtime kernel for your event/intent layer plus a machine-readable architectural contract (`createArkManifest()`) that CI and AI agents enforce against — not as an OS-style choke point over all code.
 
 ## What Ark Provides
+
+The static gates (`ark-check`, `ark-mcp`, the ESLint plugin) work standalone with just an `ark.config.json` — no runtime adoption required. The runtime primitives below are the optional deeper layer for teams that also want the architecture enforced inside the running system.
 
 | Primitive | Purpose |
 |-----------|---------|
@@ -217,7 +240,13 @@ For CI, use `ark-check` with an explicit layer configuration:
 npx ark-check --root . --config ark.config.json
 ```
 
-To bootstrap the built-in 11-layer profile as an `ark.config.json`:
+To bootstrap `ark.config.json` from your repo's actual directory layout:
+
+```bash
+npx ark-check --init
+```
+
+Or to start from the full built-in 11-layer profile template:
 
 ```bash
 npx ark-check --print-config eleven-layer > ark.config.json
@@ -281,8 +310,10 @@ violation). Ark ships a reference workflow in `.github/workflows/ci.yml` and dog
 via `ark.config.json`:
 
 ```bash
-npm run check:architecture   # node bin/ark-check.mjs --root . --config ark.config.json
+npm run check:architecture   # ark-check --root . --config ark.config.json --strict-config
 ```
+
+Ark's own config classifies 100% of `src/` (domain, kernel, and tooling layers) and runs with `--strict-config`, so an unclassified file or a rule referencing an unknown layer fails Ark's own CI.
 
 The checker exits non-zero on architecture violations. Configuration warnings are advisory unless `--strict-config` is used:
 

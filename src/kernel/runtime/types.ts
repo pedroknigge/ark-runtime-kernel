@@ -31,6 +31,12 @@ export interface ArkKernel {
 }
 
 export interface CreateArkKernelOptions {
+  /**
+   * When true (default), createArkKernel uses the hardened runtime defaults:
+   * strict event contracts and hard observed-layer enforcement.
+   * Set to false only for explicit migration/legacy paths.
+   */
+  strict?: boolean;
   profile?: ArchitectureProfile;
   policies?: Policy[];
   auditTrail?: AuditTrail;
@@ -44,7 +50,7 @@ export interface CreateArkKernelOptions {
   requireKnownSource?: boolean;
   /**
    * Enforce observed producer→event layer flows against the profile at runtime.
-   * Defaults to 'off' for createArkKernel and 'hard' for createStrictArkKernel.
+   * Defaults to 'hard' when strict is true and 'off' when strict is false.
    */
   enforceObservedLayerFlow?: ObservedLayerFlowMode;
   instanceId?: string;

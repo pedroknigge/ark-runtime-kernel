@@ -11,8 +11,8 @@ import path from 'node:path';
  * ("core"/"app") and a custom rule, to prove the write-path gate enforces the project's
  * profile + rules (not the built-in elevenLayerProfile) and resolves nested paths.
  */
-function createClient(root: string) {
-  const proc = spawn('node', [path.resolve('bin/ark-mcp.mjs'), '--root', root], {
+function createClient(root: string, extraArgs: string[] = []) {
+  const proc = spawn('node', [path.resolve('bin/ark-mcp.mjs'), '--root', root, ...extraArgs], {
     stdio: ['pipe', 'pipe', 'pipe'],
   }) as ChildProcessWithoutNullStreams;
 
@@ -197,10 +197,47 @@ describe('ark-mcp server (write-path gate)', () => {
       await defaultClient.request('initialize', { protocolVersion: '2024-11-05' });
       const res = await defaultClient.request('resources/read', { uri: 'ark://manifest' });
       const contract = JSON.parse(res.result.contents[0].text);
-      expect(contract.source).toBe('elevenLayerProfile');
+      expect(contract.source).toBe('strictDefaultElevenLayerProfile');
       expect(contract.layers).toHaveLength(11);
     } finally {
       defaultClient.close();
+    }
+  });
+
+  it('marks an externally supplied manifest as the manifest source', async () => {
+    const manifestRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-mcp-manifest-'));
+    fs.writeFileSync(
+      path.join(manifestRoot, 'ark.manifest.json'),
+      JSON.stringify({
+        architecture: {
+          layers: [
+            { name: 'DomainModel', prefixes: ['Domain.'] },
+            { name: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.'] },
+          ],
+          rules: [
+            { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
+          ],
+        },
+      })
+    );
+    const manifestClient = createClient(manifestRoot, ['--manifest', 'ark.manifest.json']);
+    try {
+      await manifestClient.request('initialize', { protocolVersion: '2024-11-05' });
+      const res = await manifestClient.request('resources/read', { uri: 'ark://manifest' });
+      const contract = JSON.parse(res.result.contents[0].text);
+      expect(contract.source).toBe('manifest');
+      expect(contract.architecture.layers[0].name).toBe('DomainModel');
+
+      const validation = await manifestClient.request('tools/call', {
+        name: 'validate_code',
+        arguments: {
+          source: "export const ref = 'Adapter.Persistence.Save';\n",
+          layer: 'DomainModel',
+        },
+      });
+      expect(validation.result.isError).toBe(true);
+    } finally {
+      manifestClient.close();
     }
   });
 });

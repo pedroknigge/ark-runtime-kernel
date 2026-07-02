@@ -250,8 +250,9 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     metadata?: Partial<EventMetadata>
   ): Promise<void> {
     let event: DomainEvent<N, P>;
+    const rawPublish = typeof eventOrCreator !== 'function';
 
-    if (typeof eventOrCreator === 'function') {
+    if (!rawPublish) {
       const creator = eventOrCreator as IntentCreator<N, P>;
       const payload = payloadOrMeta as P;
       const extraMeta = metadata ?? {};
@@ -270,6 +271,10 @@ export class EventBusImpl<Context = unknown> implements EventBus {
         ...rawEvent,
         metadata: this.enrichMetadata(rawEvent.metadata, extraMeta),
       };
+    }
+
+    if (rawPublish && this.strictRegistry) {
+      await this.recordRawPublishDiagnostic(event as DomainEvent);
     }
 
     this.assertIntentAllowed(event.intent);
@@ -495,7 +500,7 @@ export class EventBusImpl<Context = unknown> implements EventBus {
       throw new UnknownEventSourceError(event.intent);
     }
     if (this.intentRegistry && !this.intentRegistry.has(event.metadata.source)) {
-      throw new UnknownEventSourceError(event.intent);
+      throw new UnknownEventSourceError(event.intent, event.metadata.source);
     }
   }
 
@@ -537,7 +542,15 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     const message =
       blocked.message ??
       `Observed layer violation: "${source}" (${fromLayer}) must not produce "${event.intent}" (${toLayer}).`;
-    const details = { source, intent: event.intent, fromLayer, toLayer, severity, message };
+    const details = {
+      source,
+      intent: event.intent,
+      fromLayer,
+      toLayer,
+      severity,
+      message,
+      rule: blocked,
+    };
 
     this.appendTrace({
       type: 'layer.observedViolation',
@@ -553,6 +566,25 @@ export class EventBusImpl<Context = unknown> implements EventBus {
     if (severity === 'hard') {
       throw new ObservedLayerFlowViolationError(source, event.intent, fromLayer, toLayer, message);
     }
+  }
+
+  private async recordRawPublishDiagnostic(event: DomainEvent): Promise<void> {
+    const details = {
+      intent: event.intent,
+      source: event.metadata.source,
+      suggestion:
+        'Publish through a registered intent creator so strict registry, contracts, and agent tooling share one source of truth.',
+    };
+    this.appendTrace({
+      type: 'event.rawPublish',
+      timestamp: new Date().toISOString(),
+      intent: event.intent,
+      correlationId: event.metadata.correlationId,
+      traceId: event.metadata.traceId,
+      spanId: event.metadata.spanId,
+      details,
+    });
+    await this.recordAudit('event.rawPublish', event, details);
   }
 
   private async applyInterceptors<N extends IntentName, P>(

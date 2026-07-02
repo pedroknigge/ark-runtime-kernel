@@ -2,6 +2,22 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.0.0 — 2026-07-01
+
+### Changed — strict runtime baseline and governance roadmap
+
+- `createArkKernel()` now uses hardened defaults: strict event contracts, known-source
+  enforcement, and hard observed layer-flow enforcement unless explicitly relaxed.
+- Added `createLenientArkKernel()` for migration and legacy paths that need the previous
+  relaxed behavior.
+- The built-in 11-layer profile now uses a strict cross-layer deny matrix with explicit
+  allowed flows.
+- `ark-check` reports advisory config warnings for missing/partial layer maps,
+  unclassified included files, unmatched layer patterns, duplicate layers, and rules that
+  reference unknown layers. `--strict-config` turns those warnings into a failing check.
+- Documentation now states the runtime/static/AI governance boundaries explicitly and
+  tracks the seven-phase roadmap for expanding Ark's enforcement scope.
+
 ## 0.8.4 — 2026-07-01
 
 ### Fixed — CI/MCP intent-classification parity

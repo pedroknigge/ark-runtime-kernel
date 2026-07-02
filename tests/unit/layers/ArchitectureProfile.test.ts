@@ -30,4 +30,28 @@ describe('Architecture profiles', () => {
     expect(result.passed).toBe(false);
     expect(result.hardViolations[0].message).toContain('DomainModel');
   });
+
+  it('uses a strict complete cross-layer deny matrix with explicit allowed flows', () => {
+    const layerCount = elevenLayerProfile.layers.length;
+    const allowedCrossLayerFlows = 5;
+    expect(elevenLayerProfile.rules).toHaveLength(
+      layerCount * (layerCount - 1) - allowedCrossLayerFlows
+    );
+
+    expect(
+      elevenLayerProfile.rules.some(
+        (rule) =>
+          rule.from === 'ApplicationOrchestration' &&
+          rule.to === 'DomainModel'
+      )
+    ).toBe(false);
+    expect(
+      elevenLayerProfile.rules.some(
+        (rule) =>
+          rule.from === 'ApplicationOrchestration' &&
+          rule.to === 'PersistenceAdapters' &&
+          !rule.allowed
+      )
+    ).toBe(true);
+  });
 });

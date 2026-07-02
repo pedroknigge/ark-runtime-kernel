@@ -11,6 +11,11 @@ describe('Strict Ark kernel', () => {
       'Application.PlaceOrder',
       { produces: ['Domain.Order.Placed'] }
     );
+    ark.eventContracts.register({
+      intent: 'Domain.Order.Placed',
+      version: '1',
+      schema: { id: { type: 'string', required: true } },
+    });
 
     ark.projections.register<string[]>({
       name: 'OrderReadModel',
@@ -21,6 +26,7 @@ describe('Strict Ark kernel', () => {
 
     await ark.eventBus.publish(OrderPlaced, { id: 'o1' }, {
       source: 'Application.PlaceOrder',
+      eventVersion: '1',
       correlationId: 'corr-1',
       traceId: 'trace-1',
     });

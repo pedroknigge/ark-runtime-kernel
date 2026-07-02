@@ -86,7 +86,9 @@ describe('Observed layer-flow enforcement', () => {
 
     expect(notified).toBe(1);
     expect(bus.getHistory()).toHaveLength(1);
-    expect(bus.getTrace().some((t) => t.type === 'layer.observedViolation')).toBe(true);
+    const trace = bus.getTrace().find((t) => t.type === 'layer.observedViolation');
+    expect(trace).toBeDefined();
+    expect((trace?.details as { rule?: unknown }).rule).toBeDefined();
     expect(await auditTrail.query({ type: 'layer.observedViolation' })).toHaveLength(1);
   });
 

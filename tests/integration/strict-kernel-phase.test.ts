@@ -2,10 +2,41 @@ import { describe, expect, it } from 'vitest';
 import {
   EventContractViolationError,
   UnknownEventSourceError,
+  createArkKernel,
+  createLenientArkKernel,
   createStrictArkKernel,
 } from '../../src/index';
 
 describe('Strict Ark kernel phase hardening', () => {
+  it('uses strict runtime defaults in createArkKernel', async () => {
+    const ark = createArkKernel();
+    const OrderPlaced = ark.registry.define<'Domain.Order.Placed', { id: string }>(
+      'Domain.Order.Placed'
+    );
+    ark.registry.define<'Application.PlaceOrder', { id: string }>(
+      'Application.PlaceOrder',
+      { produces: ['Domain.Order.Placed'] }
+    );
+
+    await expect(
+      ark.eventBus.publish(OrderPlaced, { id: 'o1' }, { source: 'Application.PlaceOrder' })
+    ).rejects.toThrow(EventContractViolationError);
+  });
+
+  it('keeps the legacy relaxed path explicit through createLenientArkKernel', async () => {
+    const ark = createLenientArkKernel();
+    const OrderPlaced = ark.registry.define<'Domain.Order.Placed', { id: string }>(
+      'Domain.Order.Placed'
+    );
+    ark.registry.define<'Application.PlaceOrder', { id: string }>(
+      'Application.PlaceOrder',
+      { produces: ['Domain.Order.Placed'] }
+    );
+
+    await ark.eventBus.publish(OrderPlaced, { id: 'o1' }, { source: 'Application.PlaceOrder' });
+    expect(ark.eventBus.getHistory()).toHaveLength(1);
+  });
+
   it('rejects events without contracts and requires known source metadata', async () => {
     const ark = createStrictArkKernel();
     const OrderPlaced = ark.registry.define<'Domain.Order.Placed', { id: string }>(

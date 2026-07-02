@@ -167,6 +167,11 @@ string intent references. Pass `--tsconfig <path>` to point at a specific config
 your build does, but is intentionally not yet a full type-graph analyzer (cross-layer
 type-only references beyond the import specifier are out of scope).
 
+`ark-check --json` also reports `warnings` for incomplete governance coverage: missing
+layers, unclassified included files, unmatched layer patterns, duplicate layers, and rules
+that reference unknown layers. These are advisory by default. Use `--strict-config` once a
+project is ready to fail CI on coverage gaps.
+
 Use the optional ESLint plugin for fast local feedback:
 
 ```js
@@ -195,7 +200,7 @@ const bus = createEventBus({
 
 await bus.publish(intent, payload);
 const trace = bus.getTrace();
-// trace[].type includes 'event.published', 'event.intercepted',
+// trace[].type includes 'event.published', 'event.rawPublish', 'event.intercepted',
 // 'interceptor.error', 'policy.hardViolation', 'policy.softViolation', 'handler.error'
 ```
 

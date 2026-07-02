@@ -16,7 +16,28 @@ describe('AI Code Gate (basic)', () => {
     const bad = `import { db } from '../infra/db';`;
     const res = gate.validate(bad);
     expect(res.valid).toBe(false);
-    expect(res.violations.some((v) => v.ruleId === 'FORBIDDEN_PATTERN')).toBe(true);
+    expect(
+      res.violations.some(
+        (v) => v.ruleId === 'FORBIDDEN_PATTERN' || v.ruleId === 'FORBIDDEN_IMPORT'
+      )
+    ).toBe(true);
+  });
+
+  it('flags type imports, re-exports, dynamic imports, and require calls', () => {
+    const gate = createAICodeGate();
+    const res = gate.validate(
+      [
+        `import type { Repo } from '../persistence/repo';`,
+        `export { db } from '../database/db';`,
+        `const orm = await import('prisma');`,
+        `const knex = require('knex');`,
+      ].join('\n'),
+      { filePath: 'src/domain/order.ts' }
+    );
+
+    const forbidden = res.violations.filter((v) => v.ruleId === 'FORBIDDEN_IMPORT');
+    expect(forbidden).toHaveLength(4);
+    expect(forbidden.every((v) => v.filePath === 'src/domain/order.ts')).toBe(true);
   });
 
   it('passes clean code', () => {
@@ -87,5 +108,8 @@ describe('AI Code Gate (basic)', () => {
     expect(res.valid).toBe(false);
     expect(res.violations[0].ruleId).toBe('LAYER_REFERENCE_VIOLATION');
     expect(res.violations[0].line).toBe(1);
+    expect(res.violations[0].fromLayer).toBe('DomainModel');
+    expect(res.violations[0].toLayer).toBe('PersistenceAdapters');
+    expect(res.violations[0].target).toBe('Adapter.Persistence.OrderRepository');
   });
 });

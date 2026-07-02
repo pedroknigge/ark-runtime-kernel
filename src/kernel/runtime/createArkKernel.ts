@@ -24,6 +24,7 @@ function nextKernelInstanceId(): string {
 }
 
 export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel {
+  const strict = options.strict ?? true;
   const instanceId = options.instanceId ?? nextKernelInstanceId();
   const profile = options.profile ?? elevenLayerProfile;
   const registry = createIntentRegistry();
@@ -51,10 +52,11 @@ export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel
     validateIntentNaming: true,
     auditTrail,
     eventContracts,
-    strictEventContracts: options.strictEventContracts ?? false,
+    strictEventContracts: options.strictEventContracts ?? strict,
     requireKnownSource: options.requireKnownSource ?? true,
     architectureProfile: profile,
-    enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'off',
+    enforceObservedLayerFlow:
+      options.enforceObservedLayerFlow ?? (strict ? 'hard' : 'off'),
     outbox,
     instanceId,
     maxHistorySize: options.maxHistorySize,
@@ -108,8 +110,20 @@ export function createStrictArkKernel(
 ): ArkKernel {
   return createArkKernel({
     ...options,
-    strictEventContracts: true,
-    requireKnownSource: true,
+    strict: true,
+    strictEventContracts: options.strictEventContracts ?? true,
+    requireKnownSource: options.requireKnownSource ?? true,
     enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'hard',
+  });
+}
+
+export function createLenientArkKernel(
+  options: CreateArkKernelOptions = {}
+): ArkKernel {
+  return createArkKernel({
+    ...options,
+    strict: false,
+    strictEventContracts: options.strictEventContracts ?? false,
+    enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'off',
   });
 }

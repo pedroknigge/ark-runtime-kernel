@@ -279,6 +279,7 @@ export {
 
 export {
   createArkKernel,
+  createLenientArkKernel,
   createStrictArkKernel,
   type ArkKernel,
   type CreateArkKernelOptions,

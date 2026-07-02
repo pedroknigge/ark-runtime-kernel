@@ -1,7 +1,11 @@
 import { describe, it, expect } from 'vitest';
 // The CLIs are standalone .mjs; import the shared helpers directly.
-import { globToRegExp, resolveIntentLayer } from '../../../bin/ark-shared.mjs';
-import { createArchitectureProfile } from '../../../src/index';
+import {
+  DEFAULT_RULES,
+  globToRegExp,
+  resolveIntentLayer,
+} from '../../../bin/ark-shared.mjs';
+import { createArchitectureProfile, elevenLayerProfile } from '../../../src/index';
 
 describe('globToRegExp', () => {
   it('matches ** across nested directories', () => {
@@ -68,5 +72,11 @@ describe('resolveIntentLayer (CI/MCP intent-classification parity)', () => {
         expect(resolveIntentLayer(intent, layers)).toBe(profile.resolveLayer(intent));
       }
     }
+  });
+});
+
+describe('DEFAULT_RULES parity', () => {
+  it('matches the runtime elevenLayerProfile rule matrix', () => {
+    expect(DEFAULT_RULES).toEqual(elevenLayerProfile.rules);
   });
 });

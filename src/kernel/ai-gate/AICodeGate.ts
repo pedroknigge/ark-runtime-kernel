@@ -58,6 +58,12 @@ interface StringMatch {
   index: number;
 }
 
+interface ModuleSpecifierMatch {
+  value: string;
+  index: number;
+  kind: 'import' | 'export' | 'dynamic-import' | 'require';
+}
+
 function lineOf(source: string, index: number): number {
   return source.slice(0, index).split('\n').length;
 }
@@ -73,8 +79,66 @@ function extractQuotedStrings(source: string): StringMatch[] {
   return matches;
 }
 
+function extractModuleSpecifiers(source: string): ModuleSpecifierMatch[] {
+  const matches: ModuleSpecifierMatch[] = [];
+  const patterns: Array<{ kind: ModuleSpecifierMatch['kind']; re: RegExp }> = [
+    {
+      kind: 'import',
+      re: /\bimport\s+(?:type\s+)?(?:[^'"]*?\s+from\s*)?['"]([^'"]+)['"]/g,
+    },
+    {
+      kind: 'export',
+      re: /\bexport\s+(?:type\s+)?[^'"]*?\s+from\s*['"]([^'"]+)['"]/g,
+    },
+    {
+      kind: 'dynamic-import',
+      re: /\bimport\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    },
+    {
+      kind: 'require',
+      re: /\brequire\s*\(\s*['"]([^'"]+)['"]\s*\)/g,
+    },
+  ];
+
+  for (const pattern of patterns) {
+    let match: RegExpExecArray | null;
+    while ((match = pattern.re.exec(source)) !== null) {
+      const index = match.index + match[0].indexOf(match[1]);
+      matches.push({ value: match[1], index, kind: pattern.kind });
+    }
+  }
+
+  return matches.sort((a, b) => a.index - b.index);
+}
+
 function looksLikeIntentName(s: string): boolean {
   return /^(Domain|Application|Adapter|Workflow|Job|Presentation|Reporting|Metadata|Security|Audit|Observability|Kernel)\.[A-Za-z0-9_.]+$/.test(s);
+}
+
+function hasInfrastructureToken(specifier: string): boolean {
+  const tokens = specifier
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+  return [
+    'adapter',
+    'adapters',
+    'infra',
+    'infrastructure',
+    'persistence',
+    'repository',
+    'repositories',
+    'integration',
+    'database',
+    'db',
+  ].some((token) => tokens.includes(token));
+}
+
+function isKnownInfrastructurePackage(specifier: string): boolean {
+  const normalized = specifier.toLowerCase();
+  return ['sequelize', 'prisma', 'typeorm', 'mongoose', 'knex'].some(
+    (name) => normalized === name || normalized.startsWith(`${name}/`)
+  );
 }
 
 export function createAICodeGate<Context = AICodeGateContext>(
@@ -95,6 +159,9 @@ export function createAICodeGate<Context = AICodeGateContext>(
   return {
     validate(source: string, context?: Context): AICodeGateResult {
       const violations: AICodeGateViolation[] = [];
+      const gateContext = context as AICodeGateContext | undefined;
+      const filePath = gateContext?.filePath;
+      const contextLayer = gateContext?.layer;
 
       for (const pat of forbidden) {
         if (pat instanceof RegExp) {
@@ -103,6 +170,7 @@ export function createAICodeGate<Context = AICodeGateContext>(
             violations.push(
               violation('FORBIDDEN_PATTERN', `Forbidden pattern matched: ${pat}`, {
                 line: match.index === undefined ? undefined : lineOf(source, match.index),
+                filePath,
                 suggestion: 'Remove infrastructure imports from domain/application layers.',
               })
             );
@@ -111,9 +179,31 @@ export function createAICodeGate<Context = AICodeGateContext>(
           violations.push(
             violation('FORBIDDEN_SUBSTRING', `Forbidden substring: ${pat}`, {
               line: lineOf(source, source.indexOf(pat)),
+              filePath,
             })
           );
         }
+      }
+
+      for (const specifier of extractModuleSpecifiers(source)) {
+        if (!hasInfrastructureToken(specifier.value) && !isKnownInfrastructurePackage(specifier.value)) {
+          continue;
+        }
+
+        violations.push(
+          violation(
+            'FORBIDDEN_IMPORT',
+            `Forbidden ${specifier.kind} target: "${specifier.value}".`,
+            {
+              line: lineOf(source, specifier.index),
+              source: specifier.value,
+              target: specifier.value,
+              filePath,
+              suggestion: 'Route infrastructure access through an allowed adapter or port boundary.',
+              details: { importKind: specifier.kind },
+            }
+          )
+        );
       }
 
       if (options.policies) {
@@ -124,6 +214,7 @@ export function createAICodeGate<Context = AICodeGateContext>(
               for (const v of res) {
                 violations.push(
                   violation('POLICY_VIOLATION', v.message, {
+                    filePath,
                     suggestion: `Fix violation of policy "${policy.name}".`,
                   })
                 );
@@ -150,6 +241,8 @@ export function createAICodeGate<Context = AICodeGateContext>(
                 `Unknown intent reference: "${literal.value}"`,
                 {
                   line: lineOf(source, literal.index),
+                  filePath,
+                  target: literal.value,
                   suggestion: `Register intent "${literal.value}" via defineIntent() or remove the reference.`,
                 }
               )
@@ -158,7 +251,6 @@ export function createAICodeGate<Context = AICodeGateContext>(
         }
       }
 
-      const contextLayer = (context as AICodeGateContext | undefined)?.layer;
       if (options.architectureProfile && contextLayer) {
         for (const literal of extractQuotedStrings(source)) {
           if (!looksLikeIntentName(literal.value)) continue;
@@ -181,7 +273,12 @@ export function createAICodeGate<Context = AICodeGateContext>(
                   `Layer "${contextLayer}" must not reference "${targetLayer}" through "${literal.value}".`,
                 {
                   line: lineOf(source, literal.index),
+                  filePath,
+                  target: literal.value,
+                  fromLayer: contextLayer,
+                  toLayer: targetLayer,
                   suggestion: 'Route the dependency through an allowed intent, port, or event.',
+                  details: { rule: blocked },
                 }
               )
             );

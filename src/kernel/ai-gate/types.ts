@@ -13,6 +13,11 @@ export interface AICodeGateViolation {
   line?: number;
   suggestion?: string;
   source?: string;
+  filePath?: string;
+  target?: string;
+  fromLayer?: string;
+  toLayer?: string;
+  details?: unknown;
 }
 
 /** Extension point for external analyzers (AST, semantic, etc.). */

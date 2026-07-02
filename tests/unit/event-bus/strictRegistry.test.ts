@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createEventBus,
+  createAuditTrail,
   createIntentRegistry,
   createDependencyGraph,
   architecturalPolicies,
@@ -83,5 +84,25 @@ describe('EventBus strict registry enforcement', () => {
     const history = bus.getHistory();
     expect(history[0].event.metadata.source).toBe('Demo.App');
     expect(history[0].event.metadata.correlationId).toBe('c-1');
+  });
+
+  it('records a soft diagnostic when strict code publishes a raw event object', async () => {
+    const registry = createIntentRegistry();
+    registry.define<'Domain.Order.Placed', { id: string }>('Domain.Order.Placed');
+    registry.define('Application.PlaceOrder');
+    const auditTrail = createAuditTrail();
+    const bus = createEventBus({ intentRegistry: registry, auditTrail });
+
+    await bus.publish({
+      intent: 'Domain.Order.Placed',
+      payload: { id: 'raw-1' },
+      metadata: {
+        occurredAt: new Date().toISOString(),
+        source: 'Application.PlaceOrder',
+      },
+    });
+
+    expect(bus.getTrace().some((record) => record.type === 'event.rawPublish')).toBe(true);
+    expect(await auditTrail.query({ type: 'event.rawPublish' })).toHaveLength(1);
   });
 });

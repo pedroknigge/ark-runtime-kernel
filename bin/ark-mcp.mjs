@@ -118,9 +118,21 @@ async function main() {
   // Only layers WITH prefixes enter the profile, so no layer has empty prefixes (which would
   // also make it unresolvable). A project with no layers at all gets the 11-layer default.
   const configLayers = Array.isArray(config.layers) ? config.layers : [];
+  const manifestLayers = Array.isArray(projectManifest?.architecture?.layers)
+    ? projectManifest.architecture.layers
+    : [];
   const usedProjectConfig = configLayers.length > 0;
   let profile;
-  if (!usedProjectConfig) {
+  if (manifestLayers.length > 0) {
+    profile = ark.createArchitectureProfile({
+      name: projectManifest.architecture.profile ?? 'manifest',
+      layers: manifestLayers.map((layer) => ({
+        name: layer.name,
+        prefixes: layer.prefixes,
+      })),
+      rules: projectManifest.architecture.rules ?? DEFAULT_RULES,
+    });
+  } else if (!usedProjectConfig) {
     profile = ark.elevenLayerProfile;
   } else {
     const layersWithPrefixes = configLayers.filter(
@@ -186,10 +198,16 @@ async function main() {
   ];
 
   function manifestText() {
-    if (projectManifest) return JSON.stringify(projectManifest, null, 2);
+    if (projectManifest) {
+      return JSON.stringify(
+        { ...projectManifest, source: projectManifest.source ?? 'manifest' },
+        null,
+        2
+      );
+    }
     return JSON.stringify(
       {
-        source: profile === ark.elevenLayerProfile ? 'elevenLayerProfile' : 'project',
+        source: profile === ark.elevenLayerProfile ? 'strictDefaultElevenLayerProfile' : 'project',
         name: profile.name,
         layers: profile.layers,
         rules: profile.rules,

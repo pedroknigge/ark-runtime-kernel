@@ -7,7 +7,7 @@ export class UnregisteredIntentError extends Error {
 
   constructor(intentName: string) {
     super(
-      `Intent "${intentName}" is not registered. Register via IntentRegistry.define() before publish/subscribe.`
+      `Intent "${intentName}" is not registered. Register it with IntentRegistry.define() before publish/subscribe, including metadata.source producer intents in strict mode.`
     );
     this.name = 'UnregisteredIntentError';
     this.intentName = intentName;
@@ -41,7 +41,9 @@ export class EventContractViolationError extends Error {
   readonly issues: unknown[];
 
   constructor(intentName: string, issues: unknown[]) {
-    super(`Event contract violation for "${intentName}".`);
+    super(
+      `Event contract violation for "${intentName}". Register a matching event contract/version or fix the payload before publishing.`
+    );
     this.name = 'EventContractViolationError';
     this.intentName = intentName;
     this.issues = issues;
@@ -49,9 +51,18 @@ export class EventContractViolationError extends Error {
 }
 
 export class UnknownEventSourceError extends Error {
-  constructor(intentName: string) {
-    super(`Event "${intentName}" must include a known metadata.source.`);
+  readonly intentName: string;
+  readonly source?: string;
+
+  constructor(intentName: string, source?: string) {
+    super(
+      source
+        ? `Event "${intentName}" metadata.source "${source}" is not registered. Register the producer intent or publish from a known source.`
+        : `Event "${intentName}" must include metadata.source. Strict Ark uses source to enforce observed layer flow.`
+    );
     this.name = 'UnknownEventSourceError';
+    this.intentName = intentName;
+    this.source = source;
   }
 }
 
@@ -75,7 +86,7 @@ export class ObservedLayerFlowViolationError extends Error {
   ) {
     super(
       message ??
-        `Observed layer violation: "${source}" (${fromLayer}) must not produce "${intentName}" (${toLayer}).`
+        `Observed layer violation: "${source}" (${fromLayer}) must not produce "${intentName}" (${toLayer}). Route this through an allowed layer or adjust the architecture profile rule.`
     );
     this.name = 'ObservedLayerFlowViolationError';
     this.source = source;

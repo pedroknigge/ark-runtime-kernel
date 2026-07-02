@@ -6,23 +6,6 @@ import path from 'node:path';
  * src/kernel/layers/ArchitectureProfile.ts; kept here (not imported from dist) because the
  * CLIs run standalone with only `typescript` present, no build step.
  */
-export const DEFAULT_RULES = [
-  { from: 'DomainModel', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
-  { from: 'DomainModel', to: 'IntegrationAdapters', allowed: false },
-  { from: 'DomainModel', to: 'WorkflowSagaEngine', allowed: false },
-  { from: 'DomainModel', to: 'BackgroundJobsScheduling', allowed: false },
-  { from: 'DomainModel', to: 'PresentationAdapters', allowed: false },
-  { from: 'DomainModel', to: 'ReportingReadModels', allowed: false },
-  { from: 'DomainModel', to: 'SecurityAuditObservability', allowed: false },
-  { from: 'PersistenceAdapters', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'PersistenceAdapters', to: 'DomainModel', allowed: false },
-  { from: 'IntegrationAdapters', to: 'ApplicationOrchestration', allowed: false },
-  { from: 'IntegrationAdapters', to: 'DomainModel', allowed: false },
-  { from: 'PresentationAdapters', to: 'PersistenceAdapters', allowed: false },
-  { from: 'ReportingReadModels', to: 'PersistenceAdapters', allowed: false },
-];
-
 export const DEFAULT_INTENT_PREFIXES = [
   { layer: 'DomainModel', prefixes: ['Domain.'] },
   { layer: 'ApplicationOrchestration', prefixes: ['Application.'] },
@@ -36,6 +19,36 @@ export const DEFAULT_INTENT_PREFIXES = [
   { layer: 'SecurityAuditObservability', prefixes: ['Security.', 'Audit.', 'Observability.'] },
   { layer: 'Kernel', prefixes: ['Kernel.'] },
 ];
+
+const DEFAULT_ALLOWED_FLOWS = [
+  { from: 'PresentationAdapters', to: 'ApplicationOrchestration' },
+  { from: 'ApplicationOrchestration', to: 'DomainModel' },
+  { from: 'WorkflowSagaEngine', to: 'ApplicationOrchestration' },
+  { from: 'WorkflowSagaEngine', to: 'DomainModel' },
+  { from: 'BackgroundJobsScheduling', to: 'ApplicationOrchestration' },
+];
+
+function flowKey(from, to) {
+  return `${from}->${to}`;
+}
+
+function createStrictDenyRules(layers, allowedFlows) {
+  const allowed = new Set(allowedFlows.map((flow) => flowKey(flow.from, flow.to)));
+  const rules = [];
+  for (const from of layers) {
+    for (const to of layers) {
+      if (from.layer === to.layer) continue;
+      if (allowed.has(flowKey(from.layer, to.layer))) continue;
+      rules.push({ from: from.layer, to: to.layer, allowed: false });
+    }
+  }
+  return rules;
+}
+
+export const DEFAULT_RULES = createStrictDenyRules(
+  DEFAULT_INTENT_PREFIXES,
+  DEFAULT_ALLOWED_FLOWS
+);
 
 const _regexpCache = new Map();
 

@@ -3,7 +3,7 @@ import { version } from '../../src/index';
 
 describe('Ark bootstrap (smoke)', () => {
   it('exposes a semantic version', () => {
-    expect(version).toBe('0.8.4');
+    expect(version).toBe('1.0.0');
   });
 
   it('exports core domain types at runtime (shapes only for now)', () => {

@@ -1,2 +1,6 @@
 export * from './types';
-export { createArkKernel, createStrictArkKernel } from './createArkKernel';
+export {
+  createArkKernel,
+  createLenientArkKernel,
+  createStrictArkKernel,
+} from './createArkKernel';

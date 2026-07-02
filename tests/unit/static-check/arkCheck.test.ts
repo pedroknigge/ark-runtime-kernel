@@ -4,16 +4,25 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-function runArkCheck(root: string) {
+function runArkCheck(root: string, extraArgs: string[] = []) {
   let output = '';
   try {
-    output = execFileSync('node', [path.resolve('bin/ark-check.mjs'), '--root', root, '--json'], {
-      encoding: 'utf8',
-    });
+    output = execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--root', root, '--json', ...extraArgs],
+      {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      }
+    );
   } catch (error) {
     output = (error as { stdout: string }).stdout;
   }
-  return JSON.parse(output) as { ok: boolean; violations: Array<{ ruleId: string }> };
+  return JSON.parse(output) as {
+    ok: boolean;
+    violations: Array<{ ruleId: string }>;
+    warnings: Array<{ ruleId: string }>;
+  };
 }
 
 const TWO_LAYER_CONFIG = JSON.stringify({
@@ -56,7 +65,7 @@ describe('ark-check CLI', () => {
         '--root',
         root,
         '--json',
-      ], { encoding: 'utf8' });
+      ], { encoding: 'utf8', stdio: 'pipe' });
     } catch (error) {
       output = (error as { stdout: string }).stdout;
     }
@@ -267,5 +276,119 @@ describe('ark-check CLI', () => {
     const result = runArkCheck(root);
     expect(result.ok).toBe(false);
     expect(result.violations.some((v) => v.ruleId === 'LAYER_IMPORT_VIOLATION')).toBe(true);
+  });
+
+  it('can use manifest architecture rules and prefixes when provided', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-manifest-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = {};');
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      "import { db } from '../infra/db';\nexport const ref = 'Adapter.Persistence.Save';\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'] },
+          { name: 'PersistenceAdapters', patterns: ['src/infra/**'] },
+        ],
+        rules: [],
+      })
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.manifest.json'),
+      JSON.stringify({
+        architecture: {
+          layers: [
+            { name: 'DomainModel', prefixes: ['Domain.'] },
+            { name: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.'] },
+          ],
+          rules: [
+            { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
+          ],
+        },
+      })
+    );
+
+    const result = runArkCheck(root, ['--manifest', 'ark.manifest.json']);
+    expect(result.ok).toBe(false);
+    expect(result.violations.map((v) => v.ruleId)).toContain('LAYER_IMPORT_VIOLATION');
+    expect(result.violations.map((v) => v.ruleId)).toContain('LAYER_INTENT_REFERENCE_VIOLATION');
+  });
+
+  it('reports config warnings without failing architecture checks by default', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-config-warn-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/unmapped'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const ok = true;\n');
+    fs.writeFileSync(path.join(root, 'src/unmapped/helper.ts'), 'export const helper = true;\n');
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+        ],
+        rules: [{ from: 'DomainModel', to: 'MissingLayer', allowed: false }],
+      })
+    );
+
+    const result = runArkCheck(root);
+    expect(result.ok).toBe(true);
+    expect(result.violations).toHaveLength(0);
+    expect(result.warnings.map((w) => w.ruleId)).toContain('CONFIG_UNCLASSIFIED_FILES');
+    expect(result.warnings.map((w) => w.ruleId)).toContain('CONFIG_RULE_UNKNOWN_TO_LAYER');
+  });
+
+  it('can make config warnings fail with --strict-config', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-strict-config-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const ok = true;\n');
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [],
+        rules: [],
+      })
+    );
+
+    const result = runArkCheck(root, ['--strict-config']);
+    expect(result.ok).toBe(false);
+    expect(result.violations).toHaveLength(0);
+    expect(result.warnings.map((w) => w.ruleId)).toContain('CONFIG_NO_LAYERS');
+  });
+
+  it('prints an explicit failure message for strict config warnings in human output', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-strict-human-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const ok = true;\n');
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [],
+        rules: [],
+      })
+    );
+
+    let stderr = '';
+    try {
+      execFileSync('node', [
+        path.resolve('bin/ark-check.mjs'),
+        '--root',
+        root,
+        '--strict-config',
+      ], { encoding: 'utf8', stdio: 'pipe' });
+      expect.fail('strict config warning should fail');
+    } catch (error) {
+      stderr = (error as { stderr: string }).stderr;
+    }
+
+    expect(stderr).toContain('Ark check failed with');
+    expect(stderr).toContain('CONFIG_NO_LAYERS');
   });
 });

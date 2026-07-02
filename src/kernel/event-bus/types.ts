@@ -19,6 +19,7 @@ export type { IntentCreator };
 /** Standard trace record for observability and agent consumption. */
 export type TraceRecordType =
   | 'event.published'
+  | 'event.rawPublish'
   | 'event.intercepted'
   | 'interceptor.error'
   | 'policy.hardViolation'

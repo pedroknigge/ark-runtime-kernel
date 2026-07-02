@@ -6,7 +6,7 @@ Published package name: `ark-runtime-kernel`.
 
 Ark exists so architecture is not only a documented intention, but an actively protected runtime property. It helps teams define, enforce, and observe architectural boundaries while a system is running, especially in codebases where changes are frequent and part of the code may be generated or modified by AI agents.
 
-> **Current status:** v0.8.0 strict in-process governance kernel plus enforced CI and AI write-path gates. v0.8 makes enforcement unavoidable at the two points that matter: a **mandatory CI gate** (`ark-check` runs in GitHub Actions and blocks the merge on any layer violation; Ark now dogfoods itself via `ark.config.json`) and an **AI write-path gate** — a zero-dependency `ark-mcp` MCP server whose `validate_code` tool binds to `PreToolUse` on Write/Edit so architecturally-invalid generated code is blocked before it lands. v0.7 upgraded `ark-check` to resolve **all** import specifiers (relative, tsconfig path-aliases, packages) via the TypeScript module resolver. v0.6 added **runtime enforcement of observed layer flows**: strict kernels check the real producer→event flow of every published event against the 11-layer profile and reject (or flag) events that cross a forbidden boundary — enforcement over what the system *did*, not only over what was *declared*. Ark also includes an 11-layer architecture profile, native audit/history, workflow/saga support, projection/read-model utilities, event contracts, event interceptors, a basic outbox store, observed-vs-declared observability reports, a test harness, layer-aware AI code checks, an AST-based `ark-check` CLI, an `ark-runtime-kernel/eslint` plugin, and `createStrictArkKernel()` for stricter runtime wiring. Ark is still not a database, distributed queue, type-aware semantic analyzer, or OpenTelemetry implementation.
+> **Current status:** v1.0.0 strict in-process governance kernel plus CI and AI write-path gates. `createArkKernel()` now uses hardened defaults: strict event contracts, known-source enforcement, and hard observed layer-flow enforcement unless explicitly relaxed. `createStrictArkKernel()` remains the explicit strict factory, while `createLenientArkKernel()` exists for migration/legacy paths. `ark-check` resolves imports through the TypeScript module resolver, checks configured layer imports and intent references, and reports non-blocking config warnings for incomplete layer coverage. `ark-mcp` exposes the same architecture contract to AI write-path hooks. Ark is useful today as an event/intent governance kernel plus static governance aid, but it is still not a database, distributed queue, complete semantic analyzer, source-authenticity system, or OpenTelemetry implementation.
 
 ## The Problem
 
@@ -49,6 +49,7 @@ When critical interactions go through Ark:
 - observability reports show declared-vs-observed flow drift
 - manifests expose the current architectural contract to tools and agents
 - `ark-check` can fail CI on configured layer import and intent-reference violations
+- `ark-check` reports configuration coverage warnings, including unclassified files and rules that reference unknown layers
 - `ark-runtime-kernel/eslint` can flag common bypass patterns during development
 
 Enforcement is only as strong as the paths you wire through Ark. Code that bypasses Ark directly is outside this runtime contract unless you also cover it through registry rules, graph declarations, CI checks, or `AIGateExtension` analyzers.
@@ -57,9 +58,9 @@ Enforcement is only as strong as the paths you wire through Ark. Code that bypas
 
 Ark governs the **event/intent runtime** it mediates, and the rest of the codebase **by contract + CI + drift**. Concretely:
 
-- **Hard-failed at runtime** (on the governed publish path): unregistered/misnamed intents, unknown event sources, event-contract breaches, hard policy violations, and — new in v0.6 — observed producer→event flows that cross a forbidden layer boundary.
+- **Hard-failed at runtime** (on the governed publish path): unregistered/misnamed intents, unknown event sources, event-contract breaches, hard policy violations, and observed producer→event flows that cross a forbidden layer boundary.
 - **Observable** (recorded, not blocked): soft policy/layer violations and declared-vs-observed drift via `ark.observability.report()`.
-- **Covered at CI (not runtime)** via `ark-check` / ESLint, if wired: direct cross-layer imports — now resolved through your `tsconfig` (relative, path-alias, and package imports), so most real cross-layer imports are caught at merge time.
+- **Covered at CI (not runtime)** via `ark-check` / ESLint, if wired: direct cross-layer imports — now resolved through your `tsconfig` (relative, path-alias, and package imports), plus string intent references. `ark-check` also reports warnings when the config leaves files or layers outside governance.
 - **Still out of scope entirely**: direct DB/HTTP calls and coupling that neither transits the event bus nor appears as an import (e.g. runtime DI wiring, reflection).
 
 Ark is unavoidable **only on the paths you route through it**. Treat it as the runtime kernel for your event/intent layer plus a machine-readable architectural contract (`createArkManifest()`) that CI and AI agents enforce against — not as an OS-style choke point over all code.
@@ -69,7 +70,7 @@ Ark is unavoidable **only on the paths you route through it**. Treat it as the r
 | Primitive | Purpose |
 |-----------|---------|
 | Intent Registry | Defines semantic system intents and validates naming/registration |
-| Strict Ark Kernel | Wires registry, graph, policies, event bus, audit, event contracts, outbox, projections, metadata, and workflow with strict defaults |
+| Ark Kernel | Wires registry, graph, policies, event bus, audit, event contracts, outbox, projections, metadata, and workflow with strict defaults |
 | 11-Layer Profile | Provides governed layer taxonomy for Hexagonal + Event-Driven systems |
 | Policy Engine | Evaluates hard and soft architectural policies, including profile-driven layer rules |
 | Observed-Flow Layer Enforcement | Checks each published event's real producer→event flow against the profile at runtime (`off` / `soft` / `hard`); strict kernels default to `hard` |
@@ -108,14 +109,14 @@ npm install ark-runtime-kernel
 
 ## Quick Start - Strict Kernel
 
-Use `createStrictArkKernel()` when you want the strictest runtime path by default:
+Use `createArkKernel()` or `createStrictArkKernel()` for the strict runtime path. Both are strict by default in v1.0. Use `createLenientArkKernel()` only for explicit migration paths.
 
 ```ts
 import {
-  createStrictArkKernel,
+  createArkKernel,
 } from 'ark-runtime-kernel';
 
-const ark = createStrictArkKernel({ maxHistorySize: 500 });
+const ark = createArkKernel({ maxHistorySize: 500 });
 
 const OrderPlaced = ark.registry.define<
   'Domain.Order.OrderPlaced',
@@ -188,6 +189,8 @@ npx ark-check --root . --config ark.config.json
 
 `ark-check` requires TypeScript to be available in the consuming project. It parses source with the TypeScript AST and resolves imports through the TypeScript module resolver against your `tsconfig.json` — relative, path-alias, and package imports — plus string intent references. It resolves modules the way your build does, but does not yet perform full type-graph/symbol analysis (e.g. cross-layer *type-only* references beyond the import specifier).
 
+`ark-check --json` includes `warnings` for governance coverage risks such as missing layers, unclassified included files, layer patterns that match no files, and rules that reference unknown layers. These warnings do not fail the check by default; pass `--strict-config` to make them fail CI.
+
 For editor/CI linting, use the optional ESLint subpath:
 
 ```js
@@ -242,6 +245,12 @@ via `ark.config.json`:
 npm run check:architecture   # node bin/ark-check.mjs --root . --config ark.config.json
 ```
 
+The checker exits non-zero on architecture violations. Configuration warnings are advisory unless `--strict-config` is used:
+
+```bash
+npx ark-check --root . --config ark.config.json --strict-config
+```
+
 ## Design Constraints
 
 - Zero runtime dependencies
@@ -251,7 +260,7 @@ npm run check:architecture   # node bin/ark-check.mjs --root . --config ark.conf
 - Works in Node.js and modern bundlers
 - Dual ESM + CommonJS output
 - Enforcement is deliberate: wire registries, policies, and graphs where boundaries matter
-- Static checks require a project-specific `ark.config.json`
+- Static checks require a project-specific `ark.config.json`; files not matched to a configured layer are outside import-boundary enforcement
 - ESLint checks are heuristics and complement runtime enforcement; they do not replace `ark-check`
 
 ## Documentation

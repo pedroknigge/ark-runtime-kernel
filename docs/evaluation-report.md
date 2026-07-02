@@ -43,6 +43,7 @@ database access, and unclassified files remain outside runtime control.
 - Manifest export is useful for humans, CI, and agents.
 - Observability reports declared-vs-observed production drift.
 - MCP and AICodeGate provide an early write-path feedback surface for AI-assisted work.
+- Ports/adapters can carry ownership metadata and adapter allowlists.
 
 ## Important Limits
 
@@ -113,5 +114,6 @@ Recommended production posture:
    generated starter config.
 5. Continue expanding AST-backed AI checks beyond publish misuse and keep MCP/CI parity
    tests in place.
-6. Add deeper ports/adapters governance.
+6. Continue deepening ports/adapters governance beyond the current metadata and allowlist
+   checks.
 7. Strengthen event contracts and production storage recipes.

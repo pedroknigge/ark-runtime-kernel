@@ -205,10 +205,15 @@ export {
 export {
   definePort,
   createAdapter,
+  checkAdapterGovernance,
   checkContract,
   type Port,
   type Adapter,
+  type AdapterGovernanceIssue,
+  type AdapterGovernanceResult,
   type ContractCheckResult,
+  type CreateAdapterOptions,
+  type DefinePortOptions,
 } from './kernel/adapters';
 
 // =============================================================================

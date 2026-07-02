@@ -90,6 +90,22 @@ Ark is unavoidable **only on the paths you route through it**. Treat it as the r
 | Static Architecture Checker | `ark-check` uses the TypeScript AST to detect configured layer import and intent-reference violations in CI |
 | ESLint Plugin | Optional development-time guardrails for domain imports and unsafe publish calls |
 
+Ports can also carry ownership metadata and adapter allowlists:
+
+```ts
+const OrderRepo = definePort<OrderRepoPort>('OrderRepo', {
+  ownerLayer: 'ApplicationOrchestration',
+  intent: 'Application.Port.OrderRepo',
+  allowedAdapters: ['Adapter.Persistence.SqlOrderRepo'],
+});
+
+createAdapter(OrderRepo, sqlRepo, {
+  name: 'Adapter.Persistence.SqlOrderRepo',
+  layer: 'PersistenceAdapters',
+  requiredKeys: ['find'],
+});
+```
+
 ## What Ark Is / Is Not
 
 | Ark is | Ark is not |

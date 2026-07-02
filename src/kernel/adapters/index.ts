@@ -1,2 +1,7 @@
 export * from './types';
-export { definePort, createAdapter, checkContract } from './ports';
+export {
+  definePort,
+  createAdapter,
+  checkAdapterGovernance,
+  checkContract,
+} from './ports';

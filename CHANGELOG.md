@@ -39,6 +39,14 @@ All notable changes to `ark-runtime-kernel` are documented here.
 - `ark-mcp` passes TypeScript into AICodeGate when available so the write-path gate blocks
   the same publish misuse patterns earlier.
 
+### Added — ports and adapters governance metadata
+
+- `definePort()` now accepts optional ownership metadata, intent identity, and an
+  `allowedAdapters` list.
+- `createAdapter()` accepts adapter metadata and rejects adapters that are not allowed by
+  the port.
+- Added `checkAdapterGovernance()` for non-throwing adapter allowlist checks.
+
 ## 1.0.0 — 2026-07-01
 
 ### Changed — strict runtime baseline and governance roadmap

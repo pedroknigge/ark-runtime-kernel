@@ -243,6 +243,27 @@ Implement these interfaces in **external** packages — not inside the Ark core:
 | `Policy` | Custom architectural rules via `definePolicy()` |
 | `LayerFlowRule` | Layer isolation via `defineLayerPolicy()` |
 | `WorkflowStore` | Persist workflow snapshots outside memory |
+
+## Ports and Adapters
+
+When generating adapter code, prefer ports with explicit ownership and allowlists:
+
+```ts
+const PaymentGateway = definePort<PaymentGatewayPort>('PaymentGateway', {
+  ownerLayer: 'ApplicationOrchestration',
+  intent: 'Application.Port.PaymentGateway',
+  allowedAdapters: ['Adapter.Integration.StripePaymentGateway'],
+});
+
+createAdapter(PaymentGateway, stripeAdapter, {
+  name: 'Adapter.Integration.StripePaymentGateway',
+  layer: 'IntegrationAdapters',
+  requiredKeys: ['charge'],
+});
+```
+
+`createAdapter` rejects adapter names/intents not listed in `allowedAdapters`; use
+`checkAdapterGovernance(adapter)` when a tool needs a non-throwing result.
 | `ReadModelStore` | Persist projection/read-model state outside memory |
 | `AuditStore` | Persist audit records outside memory |
 | `OutboxStore` | Persist event outbox records outside memory |

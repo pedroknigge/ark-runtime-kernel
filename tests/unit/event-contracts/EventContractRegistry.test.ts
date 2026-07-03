@@ -92,3 +92,78 @@ describe('EventContractRegistry', () => {
     ]);
   });
 });
+
+describe('EventContractRegistry — Standard Schema', () => {
+  function fakeStandardSchema(
+    validate: (value: unknown) => { value: unknown } | { issues: Array<{ message: string; path?: Array<PropertyKey | { key: PropertyKey }> }> } | Promise<never>
+  ) {
+    return { '~standard': { version: 1 as const, vendor: 'test', validate } };
+  }
+
+  it('accepts a passing Standard Schema validator', () => {
+    defaultIntentRegistry.clear();
+    const Placed = defineIntent<'Domain.Order.StdOk', { id: string }>('Domain.Order.StdOk');
+    const contracts = createEventContractRegistry();
+    contracts.register({
+      intent: 'Domain.Order.StdOk',
+      version: '1',
+      standardSchema: fakeStandardSchema((value) => ({ value })),
+    });
+
+    expect(contracts.validate(Placed({ id: 'o1' })).ok).toBe(true);
+  });
+
+  it('maps Standard Schema issues (with paths) to contract issues', () => {
+    defaultIntentRegistry.clear();
+    const Placed = defineIntent<'Domain.Order.StdBad', { id: string }>('Domain.Order.StdBad');
+    const contracts = createEventContractRegistry();
+    contracts.register({
+      intent: 'Domain.Order.StdBad',
+      version: '1',
+      standardSchema: fakeStandardSchema(() => ({
+        issues: [
+          { message: 'Expected string', path: ['id'] },
+          { message: 'Unknown key', path: [{ key: 'extra' }] },
+        ],
+      })),
+    });
+
+    const result = contracts.validate(Placed({ id: 'o1' }));
+    expect(result.ok).toBe(false);
+    expect(result.issues).toHaveLength(2);
+    expect(result.issues[0].field).toBe('id');
+    expect(result.issues[0].message).toBe('Expected string');
+    expect(result.issues[1].field).toBe('extra');
+  });
+
+  it('rejects async Standard Schema validators with a clear issue', () => {
+    defaultIntentRegistry.clear();
+    const Placed = defineIntent<'Domain.Order.StdAsync', { id: string }>('Domain.Order.StdAsync');
+    const contracts = createEventContractRegistry();
+    contracts.register({
+      intent: 'Domain.Order.StdAsync',
+      version: '1',
+      standardSchema: fakeStandardSchema(() => new Promise<never>(() => {})),
+    });
+
+    const result = contracts.validate(Placed({ id: 'o1' }));
+    expect(result.ok).toBe(false);
+    expect(result.issues[0].message).toContain('synchronous');
+  });
+
+  it('runs both the built-in schema and the Standard Schema validator', () => {
+    defaultIntentRegistry.clear();
+    const Placed = defineIntent<'Domain.Order.StdBoth', { id: string }>('Domain.Order.StdBoth');
+    const contracts = createEventContractRegistry();
+    contracts.register({
+      intent: 'Domain.Order.StdBoth',
+      version: '1',
+      schema: { id: { type: 'number', required: true } },
+      standardSchema: fakeStandardSchema(() => ({ issues: [{ message: 'std says no' }] })),
+    });
+
+    const result = contracts.validate(Placed({ id: 'o1' }));
+    expect(result.ok).toBe(false);
+    expect(result.issues.length).toBeGreaterThanOrEqual(2);
+  });
+});

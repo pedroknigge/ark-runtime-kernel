@@ -1,6 +1,6 @@
 {
   "name": "ark-runtime-kernel",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Architectural Runtime Kernel — governance for Hexagonal + Event-Driven + DDD systems",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -16,15 +16,22 @@
       "types": "./dist/eslint/index.d.ts",
       "import": "./dist/eslint/index.js",
       "require": "./dist/eslint/index.cjs"
+    },
+    "./nestjs": {
+      "types": "./dist/nestjs/index.d.ts",
+      "import": "./dist/nestjs/index.js",
+      "require": "./dist/nestjs/index.cjs"
     }
   },
   "bin": {
-    "ark-check": "./bin/ark-check.mjs",
-    "ark-mcp": "./bin/ark-mcp.mjs"
+    "ark-check": "bin/ark-check.mjs",
+    "ark-mcp": "bin/ark-mcp.mjs"
   },
+  "mcpName": "io.github.pedroknigge/ark",
   "files": [
     "bin",
     "dist",
+    "server.json",
     "README.md",
     "LICENSE"
   ],
@@ -39,14 +46,23 @@
     "release:npm": "node scripts/release-npm.mjs",
     "prepack": "npm run build"
   },
-  "dependencies": {},
+  "peerDependencies": {
+    "@nestjs/common": ">=9"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@nestjs/common": "^10.4.22",
     "@types/node": "^20.14.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
     "tsup": "^8.1.0",
     "typescript": "^5.5.3",
     "vitest": "^1.6.0"
   },
-  "peerDependencies": {},
   "engines": {
     "node": ">=18"
   },
@@ -58,7 +74,12 @@
     "clean-architecture",
     "governance",
     "kernel",
-    "policy"
+    "policy",
+    "nestjs",
+    "ai-agents",
+    "mcp",
+    "lint",
+    "architecture-fitness"
   ],
   "license": "MIT",
   "repository": {

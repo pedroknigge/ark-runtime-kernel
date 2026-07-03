@@ -610,3 +610,78 @@ describe('ark-check CLI', () => {
     expect(stderr).toContain('CONFIG_NO_LAYERS');
   });
 });
+
+describe('ark-check --baseline', () => {
+  function violatingProject() {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-baseline-'));
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = 1;\n');
+    fs.writeFileSync(
+      path.join(root, 'src/domain/order.ts'),
+      "import { db } from '../infra/db';\nexport const order = db;\n"
+    );
+    fs.writeFileSync(path.join(root, 'ark.config.json'), TWO_LAYER_CONFIG);
+    return root;
+  }
+
+  it('freezes existing violations and only fails on new ones', () => {
+    const root = violatingProject();
+
+    // Without baseline: fails.
+    expect(runArkCheck(root).ok).toBe(false);
+
+    // Freeze.
+    const update = execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--root', root, '--update-baseline'],
+      { encoding: 'utf8', stdio: 'pipe' }
+    );
+    expect(update).toContain('frozen violation key');
+    const baseline = JSON.parse(fs.readFileSync(path.join(root, '.ark-baseline.json'), 'utf8'));
+    expect(baseline.violations.length).toBeGreaterThan(0);
+
+    // With baseline: passes, violation suppressed.
+    const suppressedRun = runArkCheck(root, ['--baseline']) as unknown as {
+      ok: boolean;
+      violations: unknown[];
+      suppressedViolations: number;
+    };
+    expect(suppressedRun.ok).toBe(true);
+    expect(suppressedRun.violations).toEqual([]);
+    expect(suppressedRun.suppressedViolations).toBeGreaterThan(0);
+
+    // A NEW violation still fails.
+    fs.writeFileSync(
+      path.join(root, 'src/domain/customer.ts'),
+      "import { db } from '../infra/db';\nexport const customer = db;\n"
+    );
+    const newRun = runArkCheck(root, ['--baseline']);
+    expect(newRun.ok).toBe(false);
+    expect(newRun.violations.length).toBeGreaterThan(0);
+  });
+
+  it('warns when the baseline file does not exist', () => {
+    const root = violatingProject();
+    const result = runArkCheck(root, ['--baseline']);
+    expect(result.ok).toBe(false);
+    expect(result.warnings.some((w) => w.ruleId === 'BASELINE_NOT_FOUND')).toBe(true);
+  });
+
+  it('reports stale baseline entries after violations are fixed', () => {
+    const root = violatingProject();
+    execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--root', root, '--update-baseline'],
+      { encoding: 'utf8', stdio: 'pipe' }
+    );
+    // Fix the frozen violation.
+    fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const order = 1;\n');
+    const result = runArkCheck(root, ['--baseline']) as unknown as {
+      ok: boolean;
+      staleBaselineKeys: number;
+    };
+    expect(result.ok).toBe(true);
+    expect(result.staleBaselineKeys).toBeGreaterThan(0);
+  });
+});

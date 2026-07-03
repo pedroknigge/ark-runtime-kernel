@@ -2,8 +2,8 @@
 
 # 🏛️ Ark — Architectural Runtime Kernel
 
-**Make your architecture a machine-readable, enforceable contract** —<br/>
-respected by AI agents at write time, CI at merge time, and the runtime itself.
+**Stop AI agents (and humans) from quietly breaking your architecture.**<br/>
+One machine-readable contract — enforced at write time, merge time, and (optionally) runtime.
 
 [![CI](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/ark-runtime-kernel?color=cb3837&label=npm)](https://www.npmjs.com/package/ark-runtime-kernel)
@@ -12,116 +12,137 @@ respected by AI agents at write time, CI at merge time, and the runtime itself.
 ![TypeScript](https://img.shields.io/badge/TypeScript-first-3178c6?logo=typescript&logoColor=white)
 ![Zero deps](https://img.shields.io/badge/dependencies-0-success)
 
-**Zero runtime dependencies** · TypeScript-first · Hexagonal + Event-Driven + DDD governance kernel
-
-[Quick Start](#60-second-setup) · [The Three Gates](#the-three-gates-visual) · [AI Write Gate](#ai-write-path-gate-ark-mcp) · [CI Gate](#ark-check--the-ci-gate) · [Docs](#documentation)
+[2-Minute Setup](#2-minute-setup) · [Why Ark](#why-ark-and-not-just-a-linter) · [AI Write Gate](#the-ai-write-gate) · [CI Gate](#ark-check--the-ci-gate) · [Runtime Kernel](#the-runtime-kernel-opt-in) · [Docs](#documentation)
 
 </div>
 
 ---
 
-## The Three Gates (Visual)
+This is what happens when an agent tries to import a persistence adapter into your domain layer with Ark's write gate active:
 
-```mermaid
-flowchart LR
-    A["✍️  Write Time<br/>AI Agents"] -->|ark-mcp + validate_code| B["🚫 Blocked"]
-    A -->|valid| C["💾 Disk"]
+![An AI agent is blocked from importing a persistence adapter into the domain layer, then self-corrects by defining a port](docs/assets/ark-write-gate.svg)
 
-    D["🔀 Merge Time<br/>CI / PRs"] -->|ark-check| E["❌ Fail"]
-    D -->|valid| F["✅ Merge"]
+The agent doesn't just get blocked — it gets the violation as feedback, reads the architecture contract, and **fixes its own approach**. No review round-trip.
 
-    G["⚙️  Runtime<br/>In-process"] -->|createArkKernel<br/>strict defaults| H["🛡️ Enforce<br/>contracts + layers"]
-    G --> I["📊 Observability<br/>+ Manifest"]
+## 2-Minute Setup
 
-    style A fill:#e0f2fe,color:#0c4a6e
-    style D fill:#fef3c7,color:#92400e
-    style G fill:#dcfce7,color:#166534
+No code changes. No new runtime. Just a config and a CI line.
+
+```bash
+npm install -D ark-runtime-kernel typescript
+npx ark-check --init          # infers layers from your existing folders → ark.config.json
+npx ark-check                 # done: cross-layer imports now fail the check
 ```
 
-**One config. Three enforcement moments.**
+Adopting on a codebase that already has violations? Freeze them and ratchet down:
+
+```bash
+npx ark-check --update-baseline   # writes .ark-baseline.json — commit it
+npx ark-check --baseline          # only NEW violations fail from now on
+```
+
+Then gate your agents (Claude Code shown; [Cursor / Codex / others](docs/ai-gates.md)):
+
+```json
+// .claude/settings.json
+{
+  "hooks": {
+    "PreToolUse": [{
+      "matcher": "Write|Edit|MultiEdit",
+      "hooks": [{ "type": "command",
+        "command": "npx ark-mcp --hook --root \"$CLAUDE_PROJECT_DIR\" --config ark.config.json" }]
+    }]
+  }
+}
+```
+
+> The same `ark.config.json` powers every gate.
+
+## Why Ark (and not just a linter)?
+
+If you only need import-boundary linting in CI, [dependency-cruiser](https://github.com/sverweij/dependency-cruiser), [eslint-plugin-boundaries](https://github.com/javierbrea/eslint-plugin-boundaries), and Nx module boundaries are solid tools. Ark's reason to exist is the **write-time, agent-native half** they don't cover:
+
+|                                         | Ark | dependency-cruiser | eslint-plugin-boundaries | Nx boundaries |
+|-----------------------------------------|:---:|:---:|:---:|:---:|
+| Cross-layer import checks in CI         | ✅ (TS resolver) | ✅ | ✅ | ✅ |
+| Blocks AI agents **before** code lands (MCP + hook) | ✅ | ❌ | ❌ | ❌ |
+| Machine-readable contract for agents (`ark://manifest`) | ✅ | ❌ | ❌ | ❌ |
+| Event/intent governance (who may publish what) | ✅ | ❌ | ❌ | ❌ |
+| Baseline ratchet for existing codebases | ✅ | ❌ | ➖ (via ESLint) | ❌ |
+| Optional runtime enforcement            | ✅ | ❌ | ❌ | ❌ |
+| Runtime dependencies                    | 0 | many | many | Nx |
+
+**One config. Three enforcement moments:**
 
 | Gate         | Tool          | When it runs                  | What it enforces                              |
 |--------------|---------------|-------------------------------|-----------------------------------------------|
 | **Write**    | `ark-mcp`     | Agent PreToolUse (Write/Edit) | Layer rules, unknown intents, forbidden patterns |
 | **Merge**    | `ark-check`   | CI (GitHub Actions etc.)      | Cross-layer imports + intent references (real TS resolver) |
-| **Runtime**  | `createArkKernel()` | Running process         | Intent registry, event contracts, observed layer flow, policies |
+| **Runtime**  | `createArkKernel()` | Running process (opt-in) | Intent registry, event contracts, observed layer flow, policies |
 
----
+## The AI Write Gate
 
-## 60-Second Setup
+`ark-mcp` is a zero-dependency MCP server + one-shot hook:
 
-```bash
-npm install -D ark-runtime-kernel typescript
-```
+- **`ark-mcp --hook`** — PreToolUse gate: computes the **post-edit** file content, validates it against your layers, exits 2 with the violations when the write must be blocked. The agent self-corrects.
+- **`validate_code` tool** — on-demand validation of a snippet, for runtimes without hooks.
+- **`ark://manifest` resource** — the architecture as JSON, so agents read the rules *before* generating code instead of learning by rejection.
 
-### 1. Bootstrap your config from reality
+Copy-paste setups for **Claude Code, Cursor, and OpenAI Codex**: [docs/ai-gates.md](docs/ai-gates.md).
 
-```bash
-npx ark-check --init          # detects your folders and writes ark.config.json
-```
-
-### 2. Gate CI
+## `ark-check` — The CI Gate
 
 ```bash
-npx ark-check --root . --config ark.config.json --strict-config
+npx ark-check --root . --config ark.config.json --strict-config   # fail on coverage gaps too
+npx ark-check --json                                              # machine-readable
+npx ark-check --baseline                                          # ratchet mode
 ```
 
-### 3. Gate AI agents (write path)
+**What it catches (via real TypeScript module resolution — path aliases included):**
 
-```bash
-npx ark-mcp --root . --config ark.config.json
+- Import/export violations (relative, aliases, packages, dynamic `import()`, `require`)
+- String intent references across forbidden layers
+- Raw `publish()` calls that bypass registered intent creators
+- Missing / mismatched publish `source` metadata
+
+Violations come with the layer edge, the resolved target, and a fix hint:
+
+```
+✖ LAYER_IMPORT_VIOLATION  src/domain/order.ts:3
+  DomainModel → PersistenceAdapters  (src/adapters/persistence/pg-order-repository.ts)
+  DomainModel must not import PersistenceAdapters.
+  fix: Depend on a port/interface owned by an inner layer instead, or move this code.
 ```
 
-Bind `--hook` mode to your agent's `PreToolUse` for Write/Edit (see full docs below).
+### GitHub Action
 
-> The same `ark.config.json` powers all three gates.
+```yaml
+- uses: pedroknigge/ark-runtime-kernel@main
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}   # comments violations on the PR
+```
 
----
+Inputs: `root`, `config`, `strict-config`, `baseline`, `version`.
 
-## What Ark Actually Does
+### ESLint plugin (in-editor feedback)
 
-Ark turns architecture from **diagrams + good intentions** into **executable contracts**.
+```js
+// eslint.config.js
+import ark from 'ark-runtime-kernel/eslint';
+export default [ark.configs.recommended];
+```
 
-### Core Capabilities
+Rules: `ark/no-domain-infra-imports`, `ark/no-raw-event-publish`, `ark/require-publish-source`.
 
-- **Intent Registry** — Semantic names (`Domain.Order.OrderPlaced`, `Application.PlaceOrder`) with declared produces/dependsOn relationships.
-- **Policy Engine** — Hard policies (throw) + soft policies (observe). Built-in clean-architecture matrix.
-- **Strict Event Bus** — Registered intents only, known sources, event contracts, add-only interceptors.
-- **Observed Layer Flow** — Runtime enforcement (`'hard' | 'soft' | 'off'`) of *actual* producer → event flows against your layer rules.
-- **Event Contracts** — Payload shape validation (including nested + enums).
-- **11-Layer Profile** — First-class support for proper Hexagonal/Event-Driven boundaries.
-- **Manifest** — `ark.manifest().toJSON()` → complete machine-readable contract for agents and tools.
-- **Observability & Drift** — Declared vs observed flow reports.
-- **Audit / Outbox / Projections / Workflow (Saga)** — Pluggable in-memory defaults + interfaces.
-- **Static + AI Gates** — `ark-check` (deep) + `ark-mcp` + ESLint plugin.
+## The Runtime Kernel (opt-in)
 
-### Enforcement Scope (Be Honest With Yourself)
-
-**Hard at runtime (governed paths only):**
-- Unregistered intents / bad names
-- Unknown sources
-- Contract violations
-- Hard policy violations
-- Observed layer flow violations (when `hard`)
-
-**CI (with ark-check):**
-- Cross-layer imports (real module resolution)
-- Intent string references across boundaries
-- Raw `publish()` calls
-- Missing `source` on strict publishes
-
-**Everything else is out of scope** unless you route it through Ark or cover it with config + CI.
-
----
-
-## Quick Start — Strict Kernel (Recommended)
+The gates above need **zero changes to your code**. When you also want *runtime* guarantees — registered intents only, payload contracts, observed producer→event layer flows — route your events through the kernel:
 
 ```ts
 import { createArkKernel } from 'ark-runtime-kernel';
 
-const ark = createArkKernel(); // or createStrictArkKernel()
+const ark = createArkKernel(); // strict defaults
 
-// 1. Define intents
 const OrderPlaced = ark.registry.define<
   'Domain.Order.OrderPlaced',
   { orderId: string; amount: number }
@@ -132,7 +153,8 @@ ark.registry.define<'Application.PlaceOrder', { orderId: string }>(
   { produces: ['Domain.Order.OrderPlaced'] }
 );
 
-// 2. Register contracts (optional but powerful)
+// Payload contracts: Ark's own schema format, or any Standard Schema
+// validator (zod, valibot, arktype) via `standardSchema`.
 ark.eventContracts.register({
   intent: 'Domain.Order.OrderPlaced',
   version: '1',
@@ -143,179 +165,60 @@ ark.eventContracts.register({
   },
 });
 
-// 3. Projections (read models)
 ark.projections.register({
   name: 'OrderIds',
   sourceIntents: ['Domain.Order.OrderPlaced'],
   initialState: { ids: [] as string[] },
-  project: (event, state) => ({
-    ids: [...state.ids, event.payload.orderId as string],
-  }),
+  project: (event, state) => ({ ids: [...state.ids, event.payload.orderId as string] }),
 });
 
-// 4. Publish through source-bound publisher (recommended)
 const publisher = ark.publisher('Application.PlaceOrder');
+await publisher.publish(OrderPlaced, { orderId: 'o1', amount: 129 }, { eventVersion: '1' });
 
-await publisher.publish(OrderPlaced, { orderId: 'o1', amount: 129 }, {
-  eventVersion: '1',
-  correlationId: 'corr-xyz',
-});
-
-console.log(await ark.projections.getState('OrderIds'));
-console.log(ark.observability.report());
-console.log(JSON.stringify(ark.manifest().toJSON(), null, 2));
+ark.manifest().toJSON(); // the complete machine-readable contract
 ```
 
-See `examples/basic/` for a runnable version.
+What it gives you: intent registry with produces/dependsOn, strict event bus (registered intents only, known sources), event contracts, hard/soft policies, observed layer-flow enforcement (`'hard' | 'soft' | 'off'`), projections, observability/drift reports, and pluggable audit/outbox/workflow interfaces (in-memory defaults — see [production hardening](docs/production-hardening.md)).
 
----
+**Honest scope:** runtime enforcement covers governed paths only — what you route through Ark. Everything else is covered by the static gates.
 
-## AI Write-Path Gate (`ark-mcp`)
+### NestJS
 
-**The killer feature for agentic coding.**
+```ts
+import { ArkModule, InjectArk } from 'ark-runtime-kernel/nestjs';
+import type { ArkKernel } from 'ark-runtime-kernel';
 
-### Pre-write hook (blocks bad code before disk)
+@Module({ imports: [ArkModule.forRoot()] })
+export class AppModule {}
 
-In Claude Code (`.claude/settings.json`):
-
-```json
-{
-  "hooks": {
-    "PreToolUse": [{
-      "matcher": "Write|Edit|MultiEdit",
-      "hooks": [{
-        "type": "command",
-        "command": "npx ark-mcp --hook --root \"$CLAUDE_PROJECT_DIR\""
-      }]
-    }]
-  }
+@Injectable()
+export class PlaceOrderService {
+  constructor(@InjectArk() private readonly ark: ArkKernel) {}
 }
 ```
 
-When blocked, the agent gets the violations back as feedback and can fix + retry.
-
-### Full MCP server
-
-```bash
-npx ark-mcp --root . --config ark.config.json
-```
-
-Exposes:
-- Resource: `ark://manifest`
-- Tool: `validate_code(source, layer?, filePath?)`
-
-Register in `.mcp.json`.
-
----
-
-## `ark-check` — The CI Gate
-
-```bash
-# Basic
-npx ark-check --root . --config ark.config.json
-
-# Fail on coverage gaps too
-npx ark-check --root . --config ark.config.json --strict-config
-
-# JSON for tools
-npx ark-check --json
-```
-
-**What it catches (via real TypeScript resolution):**
-- Import/export violations (relative, aliases, packages, dynamic import, require)
-- String intent references across forbidden layers
-- Raw publish calls
-- Missing source metadata
-- Source-layer mismatch
-
-`--init` generates a real config from the directories that *actually exist* in your project.
-
----
-
-## ESLint Plugin (dev guardrails)
-
-```js
-// eslint.config.js
-import ark from 'ark-runtime-kernel/eslint';
-
-export default [
-  ark.configs.recommended,
-];
-```
-
-Rules:
-- `ark/no-domain-infra-imports`
-- `ark/no-raw-event-publish`
-- `ark/require-publish-source`
-
----
-
-## What Ark Is / Is Not
-
-| ✅ Ark is                              | ❌ Ark is not                              |
-|---------------------------------------|-------------------------------------------|
-| Runtime + CI + AI governance kernel   | Database or queue                         |
-| Enforceable architectural contract    | Full distributed workflow engine          |
-| Machine-readable manifest for agents  | Replacement for your domain logic         |
-| Zero-dependency TypeScript library    | Complete semantic / type analyzer         |
-| Observable drift + history            | OpenTelemetry implementation              |
-| Focused, explicit, pluggable          | Magic that covers code you never route    |
-
----
-
-## Architecture Profile (11 Layers)
-
-The built-in profile + `ark.config.json` give you a sane default taxonomy:
-
-`DomainModel → ApplicationOrchestration → PersistenceAdapters → ...` (and 8 more)
-
-You can customize freely. Rules are deny-by-default except for a few explicitly allowed flows.
-
----
-
-## Production Notes
-
-All stores (`Audit`, `Outbox`, `Projections`, `Workflow`) default to in-memory.
-
-See [docs/production-hardening.md](./docs/production-hardening.md) for the interface contracts you must implement for durability.
-
----
+`@nestjs/common` is an optional peer dependency — the core stays zero-dependency.
 
 ## Documentation
 
-- [Agent Integration Guide](docs/agent-guide.md) — wiring `ark-mcp` into Claude Code, Cursor, and other agent runtimes
-- [Production Hardening](docs/production-hardening.md) — durable store interfaces to implement (`AuditStore`, `OutboxStore`, …)
-- [Example Config](docs/ark-check-example.json) — a hand-curated `ark.config.json` starting point
-- [Runnable Examples](examples/) — `examples/basic/` (kernel tour) and `examples/publish-smoke/` (consumer smoke test)
-- [Changelog](CHANGELOG.md)
-
----
+- [AI Gates](docs/ai-gates.md) — copy-paste setups for Claude Code, Cursor, Codex, and any hook-capable runtime
+- [Agent Integration Guide](docs/agent-guide.md) — manifest discovery and validation flows for agents
+- [Production Hardening](docs/production-hardening.md) — durable store interfaces (`AuditStore`, `OutboxStore`, …)
+- [Example Config](docs/ark-check-example.json) — a hand-curated `ark.config.json`
+- [Runnable Examples](examples/) — including `examples/hexagonal-order-api/`, a full hexagonal API you can break on purpose
+- [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Changelog](CHANGELOG.md)
 
 ## Development
 
 ```bash
-npm install
+npm ci
+npm run build              # ark-mcp loads dist/
+npx vitest run
 npm run typecheck
-npm run check:architecture
-npm test
-npm run build
+npm run check:architecture # Ark gates itself in CI
 ```
 
-**Release process (already scripted):**
-
-```bash
-npm run release:npm          # full verify + publish
-npm run release:npm -- --dry # dry run
-```
-
-The release script:
-1. Typechecks + runs all tests + self architecture check
-2. Builds
-3. Temporarily swaps in the minimal publish manifest
-4. Publishes
-5. Restores dev manifest
-
----
+Release: `npm run release:npm` (verifies typecheck + tests + architecture gate, then publishes; `-- --dry` for a dry run).
 
 ## License
 
@@ -324,5 +227,3 @@ MIT © Pedro Knigge
 ---
 
 **Ark doesn't generate architecture. It protects the architecture you already have — at the exact moments it matters most.**
-
-Built for teams that use AI heavily and refuse to let entropy win.

@@ -1,8 +1,9 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/eslint/index.ts'],
+  entry: ['src/index.ts', 'src/eslint/index.ts', 'src/nestjs/index.ts'],
   format: ['esm', 'cjs'],
+  external: ['@nestjs/common'],
   dts: true,
   splitting: false,
   sourcemap: true,

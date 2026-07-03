@@ -14,9 +14,18 @@
     {
       "name": "Tooling",
       "patterns": ["src/eslint/**"]
+    },
+    {
+      "name": "FrameworkAdapters",
+      "patterns": ["src/nestjs/**"]
     }
   ],
   "rules": [
+    { "from": "FrameworkAdapters", "to": "Tooling", "allowed": false },
+    { "from": "FrameworkAdapters", "to": "DomainModel", "allowed": false },
+    { "from": "DomainModel", "to": "FrameworkAdapters", "allowed": false },
+    { "from": "Kernel", "to": "FrameworkAdapters", "allowed": false },
+    { "from": "Tooling", "to": "FrameworkAdapters", "allowed": false },
     { "from": "DomainModel", "to": "Kernel", "allowed": false },
     { "from": "DomainModel", "to": "Tooling", "allowed": false },
     { "from": "Kernel", "to": "Tooling", "allowed": false },

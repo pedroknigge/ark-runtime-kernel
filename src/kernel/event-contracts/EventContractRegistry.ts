@@ -7,7 +7,21 @@ import type {
   EventContractValidationResult,
   EventSchemaField,
   EventSchemaFieldType,
+  StandardSchemaIssue,
 } from './types';
+
+function formatStandardSchemaPath(
+  path: StandardSchemaIssue['path']
+): string | undefined {
+  if (!path || path.length === 0) return undefined;
+  return path
+    .map((segment) =>
+      typeof segment === 'object' && segment !== null && 'key' in segment
+        ? String(segment.key)
+        : String(segment)
+    )
+    .join('.');
+}
 
 function actualType(value: unknown): EventSchemaFieldType {
   if (Array.isArray(value)) return 'array';
@@ -191,6 +205,27 @@ export class EventContractRegistryImpl implements EventContractRegistry {
               });
             }
           }
+        }
+      }
+    }
+
+    if (contract.standardSchema) {
+      const result = contract.standardSchema['~standard'].validate(event.payload);
+      if (result instanceof Promise) {
+        issues.push({
+          intent: event.intent,
+          version: contract.version,
+          message:
+            'Standard Schema validator returned a Promise; event contract validation is synchronous.',
+        });
+      } else if (result.issues) {
+        for (const issue of result.issues) {
+          issues.push({
+            intent: event.intent,
+            version: contract.version,
+            field: formatStandardSchemaPath(issue.path),
+            message: issue.message,
+          });
         }
       }
     }

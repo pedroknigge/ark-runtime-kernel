@@ -2,7 +2,60 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
-## Unreleased
+## 1.1.0
+
+### Added — baseline ratchet for existing codebases (`ark-check --baseline`)
+
+- `ark-check --update-baseline [file]` freezes the current violations into
+  `.ark-baseline.json` (line-insensitive keys, so unrelated edits don't resurrect them).
+- `ark-check --baseline [file]` suppresses frozen violations: only NEW violations fail,
+  and stale baseline entries are reported so the ratchet can be tightened with a re-run
+  of `--update-baseline`. JSON output gains `suppressedViolations` and `staleBaselineKeys`.
+
+### Added — Standard Schema support in event contracts
+
+- `EventContract.standardSchema` accepts any [Standard Schema](https://standardschema.dev)
+  validator (zod, valibot, arktype, ...) alongside — or instead of — Ark's own schema
+  format. Issues (including paths) map to regular contract issues. Validation stays
+  synchronous; async validators produce an explicit contract issue. Ark remains
+  zero-dependency: the spec interface is vendored as types only.
+
+### Added — NestJS adapter (`ark-runtime-kernel/nestjs`)
+
+- `ArkModule.forRoot()` / `forRoot(kernel | options)` / `forRootAsync({ useFactory })`
+  register a global kernel under the `ARK_KERNEL` token; `@InjectArk()` injects it.
+- `@nestjs/common` is an optional peer dependency; the core stays zero-dependency.
+
+### Added — GitHub Action
+
+- Composite action at the repo root: `uses: pedroknigge/ark-runtime-kernel@main` runs
+  `ark-check`, writes the result to the step summary, and (with `github-token`) comments
+  violations on the PR. Inputs: `root`, `config`, `strict-config`, `baseline`, `version`.
+
+### Added — docs, examples, and distribution
+
+- `docs/ai-gates.md`: copy-paste write-gate setups for Claude Code (hook + MCP), Cursor,
+  OpenAI Codex, any hook-capable runtime, plus the CI backstop.
+- `examples/hexagonal-order-api/`: a full hexagonal order API governed by Ark with a
+  "break it on purpose" walkthrough.
+- `server.json` for the official MCP registry; `CONTRIBUTING.md`; `ROADMAP.md`.
+- README rewritten adoption-first: 2-minute CI setup, honest comparison vs
+  dependency-cruiser / eslint-plugin-boundaries / Nx boundaries, write-gate demo, and the
+  runtime kernel repositioned as the opt-in layer.
+
+### Changed — actionable ark-check output
+
+- Human output now shows the rule, `file:line`, the layer edge with the resolved target,
+  and a fix hint per rule, with color when attached to a TTY (`NO_COLOR` respected).
+  `--json` output is unchanged (plus the new baseline fields).
+
+### Changed — single package.json
+
+- Removed the `package.dev.json` / `package.publish.json` swap workflow and its scripts;
+  the checked-in `package.json` is the only manifest and `npm publish` ships it as-is
+  (`prepack` builds). Internal working documents removed from `docs/`.
+
+## 1.0.0 — 2026-07-02 (as published to npm)
 
 ### Added — working pre-write hook mode (`ark-mcp --hook`)
 

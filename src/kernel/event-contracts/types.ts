@@ -22,10 +22,41 @@ export interface EventSchemaField {
 
 export type EventPayloadSchema = Record<string, EventSchemaField>;
 
+/**
+ * Minimal Standard Schema interface (https://standardschema.dev).
+ * Any zod/valibot/arktype (or other spec-compliant) schema satisfies this,
+ * so Ark stays zero-dependency while accepting the validators you already use.
+ */
+export interface StandardSchemaV1<Input = unknown, Output = Input> {
+  readonly '~standard': {
+    readonly version: 1;
+    readonly vendor: string;
+    readonly validate: (
+      value: unknown
+    ) => StandardSchemaResult<Output> | Promise<StandardSchemaResult<Output>>;
+    readonly types?: { readonly input: Input; readonly output: Output } | undefined;
+  };
+}
+
+export type StandardSchemaResult<Output> =
+  | { readonly value: Output; readonly issues?: undefined }
+  | { readonly issues: ReadonlyArray<StandardSchemaIssue> };
+
+export interface StandardSchemaIssue {
+  readonly message: string;
+  readonly path?: ReadonlyArray<PropertyKey | { readonly key: PropertyKey }> | undefined;
+}
+
 export interface EventContract {
   intent: IntentName;
   version: string;
   schema?: EventPayloadSchema;
+  /**
+   * A Standard Schema validator (zod, valibot, arktype, ...) for the payload.
+   * Runs in addition to `schema` when both are present. Must validate
+   * synchronously — async validators produce a contract issue.
+   */
+  standardSchema?: StandardSchemaV1;
   owner?: string;
   rationale?: string;
   deprecated?: boolean | string;

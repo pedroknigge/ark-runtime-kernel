@@ -23,6 +23,8 @@ function parseArgs(argv) {
     strictConfig: false,
     init: false,
     force: false,
+    baseline: undefined,
+    updateBaseline: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -30,6 +32,12 @@ function parseArgs(argv) {
     else if (arg === '--strict-config') args.strictConfig = true;
     else if (arg === '--init') args.init = true;
     else if (arg === '--force') args.force = true;
+    else if (arg === '--baseline' || arg === '--update-baseline') {
+      if (arg === '--update-baseline') args.updateBaseline = true;
+      // optional path value: consume the next arg only when it isn't another flag
+      const next = argv[i + 1];
+      args.baseline = next && !next.startsWith('-') ? argv[++i] : '.ark-baseline.json';
+    }
     else if (arg === '--root') args.root = path.resolve(argv[++i]);
     else if (arg === '--config') args.config = argv[++i];
     else if (arg === '--manifest') args.manifest = argv[++i];
@@ -42,9 +50,14 @@ function parseArgs(argv) {
 
 function usage() {
   return [
-    'Usage: ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict-config] [--json]',
+    'Usage: ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict-config] [--json] [--baseline [file]]',
     '       ark-check --init [--force]',
+    '       ark-check --update-baseline [file]     freeze current violations (default .ark-baseline.json)',
     '       ark-check --print-config eleven-layer',
+    '',
+    'Adopting Ark in an existing codebase? Run --update-baseline once to freeze existing',
+    'violations, commit the baseline file, and gate CI with --baseline: only NEW violations',
+    'fail the check, so the ratchet only moves toward zero.',
     '',
     '--init scans the project for the built-in layer directory conventions (src/domain,',
     'src/application, src/adapters/persistence, ...) and writes an ark.config.json covering',
@@ -564,6 +577,71 @@ function publishHasSource(ts, node) {
   );
 }
 
+// ponytail: baseline keys exclude the line number so unrelated edits that shift lines
+// don't resurrect frozen violations; the trade-off is that N identical violations in one
+// file collapse to one key.
+function baselineKey(violation) {
+  return [
+    violation.ruleId,
+    violation.file,
+    violation.fromLayer ?? '',
+    violation.toLayer ?? '',
+    violation.target ?? '',
+  ].join('|');
+}
+
+function readBaseline(root, baselinePath) {
+  const fullPath = path.isAbsolute(baselinePath) ? baselinePath : path.join(root, baselinePath);
+  if (!fs.existsSync(fullPath)) return { keys: new Set(), fullPath, exists: false };
+  const raw = JSON.parse(fs.readFileSync(fullPath, 'utf8'));
+  return { keys: new Set(raw.violations ?? []), fullPath, exists: true };
+}
+
+function writeBaseline(root, baselinePath, violations) {
+  const fullPath = path.isAbsolute(baselinePath) ? baselinePath : path.join(root, baselinePath);
+  const keys = [...new Set(violations.map(baselineKey))].sort();
+  fs.writeFileSync(
+    fullPath,
+    `${JSON.stringify({ version: 1, note: 'Frozen ark-check violations. Only NEW violations fail --baseline runs. Regenerate with: ark-check --update-baseline', violations: keys }, null, 2)}\n`
+  );
+  return { fullPath, count: keys.length };
+}
+
+const useColor = process.stderr.isTTY && !process.env.NO_COLOR;
+const color = {
+  red: (s) => (useColor ? `\x1b[31m${s}\x1b[0m` : s),
+  yellow: (s) => (useColor ? `\x1b[33m${s}\x1b[0m` : s),
+  green: (s) => (useColor ? `\x1b[32m${s}\x1b[0m` : s),
+  dim: (s) => (useColor ? `\x1b[2m${s}\x1b[0m` : s),
+  bold: (s) => (useColor ? `\x1b[1m${s}\x1b[0m` : s),
+};
+
+const FIX_HINTS = {
+  LAYER_IMPORT_VIOLATION:
+    'Depend on a port/interface owned by an inner layer instead, or move this code to a layer allowed to make this import.',
+  LAYER_INTENT_REFERENCE_VIOLATION:
+    'Reference intents through a layer that owns them (e.g. subscribe from an adapter, not from the domain).',
+  RAW_EVENT_PUBLISH:
+    'Define the intent with ark.registry.define(...) and publish through the returned creator.',
+  PUBLISH_MISSING_SOURCE:
+    'Add metadata.source (the publishing intent name) to the publish call.',
+  PUBLISH_SOURCE_LAYER_MISMATCH:
+    'Use a source intent that belongs to the same layer as the publishing file, or move the file.',
+};
+
+function printViolation(violation) {
+  const location = `${violation.file}:${violation.line}`;
+  console.error(`${color.red('✖')} ${color.bold(violation.ruleId)}  ${location}`);
+  if (violation.fromLayer && violation.toLayer) {
+    const target = violation.target ? `  ${color.dim(`(${violation.target})`)}` : '';
+    console.error(`  ${violation.fromLayer} → ${violation.toLayer}${target}`);
+  }
+  console.error(`  ${violation.message}`);
+  const hint = FIX_HINTS[violation.ruleId];
+  if (hint) console.error(`  ${color.dim(`fix: ${hint}`)}`);
+  console.error('');
+}
+
 function moduleSpecifierFromCall(ts, node) {
   if (!ts.isCallExpression(node)) return undefined;
 
@@ -733,38 +811,82 @@ async function main() {
     visit(sourceFile);
   }
 
-  if (args.json) {
-    console.log(JSON.stringify({
-      ok: violations.length === 0 && (!args.strictConfig || warnings.length === 0),
-      violations,
-      warnings,
-    }, null, 2));
-  } else if (violations.length === 0) {
-    for (const warning of warnings) {
-      console.error(`warning ${warning.ruleId} ${warning.message}`);
-    }
-    if (warnings.length === 0) {
-      console.log('Ark check passed.');
-    } else if (args.strictConfig) {
-      console.error(`Ark check failed with ${warnings.length} config warning(s).`);
+  if (args.updateBaseline) {
+    const { fullPath, count } = writeBaseline(root, args.baseline, violations);
+    console.log(`Wrote ${fullPath} with ${count} frozen violation key(s).`);
+    console.log('Commit it and gate CI with: ark-check --baseline (only NEW violations fail).');
+    return;
+  }
+
+  let suppressed = [];
+  let activeViolations = violations;
+  let staleBaselineKeys = 0;
+  if (args.baseline) {
+    const baseline = readBaseline(root, args.baseline);
+    if (baseline.exists) {
+      suppressed = violations.filter((violation) => baseline.keys.has(baselineKey(violation)));
+      activeViolations = violations.filter(
+        (violation) => !baseline.keys.has(baselineKey(violation))
+      );
+      const currentKeys = new Set(violations.map(baselineKey));
+      staleBaselineKeys = [...baseline.keys].filter((key) => !currentKeys.has(key)).length;
     } else {
-      console.log(`Ark check passed with ${warnings.length} config warning(s).`);
-    }
-  } else {
-    for (const warning of warnings) {
-      console.error(`warning ${warning.ruleId} ${warning.message}`);
-    }
-    for (const violation of violations) {
-      console.error(
-        `${violation.file}:${violation.line} ${violation.ruleId} ${violation.message}`
+      warnings.push(
+        configWarning(
+          'BASELINE_NOT_FOUND',
+          `Baseline file not found: ${baseline.fullPath}. Generate it with: ark-check --update-baseline`
+        )
       );
     }
   }
 
-  process.exitCode =
-    violations.length === 0 && (!args.strictConfig || warnings.length === 0)
-      ? 0
-      : 1;
+  const ok = activeViolations.length === 0 && (!args.strictConfig || warnings.length === 0);
+
+  if (args.json) {
+    console.log(JSON.stringify({
+      ok,
+      violations: activeViolations,
+      suppressedViolations: suppressed.length,
+      staleBaselineKeys,
+      warnings,
+    }, null, 2));
+  } else {
+    for (const warning of warnings) {
+      console.error(`${color.yellow('warning')} ${warning.ruleId} ${warning.message}`);
+    }
+    for (const violation of activeViolations) {
+      printViolation(violation);
+    }
+
+    const baselineNote =
+      suppressed.length > 0 ? ` (${suppressed.length} suppressed by baseline)` : '';
+    if (staleBaselineKeys > 0) {
+      console.error(
+        color.dim(
+          `${staleBaselineKeys} baseline entr(y/ies) no longer occur — tighten the ratchet with: ark-check --update-baseline`
+        )
+      );
+    }
+    if (activeViolations.length === 0) {
+      if (warnings.length === 0) {
+        console.log(`${color.green('✔')} Ark check passed.${baselineNote}`);
+      } else if (args.strictConfig) {
+        console.error(
+          `${color.red('✖')} Ark check failed with ${warnings.length} config warning(s).${baselineNote}`
+        );
+      } else {
+        console.log(
+          `${color.green('✔')} Ark check passed with ${warnings.length} config warning(s).${baselineNote}`
+        );
+      }
+    } else {
+      console.error(
+        `${color.red('✖')} ${activeViolations.length} violation(s).${baselineNote}`
+      );
+    }
+  }
+
+  process.exitCode = ok ? 0 : 1;
 }
 
 main().catch((error) => {

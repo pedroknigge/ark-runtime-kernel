@@ -18,9 +18,8 @@ function run(cmd: string) {
   });
 }
 
-describe('publish manifest model (dev-first workflow)', () => {
+describe('publish manifest', () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-pack-test-'));
-  const tgzDir = tmp;
 
   afterAll(() => {
     try {
@@ -28,36 +27,22 @@ describe('publish manifest model (dev-first workflow)', () => {
     } catch {
       /* ignore */
     }
-    try {
-      run('node scripts/dev-teardown.cjs');
-    } catch {
-      /* ignore */
-    }
   });
 
-  it('checked-in package.json is the dev manifest with test/typecheck scripts', () => {
-    run('node scripts/dev-teardown.cjs');
-    const rootP = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    const dev = JSON.parse(fs.readFileSync(path.join(root, 'package.dev.json'), 'utf8'));
-    expect(rootP).toEqual(dev);
-    expect(rootP.scripts.test).toBe('vitest');
-    expect(rootP.scripts.typecheck).toBe('tsc --noEmit');
-    expect(rootP.devDependencies).toBeDefined();
+  it('package.json has zero runtime dependencies and dev scripts', () => {
+    const p = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(p.dependencies ?? {}).toEqual({});
+    expect(p.scripts.test).toBe('vitest');
+    expect(p.scripts.typecheck).toBe('tsc --noEmit');
+    expect(p.scripts.prepack).toBe('npm run build');
   });
 
-  it('package.publish.json documents the minimal publish manifest', () => {
-    const p = JSON.parse(fs.readFileSync(path.join(root, 'package.publish.json'), 'utf8'));
-    expect(p.devDependencies).toBeUndefined();
-    expect(p.scripts.build).toBe('tsup');
-  });
+  it('npm pack ships bin + dist with zero runtime deps', () => {
+    run(`npm pack --pack-destination ${tmp} --silent`);
 
-  it('plain npm pack succeeds from the dev manifest with zero runtime deps', () => {
-    run('node scripts/dev-setup.cjs');
-    run(`npm pack --pack-destination ${tgzDir} --silent`);
-
-    const files = fs.readdirSync(tgzDir).filter((f) => f.endsWith('.tgz'));
+    const files = fs.readdirSync(tmp).filter((f) => f.endsWith('.tgz'));
     expect(files.length).toBe(1);
-    const tgzPath = path.join(tgzDir, files[0]);
+    const tgzPath = path.join(tmp, files[0]);
 
     const extract = path.join(tmp, 'extract');
     fs.mkdirSync(extract, { recursive: true });
@@ -66,35 +51,19 @@ describe('publish manifest model (dev-first workflow)', () => {
     const inner = JSON.parse(
       fs.readFileSync(path.join(extract, 'package', 'package.json'), 'utf8')
     );
-    expect(inner.dependencies).toEqual({});
+    expect(inner.dependencies ?? {}).toEqual({});
+    expect(inner.exports['./nestjs']).toEqual({
+      types: './dist/nestjs/index.d.ts',
+      import: './dist/nestjs/index.js',
+      require: './dist/nestjs/index.cjs',
+    });
     expect(inner.exports['./eslint']).toEqual({
       types: './dist/eslint/index.d.ts',
       import: './dist/eslint/index.js',
       require: './dist/eslint/index.cjs',
     });
-    expect(inner.bin['ark-check']).toBe('./bin/ark-check.mjs');
-    expect(inner.scripts.test).toBe('vitest');
-    expect(inner.scripts.typecheck).toBe('tsc --noEmit');
-    expect(inner.scripts.prepack).toBe('npm run build');
-    expect(inner.scripts.postpack).toBeUndefined();
+    expect(inner.bin['ark-check']).toBe('bin/ark-check.mjs');
     expect(fs.existsSync(path.join(extract, 'package', 'bin', 'ark-check.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(extract, 'package', 'dist', 'eslint', 'index.js'))).toBe(true);
-  });
-
-  it('dev-setup.cjs restores devDeps from stripped state', () => {
-    const stripped = {
-      name: 'ark-runtime-kernel',
-      version: '0.5.0',
-      scripts: { build: 'tsup' },
-      dependencies: {},
-      files: ['dist'],
-    };
-    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify(stripped, null, 2));
-
-    run('node scripts/dev-setup.cjs');
-
-    const p = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    expect(p.devDependencies).toBeDefined();
-    expect(Object.keys(p.devDependencies).length).toBeGreaterThan(0);
   });
 });

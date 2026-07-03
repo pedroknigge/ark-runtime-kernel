@@ -1,0 +1,31 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "name": "io.github.pedroknigge/ark",
+  "description": "Architecture write-gate for AI agents: validates generated code against your Hexagonal/DDD layer rules before it lands, and exposes the machine-readable architecture contract (ark://manifest).",
+  "repository": {
+    "url": "https://github.com/pedroknigge/ark-runtime-kernel",
+    "source": "github"
+  },
+  "version": "1.1.0",
+  "packages": [
+    {
+      "registry_type": "npm",
+      "identifier": "ark-runtime-kernel",
+      "version": "1.1.0",
+      "transport": {
+        "type": "stdio"
+      },
+      "runtime_hint": "npx",
+      "package_arguments": [
+        { "type": "positional", "value": "ark-mcp" },
+        { "type": "named", "name": "--root", "value": ".", "description": "Project root" },
+        {
+          "type": "named",
+          "name": "--config",
+          "value": "ark.config.json",
+          "description": "Path to the Ark architecture config"
+        }
+      ]
+    }
+  ]
+}

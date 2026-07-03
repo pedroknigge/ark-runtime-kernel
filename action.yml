@@ -1,0 +1,74 @@
+name: 'Ark Architecture Check'
+description: 'Block merges on architecture violations (cross-layer imports, intent references) with ark-check'
+author: 'pedroknigge'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  root:
+    description: 'Project root to check'
+    default: '.'
+  config:
+    description: 'Path to ark.config.json (relative to root)'
+    default: 'ark.config.json'
+  strict-config:
+    description: 'Fail on config-coverage warnings too'
+    default: 'true'
+  baseline:
+    description: 'Baseline file of frozen violations (empty = disabled)'
+    default: ''
+  version:
+    description: 'ark-runtime-kernel version to run'
+    default: 'latest'
+  github-token:
+    description: 'Token used to comment violations on the PR (empty = no comment)'
+    default: ''
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Run ark-check
+      id: ark
+      shell: bash
+      env:
+        INPUT_ROOT: ${{ inputs.root }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_STRICT: ${{ inputs.strict-config }}
+        INPUT_BASELINE: ${{ inputs.baseline }}
+        INPUT_VERSION: ${{ inputs.version }}
+      run: |
+        set +e
+        ARGS=(--root "$INPUT_ROOT" --config "$INPUT_CONFIG")
+        [ "$INPUT_STRICT" = "true" ] && ARGS+=(--strict-config)
+        [ -n "$INPUT_BASELINE" ] && ARGS+=(--baseline "$INPUT_BASELINE")
+        npx --yes --package "ark-runtime-kernel@$INPUT_VERSION" ark-check "${ARGS[@]}" 2>&1 | tee ark-check-output.txt
+        STATUS=${PIPESTATUS[0]}
+        {
+          echo "## 🏛️ Ark architecture check"
+          echo ""
+          echo '```'
+          cat ark-check-output.txt
+          echo '```'
+        } >> "$GITHUB_STEP_SUMMARY"
+        echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+        exit "$STATUS"
+
+    - name: Comment violations on PR
+      if: failure() && github.event_name == 'pull_request' && inputs.github-token != ''
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        PR: ${{ github.event.pull_request.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        {
+          echo "### 🏛️ Ark architecture check failed"
+          echo ""
+          echo '```'
+          cat ark-check-output.txt
+          echo '```'
+          echo ""
+          echo "_Layer rules live in \`ark.config.json\`. Docs: https://github.com/pedroknigge/ark-runtime-kernel_"
+        } > ark-comment.md
+        gh pr comment "$PR" --repo "$REPO" --body-file ark-comment.md

@@ -2,10 +2,10 @@
 /**
  * scripts/release-npm.mjs
  *
- * One-command npm release: verify → build → swap in the minimal publish manifest →
- * npm publish → ALWAYS restore the dev manifest (even when publish fails).
+ * One-command npm release: verify (typecheck + tests + architecture gate) → publish.
+ * `prepack` runs the build, so `npm publish` always ships a fresh dist.
  *
- * Prerequisites: npm login (whoami is checked first so failures happen before any swap).
+ * Prerequisites: npm login (whoami is checked first).
  *
  * Usage:
  *   npm run release:npm             # real publish
@@ -32,33 +32,16 @@ if (!dry) {
   }
 }
 
-const devManifest = JSON.parse(fs.readFileSync(path.join(root, 'package.dev.json'), 'utf8'));
-const publishManifest = JSON.parse(
-  fs.readFileSync(path.join(root, 'package.publish.json'), 'utf8')
-);
-if (devManifest.version !== publishManifest.version) {
-  console.error(
-    `[release-npm] version mismatch: package.dev.json=${devManifest.version} package.publish.json=${publishManifest.version}. Align them first.`
-  );
-  process.exit(1);
-}
+const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 
 run('npm run typecheck');
 run('npx vitest run');
 run('npm run check:architecture');
-run('npm run build');
 
-fs.copyFileSync(path.join(root, 'package.publish.json'), path.join(root, 'package.json'));
-console.log('[release-npm] publish manifest activated');
-try {
-  run(dry ? 'npm publish --dry-run' : 'npm publish');
-} finally {
-  fs.copyFileSync(path.join(root, 'package.dev.json'), path.join(root, 'package.json'));
-  console.log('[release-npm] dev manifest restored');
-}
+run(dry ? 'npm publish --dry-run' : 'npm publish');
 
 console.log(
   dry
     ? '[release-npm] dry run complete.'
-    : `[release-npm] published ${publishManifest.name}@${publishManifest.version}`
+    : `[release-npm] published ${pkg.name}@${pkg.version}`
 );

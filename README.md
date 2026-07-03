@@ -41,7 +41,9 @@ npx ark-check --update-baseline   # writes .ark-baseline.json — commit it
 npx ark-check --baseline          # only NEW violations fail from now on
 ```
 
-Then gate your agents (Claude Code shown; [Cursor / Codex / others](docs/ai-gates.md)):
+Then gate your agents (Claude Code shown; [Cursor / Codex / others](docs/ai-gates.md)). If you use
+Codex in an Ark project, register the MCP server early so `ark://manifest` is available during
+generation:
 
 ```json
 // .claude/settings.json
@@ -77,12 +79,17 @@ For projects that already use Ark:
 
 ```bash
 npm install -D ark-runtime-kernel@latest
+npx ark-check --root . --config ark.config.json --strict-config
 npm run check:architecture
 ```
 
 This updates the local `ark`, `ark-check`, and `ark-mcp` binaries used by npm scripts
-and CI. The lockfile controls the version CI gets, so commit the updated
-`package-lock.json`, `pnpm-lock.yaml`, or `yarn.lock`.
+and CI. `npm run check:architecture` is the recommended alias, but it is optional:
+the direct `npx ark-check --root . --config ark.config.json --strict-config` command
+is the real check and works even if the alias has not been added yet.
+
+The lockfile controls the version CI gets, so commit the updated `package-lock.json`,
+`pnpm-lock.yaml`, or `yarn.lock`.
 
 Generated setup files are intentionally not rewritten during package updates:
 `AGENTS.md`, MCP config, Claude/Cursor settings, Codex notes, and GitHub Actions

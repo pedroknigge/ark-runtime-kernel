@@ -31,6 +31,10 @@ GitHub Actions, `AGENTS.md`, and a Codex TOML snippet under `docs/`. It skips
 existing files unless you pass `--force`, so review and commit only the templates
 that match your project.
 
+If your project uses Codex, treat the MCP registration as part of the default setup,
+not an optional extra. Ark works best when Codex can read `ark://manifest` before it
+writes code; that is the fast path to avoiding architecture drift during generation.
+
 ## Claude Code — hook (recommended, hard block)
 
 `ark-mcp --hook` is a one-shot PreToolUse gate: it reads the hook payload from stdin, computes the **post-edit** file content, validates it, and exits `2` (block, violations on stderr) or `0` (allow). The agent sees the violations and self-corrects.
@@ -124,6 +128,8 @@ Your hard backstop in Cursor is CI: `ark-check` fails the PR on anything that sl
 
 ## OpenAI Codex CLI
 
+Recommended for Ark projects.
+
 `~/.codex/config.toml`:
 
 ```toml
@@ -133,6 +139,8 @@ args = ["ark-mcp", "--root", ".", "--config", "ark.config.json"]
 ```
 
 Same model as Cursor: MCP for discovery/validation, `ark-check` in CI as the hard gate.
+For Ark projects, register the MCP server as soon as the repo is adopted so the agent
+has the contract available from the first edit.
 
 ## Any other agent runtime with shell hooks
 

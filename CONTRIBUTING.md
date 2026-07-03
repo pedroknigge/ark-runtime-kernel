@@ -11,6 +11,7 @@ npm ci
 npm run build        # bin/ark-mcp.mjs loads dist/, so build first
 npx vitest run       # full test suite (npm test starts watch mode)
 npm run typecheck
+npx ark-check --root . --config ark.config.json --strict-config
 npm run check:architecture   # Ark dogfoods itself
 ```
 

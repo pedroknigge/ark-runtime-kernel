@@ -95,6 +95,21 @@ function readJson(file) {
   return JSON.parse(fs.readFileSync(file, 'utf8'));
 }
 
+function readPackageJson(root) {
+  const file = path.join(root, 'package.json');
+  if (!fs.existsSync(file)) return null;
+  return readJson(file);
+}
+
+function hasCheckArchitectureScript(root) {
+  const pkg = readPackageJson(root);
+  return Boolean(pkg?.scripts?.['check:architecture']);
+}
+
+function checkArchitectureScriptSnippet() {
+  return '"check:architecture": "node bin/ark-check.mjs --root . --config ark.config.json --strict-config"';
+}
+
 function readConfig(root, configPath) {
   const fullPath = path.isAbsolute(configPath)
     ? configPath
@@ -209,6 +224,10 @@ function runInit(args) {
   console.log('  1. CI gate:        npx ark-check --root . --config ark.config.json --strict-config');
   console.log('  2. AI write gate:  npx ark-mcp --root . --config ark.config.json');
   console.log('     (bind its validate_code tool to your agent\'s pre-write hook — see README)');
+  if (!hasCheckArchitectureScript(args.root)) {
+    console.log('  3. Add the npm alias if you want `npm run check:architecture`:');
+    console.log(`     ${checkArchitectureScriptSnippet()}`);
+  }
 }
 
 function ensureDirForFile(file) {
@@ -349,6 +368,7 @@ function claudeSettings() {
 function runInstallAgentGates(args) {
   const root = args.root;
   const pm = packageManager(root);
+  const hasCheckScript = hasCheckArchitectureScript(root);
   const templates = [
     ['AGENTS.md', agentInstructions()],
     ['.mcp.json', mcpJson()],
@@ -372,7 +392,13 @@ function runInstallAgentGates(args) {
   console.log('Next steps:');
   console.log('  1. Review the generated files and commit the ones that match your tools.');
   console.log('  2. Run: npx ark-check --root . --config ark.config.json --strict-config');
-  console.log('  3. Wire Codex manually from docs/ark-codex-config.toml if your host uses ~/.codex/config.toml.');
+  if (!hasCheckScript) {
+    console.log('  3. Add the npm alias if you want `npm run check:architecture`:');
+    console.log(`     ${checkArchitectureScriptSnippet()}`);
+    console.log('  4. If you use Codex in this project, wire it now so `ark://manifest` is available from the first edit.');
+  } else {
+    console.log('  3. If you use Codex in this project, wire it now so `ark://manifest` is available from the first edit.');
+  }
 }
 
 function readManifest(root, manifestPath) {

@@ -270,9 +270,13 @@ function writeTemplate(root, relativePath, content, force) {
   if (fs.existsSync(fullPath) && !force) {
     return { relativePath, status: 'skipped' };
   }
-  ensureDirForFile(fullPath);
-  fs.writeFileSync(fullPath, content);
-  return { relativePath, status: fs.existsSync(fullPath) ? 'written' : 'failed' };
+  try {
+    ensureDirForFile(fullPath);
+    fs.writeFileSync(fullPath, content);
+    return { relativePath, status: 'written' };
+  } catch {
+    return { relativePath, status: 'failed' };
+  }
 }
 
 function packageManager(root) {

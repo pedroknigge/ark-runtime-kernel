@@ -2,6 +2,43 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.3.0 — 2026-07-03
+
+### Added — gate presence enforcement (`ark-check --require-gates`)
+
+- `ark-check --require-gates` fails the check when `AGENTS.md`, `.mcp.json`, or the
+  generated CI workflow is missing, so "installed but never configured" is a red CI.
+  JSON mode reports `{ ok: false, error: 'missing-gates', missing: [...] }`.
+- `--install-agent-gates --tools claude,cursor,codex` selects which tool templates to
+  write; without the flag, tools are auto-detected from `.claude/`, `.cursor/`, and
+  `.codex/` (all templates are written when nothing is detected).
+
+### Changed
+
+- The generated CI workflow now runs `ark-check` with `--require-gates`.
+- AGENTS.md and the Cursor rule derive from a single agent contract, so the
+  enforcement steps can no longer drift between the two files.
+
+### Fixed
+
+- `--install-agent-gates` now reports failed template writes and exits non-zero
+  instead of always claiming success.
+
+## 1.2.0 — 2026-07-03
+
+### Added — agent gate installer (`ark-check --install-agent-gates`)
+
+- One command writes the agent-enforcement starter set: `AGENTS.md`, `.mcp.json`,
+  Cursor rule + MCP config, Claude settings, a Codex config snippet, and a GitHub
+  Actions workflow that runs `ark-check --strict-config`. Existing files are
+  skipped unless `--force` is passed.
+- The generated workflow detects the project's package manager (npm / pnpm / yarn)
+  from its lockfile and uses matching setup, cache, and run commands.
+
+### CI
+
+- Workflows updated to the node24 runtime; MCP tests isolated from concurrent builds.
+
 ## 1.1.0
 
 ### Added — baseline ratchet for existing codebases (`ark-check --baseline`)

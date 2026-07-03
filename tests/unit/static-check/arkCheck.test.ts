@@ -183,6 +183,38 @@ describe('ark-check --install-agent-gates', () => {
     expect(forced.status).toBe(0);
     expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain('Ark Enforcement');
   });
+
+  it('generates package-manager-consistent GitHub workflows', () => {
+    const pnpmRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-pnpm-'));
+    fs.writeFileSync(path.join(pnpmRoot, 'pnpm-lock.yaml'), '\n');
+
+    const pnpm = runInstallAgentGates(pnpmRoot);
+    expect(pnpm.status).toBe(0);
+    const pnpmWorkflow = fs.readFileSync(
+      path.join(pnpmRoot, '.github/workflows/ark-check.yml'),
+      'utf8'
+    );
+    expect(pnpmWorkflow).toContain('cache: pnpm');
+    expect(pnpmWorkflow).toContain('corepack enable');
+    expect(pnpmWorkflow).toContain('pnpm install --frozen-lockfile');
+    expect(pnpmWorkflow).toContain('pnpm exec ark-check --root . --config ark.config.json --strict-config');
+    expect(pnpmWorkflow).not.toContain('npm ci');
+
+    const yarnRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-yarn-'));
+    fs.writeFileSync(path.join(yarnRoot, 'yarn.lock'), '\n');
+
+    const yarn = runInstallAgentGates(yarnRoot);
+    expect(yarn.status).toBe(0);
+    const yarnWorkflow = fs.readFileSync(
+      path.join(yarnRoot, '.github/workflows/ark-check.yml'),
+      'utf8'
+    );
+    expect(yarnWorkflow).toContain('cache: yarn');
+    expect(yarnWorkflow).toContain('corepack enable');
+    expect(yarnWorkflow).toContain('yarn install --frozen-lockfile');
+    expect(yarnWorkflow).toContain('yarn ark-check --root . --config ark.config.json --strict-config');
+    expect(yarnWorkflow).not.toContain('npm ci');
+  });
 });
 
 describe('ark init', () => {

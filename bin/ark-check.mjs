@@ -225,10 +225,29 @@ function writeTemplate(root, relativePath, content, force) {
   return { relativePath, status: fs.existsSync(fullPath) ? 'written' : 'written' };
 }
 
-function packageManagerCommand(root) {
-  if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) return 'pnpm exec';
-  if (fs.existsSync(path.join(root, 'yarn.lock'))) return 'yarn';
-  return 'npx';
+function packageManager(root) {
+  if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) {
+    return {
+      cache: 'pnpm',
+      setup: ['corepack enable'],
+      install: 'pnpm install --frozen-lockfile',
+      run: 'pnpm exec ark-check --root . --config ark.config.json --strict-config',
+    };
+  }
+  if (fs.existsSync(path.join(root, 'yarn.lock'))) {
+    return {
+      cache: 'yarn',
+      setup: ['corepack enable'],
+      install: 'yarn install --frozen-lockfile',
+      run: 'yarn ark-check --root . --config ark.config.json --strict-config',
+    };
+  }
+  return {
+    cache: 'npm',
+    setup: [],
+    install: fs.existsSync(path.join(root, 'package-lock.json')) ? 'npm ci' : 'npm install',
+    run: 'npx ark-check --root . --config ark.config.json --strict-config',
+  };
 }
 
 function agentInstructions() {
@@ -286,7 +305,7 @@ If Ark reports violations, fix the architecture instead of bypassing the gate.
 }
 
 function githubWorkflow(pm) {
-  const run = pm === 'npx' ? 'npx ark-check --root . --config ark.config.json --strict-config' : `${pm} ark-check --root . --config ark.config.json --strict-config`;
+  const setupSteps = pm.setup.map((command) => `      - run: ${command}`).join('\n');
   return `name: Ark architecture gate
 
 on:
@@ -302,9 +321,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
-      - run: npm ci
-      - run: ${run}
+          cache: ${pm.cache}
+${setupSteps ? `${setupSteps}\n` : ''}      - run: ${pm.install}
+      - run: ${pm.run}
 `;
 }
 
@@ -329,7 +348,7 @@ function claudeSettings() {
 
 function runInstallAgentGates(args) {
   const root = args.root;
-  const pm = packageManagerCommand(root);
+  const pm = packageManager(root);
   const templates = [
     ['AGENTS.md', agentInstructions()],
     ['.mcp.json', mcpJson()],

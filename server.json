@@ -1,7 +1,7 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.pedroknigge/ark",
-  "description": "Architecture write-gate for AI agents: validates generated code against your Hexagonal/DDD layer rules before it lands, and exposes the machine-readable architecture contract (ark://manifest).",
+  "description": "Architecture write-gate for AI agents: blocks code that violates your Hexagonal/DDD layer rules.",
   "repository": {
     "url": "https://github.com/pedroknigge/ark-runtime-kernel",
     "source": "github"

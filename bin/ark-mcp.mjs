@@ -305,9 +305,22 @@ async function main() {
   // Layers from the 11-layer profile that this project has NOT declared, with their
   // conventional directories: tells the agent where a new kind of code (a saga, a job,
   // a read model, ...) belongs BEFORE it improvises a location the gate can't govern.
+  // A default layer is dropped when the project already claims any of its intent
+  // prefixes under another name (e.g. a `core` layer owning `Domain.`) — suggesting
+  // DomainModel there would tell the agent to create a second layer for the same
+  // prefix, making longest-prefix resolution ambiguous.
   function suggestedLayers() {
-    const active = new Set(profile.layers.map((layer) => layer.name));
-    return DEFAULT_INTENT_PREFIXES.filter((entry) => !active.has(entry.layer)).map((entry) => ({
+    const activeNames = new Set(profile.layers.map((layer) => layer.name));
+    const claimedPrefixes = new Set(
+      profile.layers.flatMap((layer) =>
+        (layer.prefixes ?? []).map((p) => (p.endsWith('.') ? p : `${p}.`))
+      )
+    );
+    return DEFAULT_INTENT_PREFIXES.filter(
+      (entry) =>
+        !activeNames.has(entry.layer) &&
+        !entry.prefixes.some((p) => claimedPrefixes.has(p.endsWith('.') ? p : `${p}.`))
+    ).map((entry) => ({
       layer: entry.layer,
       intentPrefixes: entry.prefixes,
       conventionalDirectories: DEFAULT_LAYER_DIRECTORIES[entry.layer] ?? [],

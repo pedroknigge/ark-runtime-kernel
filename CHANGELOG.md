@@ -38,6 +38,17 @@ All notable changes to `ark-runtime-kernel` are documented here.
 
 - `--install-agent-gates` now reports failed template writes and exits non-zero
   instead of always claiming success.
+- `--tools` no longer swallows a following flag as a tool name (`--tools --force`),
+  and rejects empty or unknown tool names with exit 2 instead of silently ignoring them.
+- `suggestedLayers` skips default layers whose intent prefixes the project already
+  claims under another name (e.g. a `core` layer owning `Domain.`), so agents are never
+  told to create a second layer for an already-governed prefix.
+- Greenfield `--init` warns when existing source files live outside `src/` (and are
+  therefore not governed by the generated starter config) instead of staying silent.
+- The suggested `check:architecture` npm alias now uses `npx ark-check` (the previous
+  snippet only worked inside Ark's own repository).
+- `createElevenLayerArkConfig({ rootDir: '.' })` no longer emits broken `./`-prefixed
+  patterns that matched nothing.
 
 ## 1.2.0 — 2026-07-03
 

@@ -129,29 +129,58 @@ describe('ark-check --init', () => {
 
     const config = JSON.parse(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8'));
     expect(config.layers).toHaveLength(11);
+    // Anchored at src/ (the convention a fresh project scaffolds under) even though
+    // src/ doesn't exist yet.
+    expect(config.include).toEqual(['src']);
+    expect(config.layers[0].patterns[0]).toBe('src/domain/**');
     // Every layer is optional so the strict check passes before any directory exists.
     expect(config.layers.every((l: { optional: boolean }) => l.optional)).toBe(true);
     const result = runArkCheck(root, ['--strict-config']);
     expect(result.ok).toBe(true);
 
     // Files outside every conventional directory still surface the honest warning.
-    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'lib/util.ts'), 'export const a = 1;\n');
+    fs.mkdirSync(path.join(root, 'src/lib'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/lib/util.ts'), 'export const a = 1;\n');
     const withStray = runArkCheck(root, ['--strict-config']);
     expect(withStray.ok).toBe(false);
     expect(withStray.warnings.some((w) => w.ruleId === 'CONFIG_UNCLASSIFIED_FILES')).toBe(true);
 
     // Code inside a conventional directory is governed immediately: a domain file
     // referencing a persistence intent must fail the strict check.
-    fs.mkdirSync(path.join(root, 'domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
     fs.writeFileSync(
-      path.join(root, 'domain/order.ts'),
+      path.join(root, 'src/domain/order.ts'),
       "export const ref = 'Adapter.Persistence.Save';\n"
     );
-    fs.rmSync(path.join(root, 'lib'), { recursive: true });
+    fs.rmSync(path.join(root, 'src/lib'), { recursive: true });
     const governed = runArkCheck(root, ['--strict-config']);
     expect(governed.ok).toBe(false);
     expect(governed.violations.length).toBeGreaterThan(0);
+  });
+
+  it('warns when greenfield init leaves existing source files outside src/ ungoverned', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-init-outside-'));
+    fs.mkdirSync(path.join(root, 'lib'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'lib/util.ts'), 'export const a = 1;\n');
+
+    const init = runInit(root);
+    expect(init.status).toBe(0);
+    expect(init.stdout).toContain('NOT governed');
+    expect(init.stdout).toContain('lib/util.ts');
+  });
+
+  it('rejects --tools with a flag, an empty list, or unknown tool names', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-tools-bad-'));
+
+    // `--tools --force` must not eat --force as a tool name.
+    const flagEaten = runInstallAgentGates(root, ['--tools', '--force']);
+    expect(flagEaten.status).toBe(2);
+    expect(flagEaten.stderr).toContain('--tools expects');
+    expect(fs.existsSync(path.join(root, 'AGENTS.md'))).toBe(false);
+
+    const unknown = runInstallAgentGates(root, ['--tools', 'claud']);
+    expect(unknown.status).toBe(2);
+    expect(unknown.stderr).toContain('unknown: claud');
   });
 
   it('suggests the undetected 11-layer profile layers with their conventional directories', () => {

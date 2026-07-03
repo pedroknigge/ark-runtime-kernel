@@ -3,6 +3,7 @@ import { execSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { withDistLock } from '../helpers/distLock';
 
 const root = process.cwd();
 
@@ -38,7 +39,8 @@ describe('publish manifest', () => {
   });
 
   it('npm pack ships bin + dist with zero runtime deps', () => {
-    run(`npm pack --pack-destination ${tmp} --silent`);
+    // prepack rebuilds dist/, which races with the MCP suite's build — serialize.
+    withDistLock(() => run(`npm pack --pack-destination ${tmp} --silent`));
 
     const files = fs.readdirSync(tmp).filter((f) => f.endsWith('.tgz'));
     expect(files.length).toBe(1);

@@ -37,11 +37,18 @@ function parseArgs(argv) {
     else if (arg === '--init') args.init = true;
     else if (arg === '--install-agent-gates') args.installAgentGates = true;
     else if (arg === '--tools') {
-      const next = argv[++i];
-      args.tools = (next ?? '')
-        .split(',')
-        .map((tool) => tool.trim().toLowerCase())
-        .filter(Boolean);
+      // Consume the next arg only when it isn't another flag (same rule as --baseline),
+      // so `--tools --force` can't silently eat --force as a "tool name".
+      const next = argv[i + 1];
+      if (next !== undefined && !next.startsWith('-')) {
+        i += 1;
+        args.tools = next
+          .split(',')
+          .map((tool) => tool.trim().toLowerCase())
+          .filter(Boolean);
+      } else {
+        args.tools = []; // flag without a value — rejected in runInstallAgentGates
+      }
     }
     else if (arg === '--force') args.force = true;
     else if (arg === '--baseline' || arg === '--update-baseline') {
@@ -75,6 +82,10 @@ function usage() {
     '--init scans the project for the built-in layer directory conventions (src/domain,',
     'src/application, src/adapters/persistence, ...) and writes an ark.config.json covering',
     'only the layers that actually exist, with the default rules filtered to those layers.',
+    'Undetected profile layers are printed as suggestions with their conventional',
+    'directories. When nothing is detected, the full 11-layer starter profile is written',
+    'instead (all layers optional, anchored at src/), so the strict check passes today and',
+    'each layer starts being enforced as soon as its directory gains source files.',
     '',
     'Resolves relative, tsconfig path-alias, and package imports via the TypeScript',
     'module resolver, then checks each resolved cross-layer import against the rules.',
@@ -99,8 +110,8 @@ function usage() {
     '',
     '--install-agent-gates writes AGENTS.md, .mcp.json, and the CI workflow for every',
     'project, plus tool-specific templates. Pass --tools claude,cursor,codex to pick',
-    'which tool configs to write; otherwise they are auto-detected from .claude/ and',
-    '.cursor/ (all are written when nothing is detected).',
+    'which tool configs to write; otherwise they are auto-detected from .claude/, .cursor/,',
+    'and .codex/ (all are written when nothing is detected).',
     '',
     'Generate a starter 11-layer config:',
     '  ark-check --print-config eleven-layer > ark.config.json',
@@ -138,7 +149,9 @@ function missingGates(root) {
 }
 
 function checkArchitectureScriptSnippet() {
-  return '"check:architecture": "node bin/ark-check.mjs --root . --config ark.config.json --strict-config"';
+  // npx resolves the installed package binary; `node bin/ark-check.mjs` only works
+  // inside Ark's own repo.
+  return '"check:architecture": "npx ark-check --root . --config ark.config.json --strict-config"';
 }
 
 function readConfig(root, configPath) {
@@ -223,7 +236,12 @@ function runInit(args) {
 
   const { srcDir, config } = detectConfig(args.root);
   const greenfield = config.layers.length === 0;
-  const finalConfig = greenfield ? createElevenLayerConfig({ rootDir: srcDir }) : config;
+  // Greenfield: anchor the starter profile at src/ (the convention a fresh project will
+  // scaffold under) even when src/ doesn't exist yet — the layers are optional, so the
+  // check passes today and governance switches on the moment src/domain/ etc. appear.
+  const finalConfig = greenfield
+    ? createElevenLayerConfig({ rootDir: srcDir === '.' ? 'src' : srcDir })
+    : config;
 
   fs.writeFileSync(configPath, `${JSON.stringify(finalConfig, null, 2)}\n`);
 
@@ -235,6 +253,17 @@ function runInit(args) {
     console.log('and each layer starts being enforced as soon as its directory gains source files:');
     for (const layer of finalConfig.layers) {
       console.log(`  ${layer.name}: ${layer.patterns.join(', ')}`);
+    }
+    // The starter profile only governs src/. Existing source elsewhere would make the
+    // gate silently green, so surface it instead of pretending the project is covered.
+    const outside = walk(args.root)
+      .map((file) => normalize(path.relative(args.root, file)))
+      .filter((rel) => !rel.startsWith('src/') && !rel.split('/').some((s) => s.startsWith('.')));
+    if (outside.length > 0) {
+      console.log('');
+      console.log(`WARNING: ${outside.length} source file(s) live outside src/ and are NOT governed`);
+      console.log(`by this config (e.g. ${outside.slice(0, 3).join(', ')}).`);
+      console.log('Move them under src/, or edit the "include" and layer patterns to match your layout.');
     }
   } else {
     console.log('Detected layers:');
@@ -466,8 +495,21 @@ function resolveTools(args) {
   return detected;
 }
 
+const KNOWN_TOOLS = ['claude', 'cursor', 'codex'];
+
 function runInstallAgentGates(args) {
   const root = args.root;
+  if (args.tools) {
+    const unknown = args.tools.filter((tool) => !KNOWN_TOOLS.includes(tool));
+    if (args.tools.length === 0 || unknown.length > 0) {
+      console.error(
+        `--tools expects a comma-separated subset of: ${KNOWN_TOOLS.join(', ')}` +
+          (unknown.length > 0 ? ` (unknown: ${unknown.join(', ')})` : '')
+      );
+      process.exitCode = 2;
+      return;
+    }
+  }
   const pm = packageManager(root);
   const hasCheckScript = hasCheckArchitectureScript(root);
   const tools = resolveTools(args);

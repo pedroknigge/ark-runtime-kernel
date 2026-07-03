@@ -3,6 +3,7 @@ import { spawn, spawnSync, execSync, type ChildProcessWithoutNullStreams } from 
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { withDistLock } from '../../helpers/distLock';
 
 const root = process.cwd();
 let mcpRuntimeDir: string | undefined;
@@ -11,12 +12,16 @@ let mcpBin = path.join(root, 'bin', 'ark-mcp.mjs');
 function prepareMcpRuntime() {
   if (mcpRuntimeDir) return;
 
-  execSync('npm run build', { stdio: 'ignore' });
+  // Build AND copy under the lock so a concurrent `npm pack` prepack rebuild
+  // can't clobber dist/ mid-copy.
+  withDistLock(() => {
+    execSync('npm run build', { stdio: 'ignore' });
 
-  mcpRuntimeDir = fs.mkdtempSync(path.join(root, '.ark-mcp-runtime-'));
-  fs.cpSync(path.join(root, 'bin'), path.join(mcpRuntimeDir, 'bin'), { recursive: true });
-  fs.cpSync(path.join(root, 'dist'), path.join(mcpRuntimeDir, 'dist'), { recursive: true });
-  mcpBin = path.join(mcpRuntimeDir, 'bin', 'ark-mcp.mjs');
+    mcpRuntimeDir = fs.mkdtempSync(path.join(root, '.ark-mcp-runtime-'));
+    fs.cpSync(path.join(root, 'bin'), path.join(mcpRuntimeDir, 'bin'), { recursive: true });
+    fs.cpSync(path.join(root, 'dist'), path.join(mcpRuntimeDir, 'dist'), { recursive: true });
+  });
+  mcpBin = path.join(mcpRuntimeDir!, 'bin', 'ark-mcp.mjs');
 }
 
 afterAll(() => {
@@ -184,6 +189,10 @@ describe('ark-mcp server (write-path gate)', () => {
     // Undeclared default layers come back as placement suggestions for the agent.
     const suggested = contract.suggestedLayers.map((s: { layer: string }) => s.layer);
     expect(suggested).toContain('WorkflowSagaEngine');
+    // core/app already claim the Domain./Application. prefixes under their own names —
+    // suggesting DomainModel/ApplicationOrchestration would create ambiguous prefixes.
+    expect(suggested).not.toContain('DomainModel');
+    expect(suggested).not.toContain('ApplicationOrchestration');
     expect(
       contract.suggestedLayers.find((s: { layer: string }) => s.layer === 'WorkflowSagaEngine')
         .conventionalDirectories

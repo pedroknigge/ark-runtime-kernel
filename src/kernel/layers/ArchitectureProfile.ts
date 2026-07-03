@@ -171,13 +171,14 @@ export function createElevenLayerArkConfig(
 ): ArkCheckConfig {
   const rootDir = options.rootDir ?? 'src';
   const optional = options.optionalLayers ?? true;
+  const prefix = rootDir === '.' ? '' : `${rootDir}/`;
 
   return {
     include: options.include ?? [rootDir],
     layers: elevenLayerProfile.layers.map((layer) => ({
       name: layer.name,
       patterns: (defaultElevenLayerDirectories[layer.name] ?? [layer.name]).map(
-        (directory) => `${rootDir}/${directory}/**`
+        (directory) => `${prefix}${directory}/**`
       ),
       intentPrefixes: layer.prefixes,
       optional,

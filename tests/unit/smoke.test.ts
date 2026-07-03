@@ -7,10 +7,13 @@ describe('Ark bootstrap (smoke)', () => {
     expect(version).toBe('1.3.0');
   });
 
-  it('keeps package.json and server.json versions in sync with src/version', () => {
+  it('keeps package.json, package-lock.json, and server.json versions in sync with src/version', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    const lock = JSON.parse(readFileSync('package-lock.json', 'utf8'));
     const server = JSON.parse(readFileSync('server.json', 'utf8'));
     expect(pkg.version).toBe(version);
+    expect(lock.version).toBe(version);
+    expect(lock.packages[''].version).toBe(version);
     expect(server.version).toBe(version);
     for (const entry of server.packages) {
       expect(entry.version).toBe(version);

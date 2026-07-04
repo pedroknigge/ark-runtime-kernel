@@ -21,6 +21,11 @@
  * stdin, validates the file content a Write/Edit/MultiEdit is about to produce, and exits
  * 2 with the violations on stderr when the write must be blocked (0 otherwise). This is
  * the copy-paste integration for agent runtimes whose hooks run shell commands.
+ *
+ * --session-context runs one-shot and prints a compact contract summary (layers, rule
+ * count, forbidden globals, baseline state, check command) to stdout. Bind it to a
+ * SessionStart hook so the agent has the architecture in context from the first token,
+ * instead of learning it by rejection.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,10 +44,12 @@ function parseArgs(argv) {
     configExplicit: false,
     manifest: undefined,
     hook: false,
+    sessionContext: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--hook') args.hook = true;
+    else if (a === '--session-context') args.sessionContext = true;
     else if (a === '--root') args.root = path.resolve(argv[++i]);
     else if (a === '--config') {
       args.config = argv[++i];
@@ -182,12 +189,60 @@ function runHook(gate, config, args) {
   process.exitCode = 2;
 }
 
+/**
+ * One-shot SessionStart context: a compact summary of the contract on stdout so the
+ * agent starts the session already knowing the architecture. Advisory — never blocks
+ * and never exits non-zero for missing optional inputs (e.g. no baseline file).
+ */
+function printSessionContext(config, profile, forbiddenGlobals, args) {
+  const lines = ['Ark architecture contract governs this project (ark.config.json is authoritative).'];
+
+  const configLayers = Array.isArray(config.layers) ? config.layers : [];
+  if (configLayers.length > 0) {
+    lines.push('Layers:');
+    for (const layer of configLayers) {
+      const globals = forbiddenGlobals[layer.name];
+      const globalsNote = globals ? ` — forbidden globals: ${globals.join(', ')}` : '';
+      lines.push(`  - ${layer.name}: ${(layer.patterns ?? []).join(', ')}${globalsNote}`);
+    }
+  } else {
+    lines.push(
+      `Layers: none configured — the default 11-layer profile applies to intent references.`
+    );
+  }
+
+  const denied = (profile.rules ?? []).filter((rule) => !rule.allowed).length;
+  lines.push(
+    `Rules: ${denied} denied layer edge(s). Full contract: ark://manifest MCP resource.`
+  );
+
+  const baselinePath = path.join(args.root, '.ark-baseline.json');
+  const baseline = readJson(baselinePath);
+  if (Array.isArray(baseline?.violations)) {
+    lines.push(
+      `Baseline: ${baseline.violations.length} frozen violation(s) — only NEW violations fail; do not add to them.`
+    );
+  }
+
+  lines.push('After edits run: npx ark-check --root . --config ark.config.json --strict-config');
+  lines.push('If Ark reports violations, fix the architecture instead of weakening the gate.');
+  process.stdout.write(`${lines.join('\n')}\n`);
+}
+
 async function main() {
   const args = parseArgs(process.argv);
+  const configPath = resolveInRoot(args.root, args.config);
+
+  // SessionStart contract injection is only meaningful in Ark-governed projects. Bail
+  // out silently (before loading dist) when there is no config, so the hook is safe
+  // even if a user installs it in their GLOBAL settings instead of per-project.
+  if (args.sessionContext && !(configPath && fs.existsSync(configPath))) {
+    return;
+  }
+
   const ark = await loadArk();
   const ts = await loadOptionalTypeScript();
 
-  const configPath = resolveInRoot(args.root, args.config);
   const config =
     (configPath ? readJson(configPath, { required: args.configExplicit }) : undefined) ?? {
       include: ['src'],
@@ -274,6 +329,11 @@ async function main() {
 
   if (args.hook) {
     runHook(gate, config, args);
+    return;
+  }
+
+  if (args.sessionContext) {
+    printSessionContext(config, profile, forbiddenGlobals, args);
     return;
   }
 

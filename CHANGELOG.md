@@ -2,7 +2,18 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
-## Unreleased
+## 1.4.0 — 2026-07-03
+
+### Added — SessionStart contract injection (`ark-mcp --session-context`)
+
+- `ark-mcp --session-context` prints a compact contract summary — layers, forbidden
+  globals, denied-edge count, baseline state, and the check command — for a Claude Code
+  `SessionStart` hook, so the agent knows the architecture from the first token instead
+  of learning it by rejection. `--install-agent-gates` now includes the hook in the
+  generated `.claude/settings.json`.
+- Project-scoped by design and safe even in global settings: without an
+  `ark.config.json`, `--session-context` prints nothing and exits 0 (before loading
+  `dist/`), so non-Ark projects are untouched.
 
 ### Added — instruction-tier agent gates (Windsurf, Cline, Copilot, Kiro)
 

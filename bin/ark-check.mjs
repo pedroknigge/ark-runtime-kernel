@@ -489,6 +489,20 @@ ${setupSteps ? `${setupSteps}\n` : ''}      - run: ${pm.install}
 function claudeSettings() {
   return `${JSON.stringify({
     hooks: {
+      // Inject the contract at session start so the agent knows the architecture from
+      // the first token. Project-scoped by design; --session-context is also a silent
+      // no-op when no ark.config.json exists, so it can never leak into other projects.
+      SessionStart: [
+        {
+          hooks: [
+            {
+              type: 'command',
+              command:
+                'npx ark-mcp --session-context --root "$CLAUDE_PROJECT_DIR" --config ark.config.json',
+            },
+          ],
+        },
+      ],
       PreToolUse: [
         {
           matcher: 'Write|Edit|MultiEdit',

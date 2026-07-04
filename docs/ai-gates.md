@@ -68,6 +68,47 @@ Ark architecture gate blocked this write to src/domain/order.ts (layer: DomainMo
 Fix the violations and retry. The architecture contract is available as the ark://manifest MCP resource.
 ```
 
+## Claude Code — SessionStart context injection (know the rules before the first token)
+
+The write gate teaches by rejection; the SessionStart hook teaches up front.
+`ark-mcp --session-context` prints a compact contract summary — layers, forbidden
+globals, denied-edge count, baseline state, and the check command — which Claude Code
+injects into the agent's context at session start:
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx ark-mcp --session-context --root \"$CLAUDE_PROJECT_DIR\" --config ark.config.json"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+What the agent sees:
+
+```
+Ark architecture contract governs this project (ark.config.json is authoritative).
+Layers:
+  - DomainModel: src/domain/** — forbidden globals: fetch, process, Date.now, Math.random
+  - PersistenceAdapters: src/adapters/persistence/**
+Rules: 10 denied layer edge(s). Full contract: ark://manifest MCP resource.
+Baseline: 3 frozen violation(s) — only NEW violations fail; do not add to them.
+After edits run: npx ark-check --root . --config ark.config.json --strict-config
+```
+
+The hook belongs in the **project's** `.claude/settings.json` (that's what
+`--install-agent-gates` generates). It is also safe by construction if you prefer it in
+your global settings: without an `ark.config.json` in the project, `--session-context`
+prints nothing and exits 0, so non-Ark projects are untouched.
+
 ## Claude Code — MCP server (contract discovery + on-demand validation)
 
 The MCP server exposes two things agents can use proactively:

@@ -1061,3 +1061,45 @@ describe('ark-check forbiddenGlobals', () => {
     expect(runArkCheck(root, ['--baseline']).ok).toBe(true);
   });
 });
+
+describe('ark-check --install-agent-gates instruction-tier tools', () => {
+  const RULE_FILES: Record<string, string> = {
+    windsurf: '.windsurf/rules/ark.md',
+    cline: '.clinerules/ark.md',
+    copilot: '.github/copilot-instructions.md',
+    kiro: '.kiro/steering/ark.md',
+  };
+
+  it('writes the shared instruction rule for explicitly selected tools', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-gates-tier-'));
+    const result = runInstallAgentGates(root, ['--tools', 'windsurf,cline,copilot,kiro']);
+    expect(result.status).toBe(0);
+
+    const agents = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+    for (const file of Object.values(RULE_FILES)) {
+      const rule = fs.readFileSync(path.join(root, file), 'utf8');
+      // Same canonical contract: check command and manifest resource cannot drift.
+      expect(rule).toContain('npx ark-check --root . --config ark.config.json --strict-config');
+      expect(rule).toContain('ark://manifest');
+      expect(agents).toContain('ark://manifest');
+    }
+    // Full-gate tools were not selected.
+    expect(fs.existsSync(path.join(root, '.claude/settings.json'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.cursor/rules/ark.mdc'))).toBe(false);
+  });
+
+  it('auto-detects windsurf, cline, and kiro from their config directories', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-gates-tier-detect-'));
+    fs.mkdirSync(path.join(root, '.windsurf'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.clinerules'), { recursive: true });
+    fs.mkdirSync(path.join(root, '.kiro'), { recursive: true });
+
+    const result = runInstallAgentGates(root);
+    expect(result.status).toBe(0);
+    expect(fs.existsSync(path.join(root, RULE_FILES.windsurf))).toBe(true);
+    expect(fs.existsSync(path.join(root, RULE_FILES.cline))).toBe(true);
+    expect(fs.existsSync(path.join(root, RULE_FILES.kiro))).toBe(true);
+    // copilot has no directory signal and must stay explicit-only.
+    expect(fs.existsSync(path.join(root, RULE_FILES.copilot))).toBe(false);
+  });
+});

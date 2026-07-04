@@ -142,6 +142,28 @@ Same model as Cursor: MCP for discovery/validation, `ark-check` in CI as the har
 For Ark projects, register the MCP server as soon as the repo is adopted so the agent
 has the contract available from the first edit.
 
+## Instruction-tier agents: Windsurf, Cline, GitHub Copilot, Kiro, Gemini CLI
+
+Agents without MCP or hook support still follow the contract through an always-on
+project rule file. `ark-check --install-agent-gates` generates them (auto-detected
+from `.windsurf/`, `.clinerules/`, `.kiro/`; Copilot is explicit-only):
+
+```bash
+npx ark-check --install-agent-gates --tools windsurf,cline,copilot,kiro
+```
+
+| Tool | File written |
+|------|--------------|
+| Windsurf | `.windsurf/rules/ark.md` |
+| Cline | `.clinerules/ark.md` |
+| GitHub Copilot | `.github/copilot-instructions.md` |
+| Kiro | `.kiro/steering/ark.md` |
+| Gemini CLI | none needed — it reads the generated `AGENTS.md` |
+
+All of them derive from the same contract as `AGENTS.md` and the Cursor rule, so the
+steps cannot drift. These are advisory (the agent reads rules; nothing blocks the
+write) — keep `ark-check` in CI as the hard gate.
+
 ## Any other agent runtime with shell hooks
 
 If your runtime can run a shell command before file writes and pass the tool payload on stdin (Claude Code's PreToolUse contract), `ark-mcp --hook` works as-is. The contract:

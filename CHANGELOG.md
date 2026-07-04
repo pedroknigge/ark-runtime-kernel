@@ -4,6 +4,17 @@ All notable changes to `ark-runtime-kernel` are documented here.
 
 ## Unreleased
 
+### Added — instruction-tier agent gates (Windsurf, Cline, Copilot, Kiro)
+
+- `ark-check --install-agent-gates` now knows four more tools: `windsurf`
+  (`.windsurf/rules/ark.md`), `cline` (`.clinerules/ark.md`), `copilot`
+  (`.github/copilot-instructions.md`), and `kiro` (`.kiro/steering/ark.md`).
+  All derive from the same canonical agent contract as `AGENTS.md` and the
+  Cursor rule, so the steps cannot drift between hosts.
+- Windsurf, Cline, and Kiro are auto-detected from their config directories;
+  Copilot is explicit-only via `--tools` (`.github/` is too weak a signal).
+  Gemini CLI needs no template — it reads the generated `AGENTS.md`.
+
 ### Added — forbidden ambient globals per layer (`forbiddenGlobals`)
 
 - Layers in `ark.config.json` can declare `forbiddenGlobals` (e.g.

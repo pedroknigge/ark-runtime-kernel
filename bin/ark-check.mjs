@@ -112,9 +112,13 @@ function usage() {
     'with --strict-config to enforce gate presence and architecture in one run.',
     '',
     '--install-agent-gates writes AGENTS.md, .mcp.json, and the CI workflow for every',
-    'project, plus tool-specific templates. Pass --tools claude,cursor,codex to pick',
-    'which tool configs to write; otherwise they are auto-detected from .claude/, .cursor/,',
-    'and .codex/ (all are written when nothing is detected).',
+    'project, plus tool-specific templates. Known tools: claude, cursor, codex (full',
+    'MCP/hook gates) and windsurf, cline, copilot, kiro (instruction-tier rule files',
+    'derived from the same contract; Gemini CLI needs no template — it reads AGENTS.md).',
+    'Pass --tools to pick which tool configs to write; otherwise they are auto-detected',
+    'from their config directories (.claude/, .cursor/, .codex/, .windsurf/, .clinerules/,',
+    '.kiro/; copilot is explicit-only). claude+cursor+codex are written when nothing is',
+    'detected.',
     '',
     'Generate a starter 11-layer config:',
     '  ark-check --print-config eleven-layer > ark.config.json',
@@ -421,6 +425,25 @@ args = ["ark-mcp", "--root", ".", "--config", "ark.config.json"]
 `;
 }
 
+/**
+ * Compact always-on rule for instruction-tier hosts (Windsurf, Cline, GitHub Copilot,
+ * Kiro, ...): agents that read a project rule file but have no MCP tools or hooks.
+ * Derived from the same AGENT_CONTRACT as AGENTS.md and the Cursor rule so the steps
+ * can never drift; points at AGENTS.md for the full placement table.
+ */
+function instructionRule() {
+  const steps = AGENT_CONTRACT.steps.map((step, index) => `${index + 1}. ${step}`).join('\n');
+  return `# Ark architecture contract
+
+This project's architecture is governed by Ark (\`ark.config.json\` is authoritative).
+Before writing or editing TypeScript or JavaScript source files:
+
+${steps}
+
+See \`AGENTS.md\` for the full contract and the layer placement table.
+`;
+}
+
 function cursorRule() {
   return `---
 description: Ark architecture contract
@@ -490,10 +513,13 @@ function resolveTools(args) {
   const detected = new Set();
   if (fs.existsSync(path.join(root, '.claude'))) detected.add('claude');
   if (fs.existsSync(path.join(root, '.cursor'))) detected.add('cursor');
-  if (fs.existsSync(path.join(root, '.codex'))) {
-    detected.add('codex');
-  }
-  // No signal at all: fall back to writing every tool's templates so a fresh
+  if (fs.existsSync(path.join(root, '.codex'))) detected.add('codex');
+  if (fs.existsSync(path.join(root, '.windsurf'))) detected.add('windsurf');
+  if (fs.existsSync(path.join(root, '.clinerules'))) detected.add('cline');
+  if (fs.existsSync(path.join(root, '.kiro'))) detected.add('kiro');
+  // copilot has no reliable directory signal (.github exists in most repos),
+  // so it is explicit-only via --tools.
+  // No signal at all: fall back to writing the primary tools' templates so a fresh
   // project still gets a complete, reviewable starter set.
   if (detected.size === 0) {
     return new Set(['claude', 'cursor', 'codex']);
@@ -501,7 +527,7 @@ function resolveTools(args) {
   return detected;
 }
 
-const KNOWN_TOOLS = ['claude', 'cursor', 'codex'];
+const KNOWN_TOOLS = ['claude', 'cursor', 'codex', 'windsurf', 'cline', 'copilot', 'kiro'];
 
 function runInstallAgentGates(args) {
   const root = args.root;
@@ -534,6 +560,19 @@ function runInstallAgentGates(args) {
   }
   if (tools.has('codex')) {
     templates.push(['docs/ark-codex-config.toml', codexTomlSnippet()]);
+  }
+  // Instruction-tier hosts: one shared rule text, host-specific path.
+  if (tools.has('windsurf')) {
+    templates.push(['.windsurf/rules/ark.md', instructionRule()]);
+  }
+  if (tools.has('cline')) {
+    templates.push(['.clinerules/ark.md', instructionRule()]);
+  }
+  if (tools.has('copilot')) {
+    templates.push(['.github/copilot-instructions.md', instructionRule()]);
+  }
+  if (tools.has('kiro')) {
+    templates.push(['.kiro/steering/ark.md', instructionRule()]);
   }
 
   const results = templates.map(([relativePath, content]) =>

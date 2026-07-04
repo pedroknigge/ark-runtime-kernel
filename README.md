@@ -145,7 +145,9 @@ If you only need import-boundary linting in CI, [dependency-cruiser](https://git
 - **`validate_code` tool** — on-demand validation of a snippet, for runtimes without hooks.
 - **`ark://manifest` resource** — the architecture as JSON, so agents read the rules *before* generating code instead of learning by rejection.
 
-Copy-paste setups for **Claude Code, Cursor, and OpenAI Codex**: [docs/ai-gates.md](docs/ai-gates.md).
+Copy-paste setups for **Claude Code, Cursor, and OpenAI Codex**, plus instruction-tier
+rule files for **Windsurf, Cline, GitHub Copilot, and Kiro** (Gemini CLI reads the
+generated `AGENTS.md` directly): [docs/ai-gates.md](docs/ai-gates.md).
 
 ## `ark-check` — The CI Gate
 

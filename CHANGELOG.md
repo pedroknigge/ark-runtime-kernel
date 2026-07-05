@@ -2,6 +2,22 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.7.3 — 2026-07-05
+
+### Fixed — /ark-upgrade now checks the registry, and the package ships its CHANGELOG
+
+- The `/ark-upgrade` skill only read the version already in `node_modules`, so a
+  repo with a pinned lockfile reported "no update available" while a newer
+  version was published. It now checks `npm view ark-runtime-kernel version`,
+  updates the dependency (`npm install -D …@latest` or the project's package
+  manager) so the lockfile moves too, and still refreshes gates/skills when
+  already on the latest (a prior version may have shipped skills the repo never
+  installed).
+- `CHANGELOG.md` is now included in the published package (`files`). The
+  `/ark-upgrade` changelog-triage step referenced it, but it wasn't shipped, so
+  consumers had to `npm pack` and diff tarballs to see what changed. The skill
+  falls back to `npm view` / GitHub release notes if an older release is missing it.
+
 ## 1.7.2 — 2026-07-05
 
 ### Changed — blocked infra imports point at the exemption

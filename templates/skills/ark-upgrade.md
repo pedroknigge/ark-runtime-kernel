@@ -1,24 +1,33 @@
 ---
 name: ark-upgrade
-description: After updating the ark-runtime-kernel package, refresh gates and /ark-* skills for every detected agent CLI, surface relevant changelog entries, and re-verify the architecture check. Autonomous.
+description: Update ark-runtime-kernel to the latest published version (checks the registry, not just node_modules), then refresh gates and /ark-* skills for every detected agent CLI, surface relevant changelog entries, and re-verify the architecture check. Autonomous.
 ---
 
-# /ark-upgrade — Refresh Ark after a package update
+# /ark-upgrade — Update Ark and refresh its gates
 
-The `ark-runtime-kernel` dependency was (or should be) updated. Bring the
-repo's generated artifacts and gates in line with the installed version.
+Update the `ark-runtime-kernel` dependency to the latest published version and
+bring the repo's generated artifacts and gates in line with it. This skill
+checks the registry itself — don't assume the copy in `node_modules` is current.
 
 ## Steps
 
-1. **Version delta** — compare the installed version
-   (`node_modules/ark-runtime-kernel/package.json`) against the last one this
-   repo was generated for (git history of `AGENTS.md` / lockfile). If the user
-   asked you to update too, run the package manager's update command first.
-2. **Changelog triage** — read
-   `node_modules/ark-runtime-kernel/CHANGELOG.md` for the versions in between
-   and pick out only entries that affect THIS repo (new flags, changed
-   defaults, new gate templates, new skills). Summarize each in one sentence
-   with what, if anything, the repo must do about it.
+1. **Check the registry, then update.** Compare the installed version
+   (`node_modules/ark-runtime-kernel/package.json`) against the latest published:
+   `npm view ark-runtime-kernel version`. If a newer version exists, update it —
+   `npm install -D ark-runtime-kernel@latest` (or the project's package manager:
+   `pnpm add -D` / `yarn add -D`) — so the lockfile moves too; a pinned lockfile
+   is exactly why "just re-run install" often stays on the old version. If the
+   installed version already equals the latest, say so and still run steps 3-4
+   (a prior version may have shipped skills/gates this repo never installed).
+   Do NOT report "no update available" from the `node_modules` version alone —
+   that reads stale.
+2. **Changelog triage** — read `node_modules/ark-runtime-kernel/CHANGELOG.md`
+   (shipped in the package) for the versions between old and new, and pick out
+   only entries that affect THIS repo (new flags, changed defaults, new gate
+   templates, new skills). Summarize each in one sentence with what, if
+   anything, the repo must do about it. If the file is absent (older releases
+   didn't ship it), fall back to `npm view ark-runtime-kernel@<version> ...` or
+   the GitHub release notes — say which source you used.
 3. **Refresh templates** — run `npx ark-check --install-agent-gates`. Without
    `--force` it only writes missing files (new skills, new tool templates) and
    skips existing ones. For files it skipped that the changelog says CHANGED,
@@ -53,6 +62,7 @@ repo's generated artifacts and gates in line with the installed version.
 
 ## Verify and report
 
-End with a passing check. Report: old → new version, changelog entries that
-mattered here (plain language), files written/refreshed per tool, skipped
-customized files needing a manual look, and the final check status.
+End with a passing check. Report: latest published version, old → new version
+(or "already latest"), changelog entries that mattered here (plain language),
+files written/refreshed per tool, skipped customized files needing a manual
+look, and the final check status.

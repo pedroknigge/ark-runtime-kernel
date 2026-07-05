@@ -1,6 +1,6 @@
 ---
 name: ark-adopt
-description: Adopt Ark in an existing codebase without blocking the team — generate config, install gates for every agent CLI, freeze current violations in a baseline, and leave a ratchet plan. Autonomous.
+description: Onboard an existing codebase onto Ark — config, gates for every agent CLI, a baseline that freezes current violations, and a burn-down plan. Autonomous.
 ---
 
 # /ark-adopt — Bring Ark into an existing codebase

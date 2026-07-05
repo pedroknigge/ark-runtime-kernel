@@ -1,6 +1,6 @@
 ---
 name: ark-runtime
-description: Adopt the Ark runtime kernel where this app hand-rolls what it ships — event bus, outbox, audit trail, workflows/sagas, projections, policies, NestJS adapters. Finds the candidates, wires one, verifies.
+description: Replace hand-rolled infra with the Ark runtime kernel — event bus, outbox, audit, sagas, projections, policies, NestJS. Finds candidates, wires one, verifies.
 ---
 
 # /ark-runtime — Adopt the runtime kernel (opt-in features)

@@ -1,6 +1,6 @@
 ---
 name: ark-contract
-description: Safely evolve ark.config.json — add or adjust layers, rules, forbiddenGlobals, intent prefixes — validating with strict ark-check before and after. The one sanctioned way to change the architecture contract.
+description: Safely edit ark.config.json (layers, rules, forbiddenGlobals, intent prefixes), validated with strict ark-check. The one sanctioned way to change the architecture contract.
 ---
 
 # /ark-contract — Evolve the architecture contract safely

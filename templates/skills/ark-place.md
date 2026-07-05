@@ -1,6 +1,6 @@
 ---
 name: ark-place
-description: Decide where a new piece of code belongs in this project's Ark architecture — layer, directory, naming — and scaffold it there. Answers "where does X go?" from the contract, autonomously.
+description: "Where does new code go? Names the layer, directory, and naming for a new artifact from the contract, and scaffolds it there. Autonomous."
 ---
 
 # /ark-place — Where does this code go?

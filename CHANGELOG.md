@@ -2,6 +2,16 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.8.1 — 2026-07-05
+
+### Changed — tighter `/ark-*` skill descriptions
+
+- The eight skill descriptions were trimmed (~30 → ~20 words each), leading with the
+  skill's key concept. Skill descriptions load into an agent's context budget; on
+  hosts with many installed skills the longer descriptions could push some skills out
+  of the model-visible list. Behavior is unchanged — only the frontmatter descriptions.
+  Refresh installed copies with `npx ark-check --install-agent-gates --skills-only --force`.
+
 ## 1.8.0 — 2026-07-05
 
 ### Added — circular dependency detection

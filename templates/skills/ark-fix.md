@@ -1,6 +1,6 @@
 ---
 name: ark-fix
-description: Resolve Ark architecture violations at the root cause — fix the code (ports, adapters, moved files), never weaken the contract. Runs ark-check itself, fixes, verifies, reports.
+description: Resolve Ark architecture violations at the root cause — fix the code (ports, adapters, moves), never weaken the contract. Runs ark-check, fixes, verifies.
 ---
 
 # /ark-fix — Fix architecture violations properly

@@ -1,6 +1,6 @@
 ---
 name: ark-coverage
-description: Audit which Ark capabilities this project is NOT using, rank the gaps by value, and report the exact command or diff to close each one. Fully autonomous — reads the repo, decides, reports.
+description: Audit which Ark capabilities this project isn't using and report how to close each gap, ranked by value. Autonomous — reads the repo, decides, reports.
 ---
 
 # /ark-coverage — What Ark can do for you that you're not using

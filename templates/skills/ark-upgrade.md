@@ -1,6 +1,6 @@
 ---
 name: ark-upgrade
-description: Update ark-runtime-kernel to the latest published version (checks the registry, not just node_modules), then refresh gates and /ark-* skills for every detected agent CLI, surface relevant changelog entries, and re-verify the architecture check. Autonomous.
+description: Update ark-runtime-kernel to the latest published version, then refresh gates and /ark-* skills for every agent CLI and re-verify the architecture check. Autonomous.
 ---
 
 # /ark-upgrade — Update Ark and refresh its gates

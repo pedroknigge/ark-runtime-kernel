@@ -1,6 +1,6 @@
 ---
 name: ark-explain
-description: Explain this project's architecture in plain language — the layers, why each import rule exists, and what to do when the gate blocks you. For developers new to the codebase or to architecture governance.
+description: Explain this project's architecture in plain language — the layers, why each import rule exists, and what to do when the gate blocks you.
 ---
 
 # /ark-explain — Understand this project's architecture

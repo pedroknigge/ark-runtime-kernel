@@ -295,6 +295,19 @@ describe('ark-check --install-agent-gates', () => {
     expect(workflow).toContain('--strict-config --require-gates');
   });
 
+  it('keeps --baseline in the generated CI workflow when a baseline exists', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-baseline-'));
+    fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');
+    fs.writeFileSync(path.join(root, '.ark-baseline.json'), '{"version":1,"violations":[]}\n');
+
+    // Regenerating the workflow (e.g. via --force on upgrade) must not drop the
+    // ratchet a baselined project relies on.
+    const result = runInstallAgentGates(root, ['--force']);
+    expect(result.status).toBe(0);
+    const workflow = fs.readFileSync(path.join(root, '.github/workflows/ark-check.yml'), 'utf8');
+    expect(workflow).toContain('--strict-config --baseline .ark-baseline.json --require-gates');
+  });
+
   it('writes only base + selected tool templates with --tools', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-tools-'));
 
@@ -368,6 +381,24 @@ describe('ark-check --install-agent-gates', () => {
     const forced = runInstallAgentGates(root, ['--tools', 'claude', '--force']);
     expect(forced.status).toBe(0);
     expect(fs.readFileSync(target, 'utf8')).toContain('name: ark-coverage');
+  });
+
+  it('--skills-only refreshes just the skills, leaving gate files untouched', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-skills-only-'));
+    // A customized AGENTS.md and settings that a bare --force would clobber.
+    fs.writeFileSync(path.join(root, 'AGENTS.md'), 'my custom contract\n');
+    fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.claude/settings.json'), '{"custom":true}\n');
+
+    const result = runInstallAgentGates(root, ['--tools', 'claude', '--skills-only', '--force']);
+    expect(result.status).toBe(0);
+    // Skills written...
+    expect(fs.existsSync(path.join(root, '.claude/skills/ark-coverage/SKILL.md'))).toBe(true);
+    // ...but the customized gate files are left exactly as they were.
+    expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toBe('my custom contract\n');
+    expect(fs.readFileSync(path.join(root, '.claude/settings.json'), 'utf8')).toBe('{"custom":true}\n');
+    expect(fs.existsSync(path.join(root, '.github/workflows/ark-check.yml'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '.mcp.json'))).toBe(false);
   });
 
   it('writes no skill files for kiro (steering rule only)', () => {
@@ -551,7 +582,9 @@ describe('ark-check skill-gap advisory', () => {
     } catch (error) {
       output = (error as { stdout: string }).stdout;
     }
-    return JSON.parse(output) as { skillGaps?: Array<{ tool: string; missing: number }> };
+    return JSON.parse(output) as {
+      skillGaps?: Array<{ tool: string; missing: number; stale: number }>;
+    };
   }
 
   function seedProject(root: string) {
@@ -560,6 +593,14 @@ describe('ark-check skill-gap advisory', () => {
     fs.writeFileSync(
       path.join(root, 'ark.config.json'),
       JSON.stringify({ include: ['src'], layers: [{ name: 'DomainModel', patterns: ['src/domain/**'] }], rules: [] })
+    );
+  }
+
+  function installSkills(root: string) {
+    execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--install-agent-gates', '--root', root, '--tools', 'claude'],
+      { encoding: 'utf8', stdio: 'pipe' }
     );
   }
 
@@ -576,13 +617,47 @@ describe('ark-check skill-gap advisory', () => {
   it('stays silent once the skills are installed', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-skillgap-ok-'));
     seedProject(root);
-    execFileSync(
-      'node',
-      [path.resolve('bin/ark-check.mjs'), '--install-agent-gates', '--root', root, '--tools', 'claude'],
-      { encoding: 'utf8', stdio: 'pipe' }
-    );
+    installSkills(root);
     const result = runRaw(root);
     expect(result.skillGaps).toBeUndefined();
+  });
+
+  it('stamps installed skills with the package version', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-skill-stamp-'));
+    seedProject(root);
+    installSkills(root);
+    const version = JSON.parse(fs.readFileSync(path.resolve('package.json'), 'utf8')).version;
+    const skill = fs.readFileSync(path.join(root, '.claude/skills/ark-coverage/SKILL.md'), 'utf8');
+    expect(skill).toContain(`arkVersion: ${version}`);
+  });
+
+  it('flags installed skills left behind by an older Ark (stamp behind current)', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-skill-stale-'));
+    seedProject(root);
+    installSkills(root);
+    // Simulate a skill installed by an older Ark: rewrite its stamp to an old version.
+    const skillPath = path.join(root, '.claude/skills/ark-coverage/SKILL.md');
+    const downgraded = fs
+      .readFileSync(skillPath, 'utf8')
+      .replace(/^arkVersion:.*$/m, 'arkVersion: 1.0.0');
+    fs.writeFileSync(skillPath, downgraded);
+
+    const result = runRaw(root);
+    const claude = result.skillGaps?.find((g) => g.tool === 'claude');
+    expect(claude?.stale).toBeGreaterThanOrEqual(1);
+    expect(claude?.missing).toBe(0);
+  });
+
+  it('treats a skill with no version stamp as stale (pre-stamp install)', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-skill-unstamped-'));
+    seedProject(root);
+    installSkills(root);
+    const skillPath = path.join(root, '.claude/skills/ark-coverage/SKILL.md');
+    const unstamped = fs.readFileSync(skillPath, 'utf8').replace(/^arkVersion:.*\n/m, '');
+    fs.writeFileSync(skillPath, unstamped);
+
+    const result = runRaw(root);
+    expect(result.skillGaps?.find((g) => g.tool === 'claude')?.stale).toBeGreaterThanOrEqual(1);
   });
 
   it('does not nag a project that never adopted agent gates (no AGENTS.md)', () => {

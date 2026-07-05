@@ -30,13 +30,16 @@ checks the registry itself — don't assume the copy in `node_modules` is curren
    the GitHub release notes — say which source you used.
 3. **Refresh templates** — run `npx ark-check --install-agent-gates`. Without
    `--force` it only writes missing files (new skills, new tool templates) and
-   skips existing ones. For files it skipped that the changelog says CHANGED,
-   report the diff and let the user decide — do NOT rewrite them yourself.
-   Never regenerate `.claude/settings.json` (hooks/permissions),
-   `.github/workflows/ark-check.yml` (CI), or any host settings file without
-   explicit user approval: those define how the agent itself is gated, so
-   silently overwriting them removes the guard. Auto-rewriting is limited to
-   `--force`, which is the user's call.
+   skips existing ones. To pick up NEW versions of the `/ark-*` skills that a
+   package update shipped, run `npx ark-check --install-agent-gates --skills-only
+   --force`: `--skills-only` scopes the overwrite to the canonical skills and
+   leaves the gate files alone. Do NOT run a bare `--install-agent-gates --force`
+   to refresh skills — it also overwrites `AGENTS.md` (often customized with the
+   project's real layer table), `.claude/settings.json` (hooks/permissions), and
+   `.github/workflows/ark-check.yml` (CI) with the generic templates, silently
+   losing customizations. If the changelog says a GATE file changed, report the
+   diff and let the user decide; never rewrite settings/CI/AGENTS.md without
+   explicit approval.
    If Codex is among the tools and any `.codex/prompts/*.md` were added or
    changed, they only take effect once copied to `~/.codex/prompts` (Codex reads
    prompts from there, not the repo). Offer to copy them yourself —

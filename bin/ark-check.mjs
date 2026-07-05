@@ -30,6 +30,7 @@ function parseArgs(argv) {
     installAgentGates: false,
     tools: undefined,
     force: false,
+    skillsOnly: false,
     baseline: undefined,
     updateBaseline: false,
     noCache: false,
@@ -56,6 +57,7 @@ function parseArgs(argv) {
       }
     }
     else if (arg === '--force') args.force = true;
+    else if (arg === '--skills-only') args.skillsOnly = true;
     else if (arg === '--no-cache') args.noCache = true;
     else if (arg === '--baseline' || arg === '--update-baseline') {
       if (arg === '--update-baseline') args.updateBaseline = true;
@@ -77,7 +79,7 @@ function usage() {
   return [
     'Usage: ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict-config] [--require-gates] [--json] [--baseline [file]] [--no-cache]',
     '       ark-check --init [--force]',
-    '       ark-check --install-agent-gates [--tools claude,cursor,codex] [--force]',
+    '       ark-check --install-agent-gates [--tools claude,cursor,codex] [--skills-only] [--force]',
     '       ark-check --update-baseline [file]     freeze current violations (default .ark-baseline.json)',
     '       ark-check --print-config eleven-layer',
     '',
@@ -130,7 +132,9 @@ function usage() {
     '.codex/prompts/, .windsurf/workflows/, .clinerules/workflows/, .github/prompts/).',
     'Kiro has no command mechanism and receives only its steering rule. Existing',
     'files are never overwritten without --force, so re-running after an update',
-    'only adds what is missing.',
+    'only adds what is missing. --skills-only restricts the write to just the',
+    '/ark-* skills (safe to --force-refresh — it leaves a customized AGENTS.md,',
+    'settings, and CI workflow untouched).',
     'Pass --tools to pick which tool configs to write; otherwise they are auto-detected',
     'from their config directories (.claude/, .cursor/, .codex/, .windsurf/, .clinerules/,',
     '.kiro/; copilot is explicit-only). claude+cursor+codex are written when nothing is',
@@ -347,12 +351,19 @@ function writeTemplate(root, relativePath, content, force) {
 }
 
 function packageManager(root) {
+  // If the project already froze violations in a baseline, the generated CI must
+  // keep the ratchet — otherwise regenerating the workflow (especially with
+  // --force) silently drops --baseline and CI starts failing on frozen violations.
+  const baselineFlag = fs.existsSync(path.join(root, '.ark-baseline.json'))
+    ? ' --baseline .ark-baseline.json'
+    : '';
+  const checkArgs = `--root . --config ark.config.json --strict-config${baselineFlag} --require-gates`;
   if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) {
     return {
       cache: 'pnpm',
       setup: ['corepack enable'],
       install: 'pnpm install --frozen-lockfile',
-      run: 'pnpm exec ark-check --root . --config ark.config.json --strict-config --require-gates',
+      run: `pnpm exec ark-check ${checkArgs}`,
     };
   }
   if (fs.existsSync(path.join(root, 'yarn.lock'))) {
@@ -360,14 +371,14 @@ function packageManager(root) {
       cache: 'yarn',
       setup: ['corepack enable'],
       install: 'yarn install --frozen-lockfile',
-      run: 'yarn ark-check --root . --config ark.config.json --strict-config --require-gates',
+      run: `yarn ark-check ${checkArgs}`,
     };
   }
   return {
     cache: 'npm',
     setup: [],
     install: fs.existsSync(path.join(root, 'package-lock.json')) ? 'npm ci' : 'npm install',
-    run: 'npx ark-check --root . --config ark.config.json --strict-config --require-gates',
+    run: `npx ark-check ${checkArgs}`,
   };
 }
 
@@ -576,6 +587,68 @@ const SKILL_TOOL_TARGETS = {
   copilot: (name) => `.github/prompts/${name}.prompt.md`,
 };
 
+// The version of the ark-runtime-kernel package these bins ship with. Used to
+// stamp installed skills so a normal ark-check can tell "outdated skill from an
+// older Ark" apart from "user-customized skill" — the stamp moves with the
+// package, editing the body doesn't.
+function arkPackageVersion() {
+  try {
+    const pkg = readJson(
+      path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json')
+    );
+    return typeof pkg.version === 'string' ? pkg.version : null;
+  } catch {
+    return null;
+  }
+}
+
+// Insert `arkVersion: <v>` into a skill's YAML frontmatter (before its closing
+// `---`). No frontmatter → returned unchanged. Idempotent for a given version.
+function stampSkill(content, version) {
+  if (!version) return content;
+  const lines = content.split('\n');
+  if (lines[0] !== '---') return content;
+  const closeIdx = lines.indexOf('---', 1);
+  if (closeIdx === -1) return content;
+  const existing = lines.findIndex(
+    (line, i) => i > 0 && i < closeIdx && /^arkVersion:/.test(line)
+  );
+  if (existing !== -1) {
+    lines[existing] = `arkVersion: ${version}`;
+  } else {
+    lines.splice(closeIdx, 0, `arkVersion: ${version}`);
+  }
+  return lines.join('\n');
+}
+
+// Read the `arkVersion:` stamp from an installed skill file. Returns null when
+// the file is absent or has no stamp (installed by a pre-stamp Ark, or hand-authored).
+function installedSkillVersion(filePath) {
+  let content;
+  try {
+    content = fs.readFileSync(filePath, 'utf8');
+  } catch {
+    return null;
+  }
+  const match = content.match(/^arkVersion:\s*(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
+// Numeric-tuple compare of dotted versions; true when `a` is strictly older than
+// `b`. Non-numeric/absent segments compare as 0, so "1.7" < "1.7.5".
+function isVersionOlder(a, b) {
+  const parse = (v) => String(v).split('.').map((n) => Number.parseInt(n, 10) || 0);
+  const av = parse(a);
+  const bv = parse(b);
+  const len = Math.max(av.length, bv.length);
+  for (let i = 0; i < len; i += 1) {
+    const x = av[i] ?? 0;
+    const y = bv[i] ?? 0;
+    if (x !== y) return x < y;
+  }
+  return false;
+}
+
 function skillTemplates() {
   const dir = path.join(
     path.dirname(fileURLToPath(import.meta.url)),
@@ -639,14 +712,26 @@ function detectSkillGaps(root) {
   if (fs.statSync(path.join(root, '.clinerules'), { throwIfNoEntry: false })?.isDirectory()) {
     detected.push('cline');
   }
+  const version = arkPackageVersion();
   const gaps = [];
   for (const tool of detected) {
     const target = SKILL_TOOL_TARGETS[tool];
     if (!target) continue;
-    const missing = skillNames.filter(
-      (name) => !fs.existsSync(path.join(root, target(name)))
-    );
-    if (missing.length > 0) gaps.push({ tool, missing: missing.length });
+    let missing = 0;
+    let stale = 0;
+    for (const name of skillNames) {
+      const file = path.join(root, target(name));
+      if (!fs.existsSync(file)) {
+        missing += 1;
+      } else if (version) {
+        // An installed skill with no stamp predates stamping (older Ark), or one
+        // stamped behind the current version is left over from an older install.
+        // Either way the shipped skill has moved on — offer a --force refresh.
+        const installed = installedSkillVersion(file);
+        if (installed === null || isVersionOlder(installed, version)) stale += 1;
+      }
+    }
+    if (missing > 0 || stale > 0) gaps.push({ tool, missing, stale });
   }
   return gaps;
 }
@@ -667,37 +752,46 @@ function runInstallAgentGates(args) {
   const pm = packageManager(root);
   const hasCheckScript = hasCheckArchitectureScript(root);
   const tools = resolveTools(args);
-  const templates = [
+  const templates = [];
+  // --skills-only refreshes just the canonical /ark-* skills, which are safe to
+  // overwrite (they track the package). The gate/instruction files (AGENTS.md,
+  // settings.json, CI workflow, rules) are the ones users customize, so a plain
+  // `--force` clobbers them — this is the safe way to pick up new skill versions.
+  if (!args.skillsOnly) {
     // Base gates: tool-agnostic contract + CI backstop, always written.
-    ['AGENTS.md', agentInstructions()],
-    ['.mcp.json', mcpJson()],
-    ['.github/workflows/ark-check.yml', githubWorkflow(pm)],
-  ];
-  if (tools.has('cursor')) {
-    templates.push(['.cursor/mcp.json', mcpJson()]);
-    templates.push(['.cursor/rules/ark.mdc', cursorRule()]);
-  }
-  if (tools.has('claude')) {
-    templates.push(['.claude/settings.json', claudeSettings()]);
-  }
-  if (tools.has('codex')) {
-    templates.push(['docs/ark-codex-config.toml', codexTomlSnippet()]);
-  }
-  // Instruction-tier hosts: one shared rule text, host-specific path.
-  if (tools.has('windsurf')) {
-    templates.push(['.windsurf/rules/ark.md', instructionRule()]);
-  }
-  if (tools.has('cline')) {
-    templates.push(['.clinerules/ark.md', instructionRule()]);
-  }
-  if (tools.has('copilot')) {
-    templates.push(['.github/copilot-instructions.md', instructionRule()]);
-  }
-  if (tools.has('kiro')) {
-    templates.push(['.kiro/steering/ark.md', instructionRule()]);
+    templates.push(['AGENTS.md', agentInstructions()]);
+    templates.push(['.mcp.json', mcpJson()]);
+    templates.push(['.github/workflows/ark-check.yml', githubWorkflow(pm)]);
+    if (tools.has('cursor')) {
+      templates.push(['.cursor/mcp.json', mcpJson()]);
+      templates.push(['.cursor/rules/ark.mdc', cursorRule()]);
+    }
+    if (tools.has('claude')) {
+      templates.push(['.claude/settings.json', claudeSettings()]);
+    }
+    if (tools.has('codex')) {
+      templates.push(['docs/ark-codex-config.toml', codexTomlSnippet()]);
+    }
+    // Instruction-tier hosts: one shared rule text, host-specific path.
+    if (tools.has('windsurf')) {
+      templates.push(['.windsurf/rules/ark.md', instructionRule()]);
+    }
+    if (tools.has('cline')) {
+      templates.push(['.clinerules/ark.md', instructionRule()]);
+    }
+    if (tools.has('copilot')) {
+      templates.push(['.github/copilot-instructions.md', instructionRule()]);
+    }
+    if (tools.has('kiro')) {
+      templates.push(['.kiro/steering/ark.md', instructionRule()]);
+    }
   }
   // /ark-* skills for every detected tool that supports project-level commands.
-  const skills = skillTemplates();
+  // Stamp each with the shipping version so a later ark-check can flag skills
+  // left behind by an older Ark (see detectSkillGaps) without nagging about
+  // user edits to the body.
+  const version = arkPackageVersion();
+  const skills = skillTemplates().map(([name, content]) => [name, stampSkill(content, version)]);
   for (const tool of tools) {
     const target = SKILL_TOOL_TARGETS[tool];
     if (!target) continue;
@@ -1603,14 +1697,28 @@ async function main() {
     }
 
     if (skillGaps.length > 0) {
-      const total = skillGaps.reduce((sum, gap) => sum + gap.missing, 0);
+      const missingTotal = skillGaps.reduce((sum, gap) => sum + gap.missing, 0);
+      const staleTotal = skillGaps.reduce((sum, gap) => sum + gap.stale, 0);
       const tools = skillGaps.map((gap) => gap.tool).join(', ');
-      console.log(
-        color.dim(
-          `${total} /ark-* skill(s) not installed for ${tools} (this Ark version ships them). ` +
-            `Install: npx ark-check --install-agent-gates`
-        )
-      );
+      if (missingTotal > 0) {
+        console.log(
+          color.dim(
+            `${missingTotal} /ark-* skill(s) not installed for ${tools} (this Ark version ships them). ` +
+              `Install: npx ark-check --install-agent-gates`
+          )
+        );
+      }
+      if (staleTotal > 0) {
+        // Stale skills already exist, so refreshing needs --force. --skills-only
+        // scopes the overwrite to the canonical skills, leaving a customized
+        // AGENTS.md / settings / CI untouched (a bare --force would clobber them).
+        console.log(
+          color.dim(
+            `${staleTotal} /ark-* skill(s) outdated for ${tools} (this Ark ships newer versions). ` +
+              `Refresh: npx ark-check --install-agent-gates --skills-only --force`
+          )
+        );
+      }
     }
   }
 

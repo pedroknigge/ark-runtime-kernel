@@ -2,6 +2,43 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.7.5 — 2026-07-05
+
+### Added — outdated-skill detection (version-stamped skills)
+
+- `--install-agent-gates` now stamps each installed `/ark-*` skill with an
+  `arkVersion:` line in its frontmatter. A normal `ark-check` run then flags
+  skills left behind by an older Ark (stamp behind the current version, or no
+  stamp at all) and points at the refresh command below — distinct from the
+  "not installed" notice, which uses a plain install. The stamp moves with the
+  package, so editing a skill's body does not make it look outdated; only a
+  version gap does. `--json` `skillGaps` entries now carry `{ tool, missing, stale }`.
+- New `--skills-only` flag for `--install-agent-gates`: restricts the write to
+  just the canonical `/ark-*` skills, so `--install-agent-gates --skills-only
+  --force` refreshes skills to the current version WITHOUT overwriting a
+  customized `AGENTS.md`, `.claude/settings.json`, or CI workflow — which a bare
+  `--force` clobbers with the generic templates. The stale-skill notice and
+  `/ark-upgrade` now recommend this scoped command.
+
+### Changed — /ark-contract verifies a file move before recommending it
+
+- `/ark-contract` could suggest moving a file to a more fitting layer (e.g. an
+  HTTP client into an integration layer) without checking that the file's own
+  imports are legal there. If the file also imports a layer the target may not
+  (a client that reads a persistence-layer cache, `Integration → Persistence`
+  denied), the "clean config change" actually breaks the contract. The skill now
+  resolves the file's imports against the target layer's rules first and, when
+  they don't fit, reports it as a refactor (split the file), not a config edit.
+
+### Fixed — regenerating CI keeps `--baseline`
+
+- The generated GitHub workflow (and the `--require-gates` command it runs)
+  hard-coded `--strict-config --require-gates`. Re-running `--install-agent-gates
+  --force` on a project that had added `--baseline .ark-baseline.json` silently
+  dropped the flag, so CI would start failing on frozen violations instead of
+  ratcheting. The workflow now includes `--baseline .ark-baseline.json` whenever
+  the project has a baseline file, so regeneration preserves the ratchet.
+
 ## 1.7.4 — 2026-07-05
 
 ### Fixed — `include` accepts single files, not just directories

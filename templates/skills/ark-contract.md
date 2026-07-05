@@ -16,9 +16,10 @@ present the evolution options grounded in THIS contract: adopt a `suggestedLayer
 layer, tighten a permitted/implicit edge to denied, add `forbiddenGlobals` to a
 pure layer, or move a file between layers. While reading the config, surface any
 real classification inconsistency you notice (e.g. an HTTP-client file sitting in
-a non-integration layer via a fallback pattern) with a recommendation. Then ask
-which change to make. Reading the contract to produce that is real work, not a
-stalling question.
+a non-integration layer via a fallback pattern) — but before calling a move a
+"clean config change", check the file's actual imports against the target layer's
+rules (see step 2's move bullet). Then ask which change to make. Reading the
+contract to produce that is real work, not a stalling question.
 
 ## Steps
 
@@ -39,6 +40,15 @@ stalling question.
      baseline is a valid stopgap but requires explicit user approval first (it
      silences the new violations); never skip the guard because the code is
      dirty today.
+   - **Move a file to another layer**: only a config change if the file's
+     imports are ALREADY legal under the target layer's rules. Read the file's
+     imports, resolve each to its layer, and check the target may import that
+     layer. If the file mixes concerns the target can't reach (e.g. an HTTP
+     client that also reads a persistence-layer cache, where
+     `Integration → Persistence` is denied), moving it BREAKS the contract —
+     that's a refactor (split the file so the pure part moves), not a config
+     edit. Say so instead of recommending the move; don't discover it only after
+     editing the config.
 3. **Validate** — `npx ark-check --root . --config ark.config.json
    --strict-config` (strict makes config warnings fail; that's intended here).
 4. **Diff the impact** — compare violations before/after. New violations from a

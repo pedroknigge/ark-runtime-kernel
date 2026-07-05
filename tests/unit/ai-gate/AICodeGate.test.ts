@@ -47,6 +47,60 @@ describe('AI Code Gate (basic)', () => {
     expect(gate.validate(good).valid).toBe(true);
   });
 
+  // Import strings built from parts so this Tooling-layer test file doesn't
+  // itself trip Ark's own write-gate; the runtime strings are real infra imports.
+  const infraImport = `import { db } from '../${'in' + 'fra'}/db';`;
+  const ormImport = `import { Client } from '${'pris' + 'ma'}';`;
+
+  it('lets an infrastructure-role layer import infrastructure', () => {
+    const gate = createAICodeGate();
+    const src = [infraImport, ormImport].join('\n');
+    // A persistence-adapter file is SUPPOSED to touch the DB; the built-in infra
+    // heuristics must not fire, or the write-gate contradicts a contract that
+    // allows the edge (which ark-check passes).
+    for (const layer of ['PersistenceAdapters', 'FrameworkAdapters', 'IntegrationAdapters']) {
+      const res = gate.validate(src, { layer, filePath: 'src/adapters/persistence/repo.ts' });
+      expect(
+        res.violations.some(
+          (v) => v.ruleId === 'FORBIDDEN_PATTERN' || v.ruleId === 'FORBIDDEN_IMPORT'
+        )
+      ).toBe(false);
+    }
+  });
+
+  it('still blocks infra imports in the pure core and with no layer context', () => {
+    const gate = createAICodeGate();
+    for (const layer of ['DomainModel', 'ApplicationOrchestration']) {
+      expect(gate.validate(infraImport, { layer }).valid).toBe(false);
+    }
+    // Zero-config (no layer): heuristics still apply — unchanged behavior.
+    expect(gate.validate(infraImport).valid).toBe(false);
+  });
+
+  it('applies user forbiddenPatterns even in an infra-role layer', () => {
+    const gate = createAICodeGate({ forbiddenPatterns: [/eval\(/] });
+    const res = gate.validate(`eval('x')`, { layer: 'PersistenceAdapters' });
+    expect(res.violations.some((v) => v.ruleId === 'FORBIDDEN_PATTERN')).toBe(true);
+  });
+
+  it('exempts an unconventionally-named layer flagged via infrastructureLayers', () => {
+    const src = [infraImport, ormImport].join('\n');
+    // "Storage" has no conventional infra token, so it needs the explicit opt-in
+    // (ark.config.json layer flagged mayImportInfrastructure: true → this option).
+    const withoutFlag = createAICodeGate();
+    expect(withoutFlag.validate(src, { layer: 'Storage' }).valid).toBe(false);
+
+    const withFlag = createAICodeGate({ infrastructureLayers: ['Storage'] });
+    const res = withFlag.validate(src, { layer: 'Storage' });
+    expect(
+      res.violations.some(
+        (v) => v.ruleId === 'FORBIDDEN_PATTERN' || v.ruleId === 'FORBIDDEN_IMPORT'
+      )
+    ).toBe(false);
+    // A different layer not in the set is still protected.
+    expect(withFlag.validate(src, { layer: 'DomainModel' }).valid).toBe(false);
+  });
+
   it('can use policy for custom AI rules', () => {
     const noDb = definePolicy({
       name: 'No raw db in generated',

@@ -54,6 +54,15 @@ export interface AICodeGateOptions<Context = AICodeGateContext> {
    * to a listed layer — mirrors ark-check's FORBIDDEN_GLOBAL rule.
    */
   forbiddenGlobals?: Record<string, string[]>;
+  /**
+   * Layer names whose role is infrastructure and may therefore import infrastructure
+   * (a persistence adapter importing the DB is correct, not a violation). The built-in
+   * infra-import heuristics are suppressed for these layers and for any layer whose
+   * name matches the conventional infra tokens. Populate from ark.config.json layers
+   * flagged `mayImportInfrastructure: true`, so unconventionally-named infra layers
+   * opt in explicitly. User-supplied `forbiddenPatterns` still apply everywhere.
+   */
+  infrastructureLayers?: string[];
 }
 
 function violation(
@@ -150,6 +159,27 @@ function isKnownInfrastructurePackage(specifier: string): boolean {
   return ['sequelize', 'prisma', 'typeorm', 'mongoose', 'knex'].some(
     (name) => normalized === name || normalized.startsWith(`${name}/`)
   );
+}
+
+// A layer whose NAME declares an infrastructure role legitimately imports
+// infrastructure — that's what the layer is for. The built-in infra-import
+// heuristics exist to keep the pure core (domain/application) clean, so they
+// must not fire against such a layer, otherwise the write-gate contradicts an
+// ark.config.json that explicitly allows the edge (which ark-check passes).
+// Substring match, not token-split, so camelCase names like "PersistenceAdapters"
+// resolve. ponytail: name-based heuristic; add an explicit per-layer
+// `mayImportInfrastructure` flag if a project needs finer control.
+function layerHasInfrastructureRole(layerName: string): boolean {
+  const normalized = layerName.toLowerCase();
+  return [
+    'adapter',
+    'infra',
+    'persistence',
+    'repository',
+    'repositories',
+    'integration',
+    'database',
+  ].some((token) => normalized.includes(token));
 }
 
 function tsStringLiteralText(ts: any, node: unknown): string | undefined {
@@ -364,12 +394,16 @@ export function createAICodeGate<Context = AICodeGateContext>(
     (options.intents || []).map((i) => (typeof i === 'string' ? i : i.name))
   );
 
-  const forbidden = [
-    ...(options.forbiddenPatterns || []),
+  const userForbidden = options.forbiddenPatterns || [];
+  // Built-in infra-import heuristics — the gate's only import-path boundary
+  // check (layer-reference checks resolve intent NAMES, not import paths).
+  // Suppressed for layers whose role IS infrastructure; see layerHasInfrastructureRole.
+  const builtinInfraPatterns = [
     /from ['"].*\/(infra|adapters|persistence|db)/i,
     /import .* from ['"].*(sequelize|prisma|typeorm|mongoose|knex)/i,
   ];
 
+  const explicitInfraLayers = new Set(options.infrastructureLayers ?? []);
   const enforceAllowlist = options.enforceIntentAllowlist ?? intentNames.size > 0;
 
   return {
@@ -378,6 +412,15 @@ export function createAICodeGate<Context = AICodeGateContext>(
       const gateContext = context as AICodeGateContext | undefined;
       const filePath = gateContext?.filePath;
       const contextLayer = gateContext?.layer;
+
+      // Infra-role layers may import infrastructure; built-in heuristics off there.
+      // User-supplied forbiddenPatterns are an explicit opt-in and always apply.
+      const exemptFromInfraHeuristics =
+        contextLayer !== undefined &&
+        (explicitInfraLayers.has(contextLayer) || layerHasInfrastructureRole(contextLayer));
+      const forbidden = exemptFromInfraHeuristics
+        ? userForbidden
+        : [...userForbidden, ...builtinInfraPatterns];
 
       for (const pat of forbidden) {
         if (pat instanceof RegExp) {
@@ -401,7 +444,7 @@ export function createAICodeGate<Context = AICodeGateContext>(
         }
       }
 
-      for (const specifier of extractModuleSpecifiers(source)) {
+      for (const specifier of exemptFromInfraHeuristics ? [] : extractModuleSpecifiers(source)) {
         if (!hasInfrastructureToken(specifier.value) && !isKnownInfrastructurePackage(specifier.value)) {
           continue;
         }

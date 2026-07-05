@@ -2,6 +2,29 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.7.1 — 2026-07-05
+
+### Fixed — write-gate infra heuristics now respect the layer's role
+
+- The AI write-gate's built-in infrastructure-import heuristics
+  (`FORBIDDEN_PATTERN` / `FORBIDDEN_IMPORT` for `/infra`, `/adapters`,
+  `/persistence`, `/db`, and ORMs) fired on **every** file regardless of its
+  layer. A persistence- or adapter-layer file that legitimately imports the
+  database was blocked by the PreToolUse hook even though `ark-check` (CI)
+  passed it — the gate contradicted the project's own `ark.config.json`.
+- The heuristics are now suppressed for layers whose name declares an
+  infrastructure role (`adapter`, `infra`, `persistence`, `repository`,
+  `integration`, `database`), so those layers may import infrastructure as the
+  contract intends. The pure core (domain/application) and zero-config projects
+  (no layer context) are unchanged — infra imports there are still blocked.
+  User-supplied `forbiddenPatterns` are an explicit opt-in and always apply,
+  in every layer.
+- For an infrastructure layer with an unconventional name (`Storage`, `Gateway`,
+  …), flag it in `ark.config.json` with `"mayImportInfrastructure": true` and the
+  gate exempts it too. `createAICodeGate` gained an `infrastructureLayers` option
+  carrying these names. This makes the fix universal: any project, any layer
+  naming, without losing domain-purity protection.
+
 ## 1.7.0 — 2026-07-05
 
 ### Added — /ark-* agent skills, installed for every detected CLI

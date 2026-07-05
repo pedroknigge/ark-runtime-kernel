@@ -344,12 +344,21 @@ async function main() {
       ])
   );
 
+  // Layers explicitly flagged as infrastructure in ark.config.json may import
+  // infrastructure — the built-in infra-import heuristics skip them (in addition
+  // to layers whose name conventionally signals an infra role). Lets a project
+  // with an unconventionally-named infra layer opt in without renaming.
+  const infrastructureLayers = configLayers
+    .filter((layer) => layer.name && layer.mayImportInfrastructure === true)
+    .map((layer) => layer.name);
+
   const gate = ark.createAICodeGate({
     architectureProfile: profile,
     intents,
     enforceIntentAllowlist: intents.length > 0,
     typescript: ts,
     forbiddenGlobals,
+    infrastructureLayers,
   });
 
   if (args.hook) {

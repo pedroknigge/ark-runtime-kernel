@@ -279,6 +279,28 @@ positional, not scope-aware: mentions in types or import names are never flagged
 (a pure domain does no I/O and is deterministic); add `"console"` or any other global per
 project. Violations participate in the `--baseline` ratchet like every other rule.
 
+### Infrastructure layers: `mayImportInfrastructure`
+
+The write gate keeps a zero-config heuristic that blocks obvious infrastructure imports
+(`/infra`, `/adapters`, `/persistence`, `/db`, and ORMs like Prisma/TypeORM) so an agent
+can't quietly wire the database into your pure core. It skips this for layers whose name
+already signals an infra role (`PersistenceAdapters`, `FrameworkAdapters`, …) — those are
+*supposed* to touch infrastructure. If your infra layer has an unconventional name, opt it
+in so a persistence file isn't blocked for doing its job:
+
+```jsonc
+// ark.config.json
+{
+  "name": "Storage",
+  "patterns": ["src/storage/**"],
+  "mayImportInfrastructure": true
+}
+```
+
+The pure core (domain/application) stays protected; `forbiddenPatterns` you add yourself
+apply in every layer regardless. `ark-check` (CI) is unaffected — it already judges imports
+by your layer rules, not this heuristic.
+
 ### GitHub Action
 
 ```yaml

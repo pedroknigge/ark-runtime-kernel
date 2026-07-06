@@ -2,6 +2,53 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.11.0 — 2026-07-06
+
+Sharpens Ark from "enforce a clean architecture" to **helping a team organize a messy,
+pre-existing codebase — without presenting a false-green.** The tool now reports what it
+actually governs, separates real debt from false positives, and guides the cleanup in order.
+
+### Added
+
+- **Package-manager-aware commands.** Every command Ark emits — the AGENTS.md contract,
+  `.mcp.json`, the Claude/Codex hooks, the `check:architecture` script, the postinstall hints,
+  the "install TypeScript" hint — now follows the project's package manager
+  (`pnpm exec` / `yarn` / `npx`), not just the CI workflow. A pnpm/yarn repo is never handed
+  an `npx` instruction.
+- **Honest coverage + layer proposals.** `ark-check --coverage` leads with `Governed: N%`,
+  warns loudly when Ark governs a minority of the tree, and proposes a canonical layer for
+  each ungoverned directory (harvested from the 11-layer profile and the named presets;
+  unrecognized directories are flagged, never guessed). `--init` prints the same proposals.
+  New additive `governed` and `suggestions` fields in `--coverage --json`.
+- **Violation diagnosis.** `ark-check` groups violations by layer edge and target subtree,
+  ranked (the burn-down order), with a concentration verdict. New additive `summary` field in
+  the check `--json`.
+- **Type-only vs value violations.** Each `LAYER_IMPORT_VIOLATION` is tagged `typeOnly`
+  (via the TypeScript AST); the summary splits `valueCount` (real runtime coupling) from
+  `typeOnlyCount` (type placement), so a burn-down attacks real coupling first.
+- **`/ark-*` skills reoriented to organize** around the "protect the border around a
+  framework, not its internals" principle: the facade split (surface/internals + re-export
+  barrel) in `/ark-contract`, the type-only inversion pattern in `/ark-fix`, and honest
+  coverage in `/ark-coverage` and `/ark-explain`.
+
+### Changed
+
+- **`--update-baseline` refuses a lopsided freeze.** When a single edge dominates the
+  violations (a likely contract bug, not debt), the freeze is refused with a diagnosis and a
+  pointer to the fix, unless `--force` is passed — so adoption can't bury a wrong contract as
+  frozen "debt".
+- **Overlapping layer globs resolve by most-specific pattern**, not declaration order, so a
+  facade split (`kernel/app/**` as a public surface over a `kernel/**` catch-all) resolves
+  correctly regardless of layer order. A new `CONFIG_AMBIGUOUS_LAYERS` warning flags genuine
+  equal-specificity overlaps.
+
+### Fixed
+
+- **Scan cache invalidates when the cached shape changes** (schema tag v1 → v2). A warm cache
+  written by an older Ark was reused by the new binary, so `typeOnly` reported false for every
+  violation after an upgrade until files changed; the cache now invalidates exactly once on
+  upgrade and re-populates.
+
 ## 1.10.1 — 2026-07-06
 
 ### Fixed — Codex MCP wiring

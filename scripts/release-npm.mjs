@@ -2,7 +2,8 @@
 /**
  * scripts/release-npm.mjs
  *
- * One-command npm release: verify (typecheck + tests + architecture gate) → publish.
+ * One-command npm release: verify (typecheck + tests + security audit +
+ * architecture gate) → publish.
  * `prepack` runs the build, so `npm publish` always ships a fresh dist.
  *
  * Prerequisites: npm login (whoami is checked first).
@@ -49,6 +50,7 @@ try {
 
 run('npm run typecheck');
 run('npx vitest run');
+run('npm run security:audit');
 run('npm run check:architecture');
 
 run(dry ? 'npm publish --dry-run' : 'npm publish');

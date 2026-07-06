@@ -2,6 +2,29 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.9.1 — 2026-07-06
+
+### Fixed — custom CI workflows count as installed gates
+
+- `ark-check --require-gates` no longer requires the generated workflow filename
+  `.github/workflows/ark-check.yml`. It now accepts any GitHub Actions workflow that
+  runs `ark-check` or the `check:architecture` npm script, so projects can keep their
+  existing `ci.yml` while still enforcing gate presence.
+
+### Added — security policy and runtime audit gate
+
+- Added `SECURITY.md` with private vulnerability reporting guidance and release
+  verification notes.
+- Added `npm run security:audit`, currently scoped to the published/runtime surface via
+  `npm audit --omit=dev --audit-level=high`, and wired it into CI.
+
+### Changed — public roadmap and npm package contents
+
+- Reworked `ROADMAP.md` into a public `Now / Next / Later` roadmap focused on Ark as an
+  AI architecture gate for TypeScript.
+- Narrowed the npm `files` list for docs so internal planning notes cannot be packed
+  accidentally, while explicitly including `SECURITY.md`.
+
 ## 1.9.0 — 2026-07-05
 
 ### Added — read-side MCP tools for AI agents

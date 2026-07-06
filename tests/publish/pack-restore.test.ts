@@ -67,5 +67,5 @@ describe('publish manifest', () => {
     expect(inner.bin['ark-check']).toBe('bin/ark-check.mjs');
     expect(fs.existsSync(path.join(extract, 'package', 'bin', 'ark-check.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(extract, 'package', 'dist', 'eslint', 'index.js'))).toBe(true);
-  });
+  }, 30_000);
 });

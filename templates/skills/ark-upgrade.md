@@ -47,6 +47,14 @@ checks the registry itself — don't assume the copy in `node_modules` is curren
    (AGENTS.md, CI, settings). This writes to the user's home dir — say so. (A normal
    `ark-check` now flags stale Codex-home skills when copies exist, so you don't have
    to remember.)
+   **Migrate stale command runners.** The package-manager-aware command templates
+   (`pnpm exec` / `yarn` / `npx`) only apply to NEWLY written files, so a repo that adopted
+   Ark before they shipped keeps a stale `npx` in its EXISTING gate files
+   (`.claude/settings.json` hooks, `.mcp.json`, `AGENTS.md`, the `check:architecture` script).
+   In a pnpm/yarn repo that means the write gate runs on a command the repo forbids. Run
+   `ark-check --install-agent-gates --migrate-commands`: it rewrites ONLY the command runner
+   in those files, preserving every customization (no `--force` clobber). A normal `ark-check`
+   also flags this when it detects the mismatch.
 4. **Re-verify** — `ark-check --root . --config ark.config.json
    --strict-config` (with `--baseline .ark-baseline.json` if present). A new
    version may detect violations the old one missed: if new violations appear,

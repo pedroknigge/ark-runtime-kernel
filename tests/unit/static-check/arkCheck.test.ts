@@ -377,6 +377,63 @@ describe('ark-check --install-agent-gates', () => {
     expect(output).not.toContain('npx ');
   });
 
+  it('migrates a stale command runner in existing gate files without clobbering them', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-migrate-'));
+    fs.writeFileSync(path.join(root, 'pnpm-lock.yaml'), '\n');
+    fs.mkdirSync(path.join(root, '.claude'), { recursive: true });
+    // Pre-1.11 gate files carrying the stale `npx` runner + a customization to preserve.
+    fs.writeFileSync(
+      path.join(root, '.claude/settings.json'),
+      JSON.stringify(
+        {
+          hooks: {
+            PreToolUse: [
+              {
+                matcher: 'Write',
+                hooks: [
+                  {
+                    type: 'command',
+                    command: 'npx ark-mcp --hook --root "$CLAUDE_PROJECT_DIR" --config ark.config.json',
+                  },
+                ],
+              },
+            ],
+          },
+          _custom: 'keep me',
+        },
+        null,
+        2
+      )
+    );
+    fs.writeFileSync(
+      path.join(root, '.mcp.json'),
+      JSON.stringify(
+        { mcpServers: { ark: { type: 'stdio', command: 'npx', args: ['ark-mcp', '--root', '.', '--config', 'ark.config.json'] } } },
+        null,
+        2
+      )
+    );
+    fs.writeFileSync(
+      path.join(root, 'AGENTS.md'),
+      'After edits, run `npx ark-check --root . --config ark.config.json --strict-config`.\n'
+    );
+
+    const res = runInstallAgentGates(root, ['--migrate-commands']);
+    expect(res.status).toBe(0);
+
+    const settings = fs.readFileSync(path.join(root, '.claude/settings.json'), 'utf8');
+    expect(settings).toContain('pnpm exec ark-mcp --hook');
+    expect(settings).not.toContain('npx ark-mcp');
+    expect(JSON.parse(settings)._custom).toBe('keep me'); // customization preserved
+
+    const mcp = JSON.parse(fs.readFileSync(path.join(root, '.mcp.json'), 'utf8'));
+    expect(mcp.mcpServers.ark.command).toBe('pnpm');
+    expect(mcp.mcpServers.ark.args.slice(0, 2)).toEqual(['exec', 'ark-mcp']);
+
+    expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).toContain('pnpm exec ark-check');
+    expect(fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8')).not.toContain('npx ark-check');
+  });
+
   it('includes --require-gates in the generated CI workflow command', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-require-'));
     fs.writeFileSync(path.join(root, 'package-lock.json'), '{}\n');

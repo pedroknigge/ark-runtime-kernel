@@ -41,6 +41,7 @@ function parseArgs(argv) {
     updateBaseline: false,
     noCache: false,
     coverage: false,
+    migrateCommands: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -68,6 +69,7 @@ function parseArgs(argv) {
     else if (arg === '--skills-only') args.skillsOnly = true;
     else if (arg === '--coverage') args.coverage = true;
     else if (arg === '--codex-home') args.codexHome = true;
+    else if (arg === '--migrate-commands') args.migrateCommands = true;
     else if (arg === '--no-cache') args.noCache = true;
     else if (arg === '--report') {
       const next = argv[i + 1];
@@ -1352,8 +1354,111 @@ function detectSkillGaps(root) {
   return gaps;
 }
 
+// Files carrying an emitted Ark command whose runner (npx / pnpm exec / yarn) should match
+// the project's package manager. .mcp.json / .cursor/mcp.json hold it structurally
+// (command/args); the rest hold it as text ("npx ark-check …", incl. .claude/settings.json
+// hook strings and the package.json check:architecture script).
+const COMMAND_GATE_TEXT_FILES = [
+  '.claude/settings.json', 'AGENTS.md', '.cursor/rules/ark.mdc', '.windsurf/rules/ark.md',
+  '.clinerules/ark.md', '.github/copilot-instructions.md', '.kiro/steering/ark.md',
+  '.roo/rules/ark.md', '.continue/rules/ark.md', 'GEMINI.md', 'package.json',
+];
+const COMMAND_GATE_JSON_FILES = ['.mcp.json', '.cursor/mcp.json'];
+// The runner token immediately before an ark command in a text command string.
+const RUNNER_BEFORE_ARK = /\b(?:npx|pnpm exec|yarn)(?= (?:ark-check|ark-mcp|ark)\b)/g;
+
+// Gate files whose Ark command runner doesn't match this project's package manager — the
+// advisory (and --migrate-commands) target. Returns [] for npm/unknown projects (npx is right)
+// so the check is silent unless there's a real mismatch.
+function staleRunnerGateFiles(root) {
+  const want = execRunner(root);
+  if (want === 'npx') return [];
+  const stale = [];
+  for (const rel of COMMAND_GATE_TEXT_FILES) {
+    let text;
+    try {
+      text = fs.readFileSync(path.join(root, rel), 'utf8');
+    } catch {
+      continue;
+    }
+    RUNNER_BEFORE_ARK.lastIndex = 0;
+    let match;
+    while ((match = RUNNER_BEFORE_ARK.exec(text))) {
+      if (match[0] !== want) {
+        stale.push(rel);
+        break;
+      }
+    }
+  }
+  for (const rel of COMMAND_GATE_JSON_FILES) {
+    let json;
+    try {
+      json = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
+    } catch {
+      continue;
+    }
+    const ark = json?.mcpServers?.ark;
+    if (ark && ark.command && ark.command !== want.split(' ')[0]) stale.push(rel);
+  }
+  return stale;
+}
+
+// --migrate-commands: rewrite ONLY the Ark command runner in existing gate files to the
+// project's package manager (no --force clobber). Closes the upgrade gap where a repo that
+// adopted before the package-manager-aware templates keeps a stale `npx`.
+function runMigrateCommands(root) {
+  const runner = execRunner(root);
+  const changed = [];
+  for (const rel of COMMAND_GATE_TEXT_FILES) {
+    const full = path.join(root, rel);
+    let text;
+    try {
+      text = fs.readFileSync(full, 'utf8');
+    } catch {
+      continue;
+    }
+    const next = text.replace(RUNNER_BEFORE_ARK, runner);
+    if (next !== text) {
+      fs.writeFileSync(full, next);
+      changed.push(rel);
+    }
+  }
+  for (const rel of COMMAND_GATE_JSON_FILES) {
+    const full = path.join(root, rel);
+    let json;
+    try {
+      json = JSON.parse(fs.readFileSync(full, 'utf8'));
+    } catch {
+      continue;
+    }
+    const ark = json?.mcpServers?.ark;
+    if (!ark) continue;
+    const binArgs = Array.isArray(ark.args)
+      ? ark.args.filter((entry) => entry !== 'exec' && entry !== 'ark-mcp')
+      : ['--root', '.', '--config', 'ark.config.json'];
+    const parts = execCommandParts(root, 'ark-mcp', binArgs);
+    if (ark.command !== parts.command || JSON.stringify(ark.args) !== JSON.stringify(parts.args)) {
+      json.mcpServers.ark = { ...ark, ...parts };
+      fs.writeFileSync(full, `${JSON.stringify(json, null, 2)}\n`);
+      changed.push(rel);
+    }
+  }
+  const pm = runner === 'pnpm exec' ? 'pnpm' : runner;
+  console.log(`Migrated the Ark command runner to "${pm}" in existing gate files.`);
+  if (changed.length === 0) {
+    console.log('  Nothing to change — all Ark commands already use the right runner.');
+  } else {
+    for (const rel of changed) console.log(`  updated ${rel}`);
+    console.log('  (only the command runner changed; customized content is untouched.)');
+  }
+}
+
 function runInstallAgentGates(args) {
   const root = args.root;
+  if (args.migrateCommands) {
+    runMigrateCommands(root);
+    return;
+  }
   if (args.tools) {
     const unknown = args.tools.filter((tool) => !KNOWN_TOOLS.includes(tool));
     if (args.tools.length === 0 || unknown.length > 0) {
@@ -3163,6 +3268,16 @@ async function main() {
           )
         );
       }
+    }
+
+    const staleRunners = staleRunnerGateFiles(root);
+    if (staleRunners.length > 0) {
+      console.log(
+        color.dim(
+          `Ark commands in ${staleRunners.join(', ')} use a runner that doesn't match this repo's ` +
+            `package manager. Fix (no clobber): ${arkCommand(root, 'ark-check', '--install-agent-gates --migrate-commands')}`
+        )
+      );
     }
 
     if (codexHomeGap) {

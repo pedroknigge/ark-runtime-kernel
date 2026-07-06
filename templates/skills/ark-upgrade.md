@@ -21,6 +21,13 @@ checks the registry itself — don't assume the copy in `node_modules` is curren
    (a prior version may have shipped skills/gates this repo never installed).
    Do NOT report "no update available" from the `node_modules` version alone —
    that reads stale.
+   **pnpm cooling-off:** if the repo enforces a pnpm `minimumReleaseAge` and the new
+   version was published inside that window (common for a freshly-cut release), a plain
+   `pnpm add` in loose mode can leave a lockfile that `pnpm install --frozen-lockfile` (what
+   CI runs) then REJECTS. Do it cleanly: add the exact `<pkg>@<version>` to
+   `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` FIRST, bump the dependency spec, then
+   run a plain `pnpm install`, and verify with `pnpm install --frozen-lockfile` before moving
+   on. Only exclude a first-party package you trust.
 2. **Changelog triage** — read `node_modules/ark-runtime-kernel/CHANGELOG.md`
    (shipped in the package) for the versions between old and new, and pick out
    only entries that affect THIS repo (new flags, changed defaults, new gate

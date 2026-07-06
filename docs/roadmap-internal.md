@@ -191,6 +191,16 @@ work below. Full detail in agent memory (`ark-project-state`).
   not ARK: the consumer hit its own pnpm `minimumReleaseAge` cooling-off on the same-day publish
   (the agent bypassed via `node …/bin/ark-check.mjs`).
 
+- **Round 9 (`/ark-upgrade` 1.11.0→1.12.0 on amarilla).** Validation of 1.12.0 in the wild:
+  write-gate parity is backward-compatible (strict check passes clean, 334 suppressed, no new
+  violations); `--migrate-commands` left every gate file on `pnpm exec` with customizations
+  intact (idempotent — already migrated in round-8 validation). The only friction was NOT
+  Ark: the consumer's pnpm `minimumReleaseAge` cooling-off rejected the same-day publish, and
+  a loose-mode `pnpm add` left a lockfile that `--frozen-lockfile` (CI) failed; fix is to add
+  the version to `minimumReleaseAgeExclude` before installing (now documented in `/ark-upgrade`).
+  **Process note:** publishing several versions the same day repeatedly trips consumers'
+  cooling-off — once the feedback-driven iteration settles, batch more per release to reduce it.
+
 ## Notes
 
 - All feedback repos run `1.10.x`. To measure the pending improvements, ship or pack-test.

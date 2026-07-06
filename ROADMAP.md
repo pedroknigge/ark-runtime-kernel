@@ -54,34 +54,37 @@ Four principles drive this:
 - **Skills reoriented to organize.** `/ark-adopt`, `/ark-coverage`, `/ark-fix`,
   `/ark-contract`, and `/ark-explain` teach the border principle, the facade split, and
   the type-only fix pattern, and consume the new diagnosis output.
+- **The write gate honors the contract over its infra heuristic.** A resolvable cross-layer
+  import is judged by the config's layer rules — like `ark-check` — so both gates agree on a
+  governed edge, and `mayImportInfrastructure` is no longer needed for declared data layers.
+- **`--install-agent-gates --migrate-commands`.** Rewrites only the command runner in existing
+  gate files to match the package manager, preserving customizations — for repos that adopted
+  before the emitted commands became package-manager-aware.
+- **`ark-check --doctor`.** One consolidated health view — coverage, violations, gates, skills,
+  baseline, command runners — each with its fix, plus a ranked "Top actions" list.
+- **Brownfield burn-down playbook** ([docs/brownfield-adoption.md](docs/brownfield-adoption.md))
+  plus an `/ark-fix` fix class for relocating raw infrastructure access (SQL/DB in a route)
+  verbatim into a repository/adapter.
 
 ## Now
 
-- **Write-gate ↔ CI contract parity.** The AI write gate can block an import the CI gate
-  allows, because the runtime architecture profile drops the config's file globs and
-  falls back to an infrastructure path-heuristic that ignores the explicit layer rules.
-  Make the two gates agree so `ark.config.json` is authoritative on both.
-- **Config doctor.** One command that explains governed files, unclassified files, empty
-  layers, weak rule coverage, installed gates, installed skills, and baseline health —
-  folding the new coverage/diagnosis output into a single view.
 - **Trust hardening**: npm provenance, signed release tags, `SECURITY.md`, CI security
   scanning, clearer release verification.
 - **Public demos**: agent self-correction, brownfield baseline adoption, and `ark_place`
   guided feature generation.
+- **ESLint parity**: keep the editor plugin aligned with `ark-check` so violations surface as
+  you type, with CI as the authoritative gate.
 
 ## Next
 
-- **Fix-class hinting.** Beyond value-vs-type-only, distinguish cheap mechanical fixes
-  (type moves, file relocations) from "big rocks" — real refactors such as migrating raw
-  SQL in routes to repositories, which change behavior and need verification against real
-  data, not just a type check.
+- **Fix-class hinting.** Beyond value-vs-type-only, flag "big rock" data-layer migrations
+  (raw SQL → repositories, verified against real data) vs cheap mechanical fixes in the
+  burn-down.
 - **Comparative evals**: agent-generated changes with and without Ark on a governed repo,
   tracking violations and time-to-fix.
-- **Example gallery**: clonable examples for NestJS, monorepos, Next.js/API apps, and
-  brownfield adoption — including a worked facade split.
+- **Example gallery**: clonable examples for NestJS, monorepos, and Next.js/API apps (the
+  brownfield facade split is already written up in the playbook above).
 - **Watch mode**: `ark-check --watch` for editor-adjacent feedback without ESLint.
-- **ESLint parity**: keep editor feedback aligned with `ark-check`, documenting CI as the
-  authoritative gate.
 
 ## Later
 

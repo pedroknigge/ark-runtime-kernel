@@ -1684,6 +1684,44 @@ describe('ark-check monorepo tsconfig resolution', () => {
     expect(fs.readFileSync(fixSkill, 'utf8')).toMatch(/^arkVersion:/m);
   });
 
+  it('--tools codex wires [mcp_servers.ark] into $CODEX_HOME/config.toml with absolute paths, preserving other tables and staying idempotent', () => {
+    // A space in the project path (like "PREDIAL WEB") is why absolute paths matter — the
+    // global config.toml is loaded without the project as cwd, so "." would be wrong.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark cxmcp-'));
+    fs.writeFileSync(path.join(root, 'AGENTS.md'), '# AGENTS\n');
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({ include: ['src'], layers: [{ name: 'A', patterns: ['src/**'] }], rules: [] })
+    );
+    const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxmcphome-'));
+    // Pre-existing config with unrelated tables must survive the merge.
+    fs.writeFileSync(path.join(codexHome, 'config.toml'), '[tui]\ntheme = "dark"\n');
+    const configPath = path.join(codexHome, 'config.toml');
+    const env = { ...process.env, CODEX_HOME: codexHome };
+
+    execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--install-agent-gates', '--root', root, '--tools', 'codex'],
+      { encoding: 'utf8', stdio: 'pipe', env }
+    );
+    let toml = fs.readFileSync(configPath, 'utf8');
+    expect(toml).toContain('[mcp_servers.ark]');
+    // Absolute --root and --config, not "." — the whole point of the config.toml path.
+    expect(toml).toContain(`"--root", "${path.resolve(root)}"`);
+    expect(toml).toContain(`"--config", "${path.join(path.resolve(root), 'ark.config.json')}"`);
+    expect(toml).not.toContain('"--root", "."');
+    expect(toml).toContain('[tui]'); // unrelated table preserved
+
+    // Second run without --force must not duplicate the table.
+    execFileSync(
+      'node',
+      [path.resolve('bin/ark-check.mjs'), '--install-agent-gates', '--root', root, '--tools', 'codex'],
+      { encoding: 'utf8', stdio: 'pipe', env }
+    );
+    toml = fs.readFileSync(configPath, 'utf8');
+    expect(toml.match(/\[mcp_servers\.ark\]/g)).toHaveLength(1);
+  });
+
   it('flags stale /ark-* skills in the Codex home prompts dir', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxg-'));
     fs.writeFileSync(path.join(root, 'AGENTS.md'), '# AGENTS\n');

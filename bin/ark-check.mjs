@@ -714,10 +714,18 @@ function mcpJson() {
   }, null, 2)}\n`;
 }
 
+// Sample for docs/ — `ark-check --install-agent-gates --tools codex` auto-merges the real
+// block (with absolute paths) into ~/.codex/config.toml. This copy is a reference only, so
+// it flags the two gotchas of hand-editing the global config: absolute paths (config.toml is
+// loaded without the project as cwd) and the required restart.
 function codexTomlSnippet() {
-  return `[mcp_servers.ark]
+  return `# Add to ~/.codex/config.toml (or $CODEX_HOME/config.toml), then RESTART Codex —
+# it does not hot-load MCP servers. Use ABSOLUTE paths: config.toml is global, so
+# "." would resolve against Codex's launch dir, not this project. Prefer:
+#   ark-check --install-agent-gates --tools codex   (auto-merges the absolute paths)
+[mcp_servers.ark]
 command = "npx"
-args = ["ark-mcp", "--root", ".", "--config", "ark.config.json"]
+args = ["ark-mcp", "--root", "/absolute/path/to/project", "--config", "/absolute/path/to/project/ark.config.json"]
 `;
 }
 
@@ -1027,6 +1035,61 @@ function codexPromptsDir() {
   return path.join(base, 'prompts');
 }
 
+// Where Codex reads its MCP server registrations. Unlike Claude (.claude/settings.json)
+// and Cursor (.cursor/mcp.json), Codex loads MCP servers only from $CODEX_HOME/config.toml
+// (~/.codex/config.toml) — never from .mcp.json — so wiring Codex means editing the user's
+// home config, not a repo file.
+function codexConfigPath() {
+  const base = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  return path.join(base, 'config.toml');
+}
+
+// Merge the [mcp_servers.ark] table into Codex's config.toml so `ark://manifest` and the
+// AI write gate are live from the first edit — the piece that was previously only shipped as
+// a copy-me sample in docs/ark-codex-config.toml. Idempotent: an existing ark table is left
+// untouched unless `force` replaces it; other content in the file is preserved. Returns a
+// status for the install summary. The table match runs from the [mcp_servers.ark] header to
+// the line before the next top-level table header (a line starting with `[`) or EOF.
+//
+// Unlike .mcp.json / .cursor/mcp.json (loaded relative to the project), config.toml is a
+// GLOBAL file — Codex launches it without the project as cwd — so `--root .` would resolve
+// against the wrong directory. The paths must be absolute, and TOML string values need the
+// backslashes/quotes escaped (matters on Windows and for repo paths containing quotes).
+function wireCodexMcp(root, force) {
+  const file = codexConfigPath();
+  const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const absRoot = path.resolve(root);
+  const absConfig = path.join(absRoot, 'ark.config.json');
+  const block = `[mcp_servers.ark]
+command = "npx"
+args = ["ark-mcp", "--root", "${esc(absRoot)}", "--config", "${esc(absConfig)}"]`;
+  let existing = '';
+  try {
+    if (fs.existsSync(file)) existing = fs.readFileSync(file, 'utf8');
+  } catch (error) {
+    return { status: 'failed', file, message: error.message };
+  }
+  const tableRe = /(^|\n)\[mcp_servers\.ark\][^\n]*\n(?:(?!\[)[^\n]*\n?)*/;
+  const hasTable = tableRe.test(existing);
+  if (hasTable && !force) {
+    return { status: 'skipped', file };
+  }
+  let next;
+  if (hasTable) {
+    next = existing.replace(tableRe, (match) => `${match.startsWith('\n') ? '\n' : ''}${block}\n`);
+  } else {
+    const sep = existing.length === 0 ? '' : existing.endsWith('\n\n') ? '' : existing.endsWith('\n') ? '\n' : '\n\n';
+    next = `${existing}${sep}${block}\n`;
+  }
+  try {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, next);
+  } catch (error) {
+    return { status: 'failed', file, message: error.message };
+  }
+  return { status: hasTable ? 'updated' : 'written', file };
+}
+
 // Detects stale/missing /ark-* skills in the Codex home prompts dir. Only nags
 // when at least one ark-* prompt already lives there (evidence Codex was set up
 // for this user) — never introduces Codex to someone who doesn't use it. Same
@@ -1250,7 +1313,29 @@ function runInstallAgentGates(args) {
     }
   }
 
-  const failed = [...results, ...homeResults].filter((result) => result.status === 'failed');
+  // Auto-wire the ark MCP server into Codex's home config.toml. Claude and Cursor get
+  // machine-readable registrations (.claude/settings.json, .cursor/mcp.json) written as repo
+  // templates above; Codex reads MCP servers only from ~/.codex/config.toml, so it needs a
+  // home-dir merge instead. Fires whenever Codex is in play so `ark://manifest` is live
+  // without a manual copy step.
+  let codexMcp = null;
+  if (tools.has('codex') || args.codexHome) {
+    codexMcp = wireCodexMcp(root, args.force);
+    console.log('');
+    console.log(`Codex MCP registration (${codexMcp.file}):`);
+    if (codexMcp.status === 'skipped') {
+      console.log(`  ${'skipped'.padEnd(7)} [mcp_servers.ark] already present (use --force to overwrite)`);
+    } else if (codexMcp.status === 'failed') {
+      console.log(`  ${'FAILED'.padEnd(7)} [mcp_servers.ark] (${codexMcp.message})`);
+    } else {
+      const verb = codexMcp.status === 'updated' ? 'updated' : 'wrote';
+      console.log(`  ${verb.padEnd(7)} [mcp_servers.ark] with absolute paths`);
+      console.log('          RESTART Codex — it does not hot-load MCP servers.');
+      console.log('          Then expect: resource ark://manifest + tools validate_code, ark_check, ark_coverage, ark_place.');
+    }
+  }
+
+  const failed = [...results, ...homeResults, ...(codexMcp ? [codexMcp] : [])].filter((result) => result.status === 'failed');
   if (failed.length > 0) {
     console.error(`\nFailed to write ${failed.length} template(s).`);
     process.exitCode = 1;
@@ -1263,15 +1348,15 @@ function runInstallAgentGates(args) {
   if (!hasCheckScript) {
     console.log('  3. Add the npm alias if you want `npm run check:architecture`:');
     console.log(`     ${checkArchitectureScriptSnippet()}`);
-    console.log('  4. If you use Codex in this project, wire it now so `ark://manifest` is available from the first edit.');
-  } else {
-    console.log('  3. If you use Codex in this project, wire it now so `ark://manifest` is available from the first edit.');
   }
-  if ((tools.has('codex') || args.codexHome) && skills.length > 0) {
+  if ((tools.has('codex') || args.codexHome)) {
     console.log('');
+    if (codexMcp && codexMcp.status !== 'failed') {
+      console.log(`  Codex: ark MCP registered in ${codexMcp.file} — restart Codex so \`ark://manifest\` loads.`);
+    }
     if (args.codexHome) {
-      console.log(`  Refreshed the /ark-* skills in ${codexPromptsDir()} — Codex loads them from there.`);
-    } else {
+      console.log(`  Codex: refreshed the /ark-* skills in ${codexPromptsDir()} — Codex loads them from there.`);
+    } else if (skills.length > 0) {
       console.log('  Codex loads slash-command prompts from $CODEX_HOME/prompts (~/.codex/prompts),');
       console.log('  not the repo. Install the /ark-* skills there with:');
       console.log('    npx ark-check --install-agent-gates --codex-home');

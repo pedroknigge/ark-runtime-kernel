@@ -2,6 +2,25 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 1.10.1 — 2026-07-06
+
+### Fixed — Codex MCP wiring
+
+- `ark-check --install-agent-gates` now auto-merges the `[mcp_servers.ark]` table into
+  Codex's `$CODEX_HOME/config.toml` (default `~/.codex/config.toml`) whenever Codex is a
+  target (`--tools codex` or `--codex-home`), so `ark://manifest` and the AI write gate are
+  live from the first edit. Previously Codex only received a copy-me sample at
+  `docs/ark-codex-config.toml` — unlike Claude and Cursor, which got machine-readable
+  registrations — so an agent that never hand-merged it fell back to the static
+  `ark.config.json` and the MCP server never started. The merge is idempotent (an existing
+  `ark` table is left untouched unless `--force` replaces it) and preserves other tables.
+- The Codex `[mcp_servers.ark]` block now uses **absolute** `--root`/`--config` paths
+  (properly escaped for TOML). Because `config.toml` is a global file loaded without the
+  project as the working directory, a relative `--root .` would resolve against Codex's
+  launch directory — this also fixes projects whose path contains spaces. The install
+  output now states the required Codex restart and the expected result (`ark://manifest`
+  plus the `validate_code`, `ark_check`, `ark_coverage`, `ark_place` tools).
+
 ## 1.10.0 — 2026-07-06
 
 ### Added — GitHub-first release hardening

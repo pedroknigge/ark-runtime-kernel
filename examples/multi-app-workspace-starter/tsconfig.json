@@ -4,12 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
-    "noEmit": true,
-    "baseUrl": ".",
-    "paths": {
-      "@gallery/domain/*": ["packages/domain/src/domain/*"],
-      "@gallery/application/*": ["packages/application/src/application/*"]
-    }
+    "noEmit": true
   },
   "include": ["apps/**/*.ts", "packages/**/*.ts"]
 }

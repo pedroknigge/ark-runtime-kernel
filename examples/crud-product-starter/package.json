@@ -5,6 +5,9 @@
   "description": "Phase-1 scaffold for a product with UI and stored data (crud-product archetype)",
   "type": "module",
   "scripts": {
-    "check": "node ../../bin/ark-check.mjs --root . --config ark.config.json --strict-config"
+    "check": "ark-check --root . --config ark.config.json --strict-config"
+  },
+  "devDependencies": {
+    "ark-runtime-kernel": "^1.13.0"
   }
 }

@@ -36,6 +36,7 @@ The skill should:
 
 ```bash
 cp -R /path/to/ark/examples/crud-product-starter/. .
+npm install
 npm run check
 ```
 

@@ -16,6 +16,7 @@ passing `ark-check --strict-config`. For deep teaching exercises, use `hexagonal
 Pick the closest shape, copy the directory, then run:
 
 ```bash
+npm install      # installs ark-runtime-kernel → ark-check
 npm run check    # inside the starter — must stay green
 ark-check --doctor
 ```

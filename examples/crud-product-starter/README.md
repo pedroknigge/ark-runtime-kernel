@@ -33,10 +33,15 @@ src/
 
 ## Verify
 
+After copying this folder to your project:
+
 ```bash
+npm install
 npm run check
 # ✔ Ark check passed.
 ```
+
+`ark-runtime-kernel` supplies the `ark-check` CLI via `devDependencies`.
 
 ## Next steps
 

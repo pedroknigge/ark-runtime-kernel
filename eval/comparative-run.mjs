@@ -69,6 +69,26 @@ function assertMetricsShape(label, metrics) {
   }
 }
 
+function metricsMatch(oracle, measured, label) {
+  for (const key of ['layerViolations', 'misplacedFiles']) {
+    if (oracle[key] !== measured[key]) {
+      throw new Error(
+        `${label} oracle ${key}=${oracle[key]} but measured ${key}=${measured[key]}`
+      );
+    }
+  }
+}
+
+function stripMeasured(metrics) {
+  return {
+    layerViolations: metrics.layerViolations,
+    misplacedFiles: metrics.misplacedFiles,
+    contractIntact: metrics.contractIntact,
+    cheated: metrics.cheated,
+    ...(metrics.governedPercent !== undefined ? { governedPercent: metrics.governedPercent } : {}),
+  };
+}
+
 function validateFixture(prompt) {
   const base = path.join(FIXTURES_DIR, prompt.fixture);
   const withoutRoot = path.join(base, 'without-ark');
@@ -92,6 +112,9 @@ function validateFixture(prompt) {
   if (withMeasured.layerViolations !== 0) {
     throw new Error(`Fixture ${prompt.fixture}/with-ark expected 0 violations`);
   }
+
+  metricsMatch(prompt.withoutArk, withoutMeasured, `${prompt.id}.withoutArk`);
+  metricsMatch(prompt.withArk, withMeasured, `${prompt.id}.withArk`);
 
   return {
     verified: true,
@@ -132,6 +155,9 @@ function main() {
         const fixture = validateFixture(prompt);
         entry.fixture = prompt.fixture;
         entry.fixtureVerified = fixture.verified;
+        entry.source = 'fixture-measured';
+        entry.withoutArk = stripMeasured(fixture.measured.withoutArk);
+        entry.withArk = stripMeasured(fixture.measured.withArk);
         entry.measured = fixture.measured;
       } catch (error) {
         failures += 1;

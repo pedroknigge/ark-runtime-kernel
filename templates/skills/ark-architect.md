@@ -60,6 +60,17 @@ package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
    - Three rules the agent must not break (no domain→database imports, no raw
      `publish()`, no weakening `ark.config.json` to pass)
    - Optional book refs from `books` in the recommendation JSON under "go deeper"
+   - **Gallery starter** — point the user at the matching clonable example:
+
+     | Archetype | Example directory |
+     |-----------|-------------------|
+     | `crud-product` | `examples/crud-product-starter/` |
+     | `api-backend` | `examples/api-backend-starter/` |
+     | `worker-pipeline` | `examples/worker-pipeline-starter/` |
+     | `multi-app-workspace` | `examples/multi-app-workspace-starter/` |
+
+     Say they can copy that folder as a baseline. For a runnable API with break
+     exercises, mention `examples/hexagonal-order-api/` instead.
 
 ## Operating rules
 

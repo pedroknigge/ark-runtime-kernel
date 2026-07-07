@@ -1,0 +1,10 @@
+{
+  "name": "ark-gallery-worker-pipeline-starter",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase-1 scaffold for background jobs and workers (worker-pipeline archetype)",
+  "type": "module",
+  "scripts": {
+    "check": "node ../../bin/ark-check.mjs --root . --config ark.config.json --strict-config"
+  }
+}

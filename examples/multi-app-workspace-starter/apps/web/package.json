@@ -1,0 +1,10 @@
+{
+  "name": "@gallery/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "dependencies": {
+    "@gallery/application": "0.0.0",
+    "@gallery/domain": "0.0.0"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@gallery/application",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "exports": {
+    "./place-order": "./src/application/place-order.ts"
+  },
+  "dependencies": {
+    "@gallery/domain": "0.0.0"
+  }
+}

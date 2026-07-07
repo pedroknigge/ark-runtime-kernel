@@ -1,0 +1,10 @@
+{
+  "name": "ark-gallery-api-backend-starter",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase-1 scaffold for an API server without UI (api-backend archetype)",
+  "type": "module",
+  "scripts": {
+    "check": "node ../../bin/ark-check.mjs --root . --config ark.config.json --strict-config"
+  }
+}

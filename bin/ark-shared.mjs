@@ -339,7 +339,7 @@ export function installDevHint(root, pkg) {
   return `npm install -D ${pkg}`;
 }
 
-const ARCHETYPE_IDS = [
+export const ARCHETYPE_IDS = [
   'crud-product',
   'api-backend',
   'frontend-surface',
@@ -789,6 +789,126 @@ export function buildArchitectureRecommendation(root, options = {}) {
     firstCommand: `${arkCommand(root, 'ark', `init --preset ${result.preset} --yes`)}`,
     checkCommand: arkCommand(root, 'ark-check', '--root . --config ark.config.json --strict-config'),
   };
+}
+
+/** English wizard choices (application shape, not vendor stack). */
+export const INIT_WIZARD_CHOICES = [
+  { key: '1', archetype: 'crud-product', label: 'A product with UI and stored data' },
+  { key: '2', archetype: 'api-backend', label: 'An API server without UI in this repo' },
+  { key: '3', archetype: 'frontend-surface', label: 'A UI-focused app (backend elsewhere)' },
+  { key: '4', archetype: 'cli-utility', label: 'A command-line tool' },
+  { key: '5', archetype: 'worker-pipeline', label: 'Background jobs or workers' },
+  { key: '6', archetype: 'multi-app-workspace', label: 'Several apps in one repository' },
+  { key: '7', archetype: 'prototype-spike', label: 'A quick experiment or learning project' },
+  { key: '8', archetype: 'auto', label: 'Analyze my repo and suggest (recommended if unsure)' },
+];
+
+export function isValidArchetypeId(id) {
+  return ARCHETYPE_IDS.includes(id);
+}
+
+export function resolveArchetypePreset(archetypeId, playbookPath = defaultPlaybookPath()) {
+  if (!isValidArchetypeId(archetypeId)) {
+    throw new Error(
+      `Unknown archetype "${archetypeId}". Valid ids: ${ARCHETYPE_IDS.join(', ')}`
+    );
+  }
+  const playbook = loadArchitecturePlaybook(playbookPath);
+  const def = playbook.archetypes[archetypeId];
+  return {
+    archetype: archetypeId,
+    preset: def.preset,
+    label: def.label,
+    phases: def.phases,
+  };
+}
+
+export function mapWizardChoiceToArchetype(choiceKey) {
+  const entry = INIT_WIZARD_CHOICES.find((c) => c.key === String(choiceKey).trim());
+  if (!entry) return null;
+  return entry.archetype;
+}
+
+const NEW_HERE_GOVERNED_THRESHOLD = 50;
+
+/** Show onboarding nudge when coverage is low or config is missing. */
+export function shouldShowNewHereNudge(root, configPath, governedPercent, configMissing) {
+  if (configMissing) return true;
+  if (typeof governedPercent === 'number' && governedPercent < NEW_HERE_GOVERNED_THRESHOLD) {
+    return true;
+  }
+  if (fs.existsSync(configPath)) {
+    try {
+      const stat = fs.statSync(configPath);
+      const ageDays = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60 * 24);
+      if (ageDays < 7 && governedPercent < 80) return true;
+    } catch {
+      /* ignore */
+    }
+  }
+  return false;
+}
+
+/**
+ * Deterministic fix-class labels for JSON output (English, shared with future skills).
+ */
+export function enrichViolationWithFixClass(violation) {
+  const enriched = { ...violation };
+  switch (violation.ruleId) {
+    case 'LAYER_IMPORT_VIOLATION':
+      if (violation.typeOnly) {
+        enriched.fixClass = 'file-move';
+        enriched.effort = 'small';
+        enriched.enthusiastHint =
+          'This is a type-only import — move the type to a layer both sides may share, or relocate the file to match its role.';
+      } else {
+        enriched.fixClass = 'port-inversion';
+        enriched.effort = 'medium';
+        enriched.enthusiastHint = `${violation.fromLayer ?? 'This layer'} must not import ${violation.toLayer ?? 'that layer'} directly. Define an interface (port) where you need the capability and inject the implementation from the outer layer.`;
+      }
+      break;
+    case 'FORBIDDEN_GLOBAL':
+      enriched.fixClass = 'inject-port';
+      enriched.effort = 'small';
+      enriched.enthusiastHint = `Do not call "${violation.target ?? 'that global'}" here. Pass the capability in through a small interface (for example a Clock, HttpPort, or Config provider).`;
+      break;
+    case 'RAW_EVENT_PUBLISH':
+      enriched.fixClass = 'registered-intent';
+      enriched.effort = 'small';
+      enriched.enthusiastHint =
+        'Register the event intent first, then publish through the creator returned by the registry — not a raw string or object.';
+      break;
+    case 'PUBLISH_MISSING_SOURCE':
+      enriched.fixClass = 'add-source-metadata';
+      enriched.effort = 'small';
+      enriched.enthusiastHint =
+        'Add metadata.source to the publish call so Ark knows which layer is publishing the event.';
+      break;
+    case 'PUBLISH_SOURCE_LAYER_MISMATCH':
+      enriched.fixClass = 'fix-source-layer';
+      enriched.effort = 'small';
+      enriched.enthusiastHint =
+        'Use a source intent that belongs to the same layer as this file, or move the publish call to the layer that owns the source.';
+      break;
+    case 'LAYER_INTENT_REFERENCE_VIOLATION':
+      enriched.fixClass = 'intent-relocation';
+      enriched.effort = 'small';
+      enriched.enthusiastHint =
+        'Reference that intent from a layer allowed to know about it — usually an adapter or application layer, not the domain core.';
+      break;
+    case 'CIRCULAR_DEPENDENCY':
+      enriched.fixClass = 'break-cycle';
+      enriched.effort = 'medium';
+      enriched.enthusiastHint =
+        'Two modules import each other in a loop. Extract shared code, invert one dependency behind a port, or merge them if they are really one unit.';
+      break;
+    default:
+      enriched.fixClass = 'review-contract';
+      enriched.effort = 'small';
+      enriched.enthusiastHint =
+        'Read the violation message and the layer rules in ark.config.json, then adjust imports or move code to the correct layer.';
+  }
+  return enriched;
 }
 
 export function formatArchitectureRecommendationHuman(recommendation) {

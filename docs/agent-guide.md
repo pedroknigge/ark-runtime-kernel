@@ -40,11 +40,30 @@ adoption plan: archetype id, preset, `confidence`, `runnerUp`, `why` (shape sign
 Human output highlights phase-1 layers and the analogy; JSON is the stable contract for
 future MCP `ark_recommend` (Phase C) and the `/ark-architect` skill.
 
+### Terminal onboarding (Phase B)
+
+```bash
+npx ark init --archetype crud-product --yes   # non-interactive: shape → preset → gates → strict check
+npx ark init                                    # TTY wizard: pick application shape (1–8), not a framework
+npx ark-check --doctor                          # includes "New here?" when coverage is low or config is fresh
+npx ark-check --report beginner.html --beginner # simplified HTML for enthusiasts
+npx ark-check --watch                           # debounced re-check when governed files change
+```
+
+`ark init --archetype <id>` maps playbook ids to named presets (`hexagonal`, `layered`,
+`feature-sliced`, `monorepo`). With `--yes` and no archetype, Ark auto-selects from
+`--recommend` scoring.
+
+`ark-check --json` violations include enthusiast-oriented fields when present:
+`fixClass` (e.g. `port-inversion`, `file-move`), `effort` (`small` | `medium`), and
+`enthusiastHint` (plain English). `--doctor --json` exposes `doctor.newHere` with
+`recommendCommand` and `initCommand` when the nudge applies.
+
 ### Agent workflow (before codegen)
 
 1. Run `ark-check --recommend --json` (or call the shared scorer via MCP once shipped).
 2. Read `archetype`, `preset`, and `adoptInOrder.phase1` — scaffold only those directories first.
-3. Run `ark init --preset <preset> --yes` when no `ark.config.json` exists.
+3. Run `ark init --archetype <id> --yes` (or `ark init --preset <preset> --yes`) when no `ark.config.json` exists.
 4. Use `/ark-place` or `ark_place` for individual files after the contract exists.
 5. Verify with `ark-check --root . --config ark.config.json --strict-config`.
 

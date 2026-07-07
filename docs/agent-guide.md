@@ -38,7 +38,7 @@ adoption plan: archetype id, preset, `confidence`, `runnerUp`, `why` (shape sign
 `adoptInOrder.phase1`, `firstCommand` (`ark init --preset …`), and `checkCommand`.
 
 Human output highlights phase-1 layers and the analogy; JSON is the stable contract for
-future MCP `ark_recommend` (Phase C) and the `/ark-architect` skill.
+MCP `ark_recommend` and the `/ark-architect` skill.
 
 ### Terminal onboarding (Phase B)
 
@@ -59,9 +59,25 @@ npx ark-check --watch                           # debounced re-check when govern
 `enthusiastHint` (plain English). `--doctor --json` exposes `doctor.newHere` with
 `recommendCommand` and `initCommand` when the nudge applies.
 
+### MCP `ark_recommend` and `/ark-architect` (Phase C)
+
+The `ark-mcp` server exposes **`ark_recommend`** — same JSON as
+`ark-check --recommend --json`. Call it (or invoke `/ark-architect`) before
+generating project structure on greenfield or early-adoption repos.
+
+`ark-mcp --session-context` appends a one-line enthusiast hint when governed
+coverage is low or the config is fresh:
+
+```
+New to Ark? Run /ark-architect or: ark-check --recommend
+```
+
+The `/ark-architect` skill ships in `templates/skills/ark-architect.md` and installs
+via `ark-check --install-agent-gates`.
+
 ### Agent workflow (before codegen)
 
-1. Run `ark-check --recommend --json` (or call the shared scorer via MCP once shipped).
+1. Run `ark-check --recommend --json` or MCP `ark_recommend`.
 2. Read `archetype`, `preset`, and `adoptInOrder.phase1` — scaffold only those directories first.
 3. Run `ark init --archetype <id> --yes` (or `ark init --preset <preset> --yes`) when no `ark.config.json` exists.
 4. Use `/ark-place` or `ark_place` for individual files after the contract exists.
@@ -372,6 +388,8 @@ npx ark-mcp --root . --config ark.config.json [--manifest ark.manifest.json]
 - **Resource `ark://manifest`** — contract discovery. Serve your exported
   `ark.manifest().toJSON()` via `--manifest`, or omit it to get the 11-layer profile
   (layers + rules) as the default contract.
+- **Tool `ark_recommend`** — no args. Returns the deterministic application-shape plan
+  (archetype, preset, phased adoption, analogy). Same as `ark-check --recommend --json`.
 - **Tool `validate_code`** — args `{ source, layer?, filePath? }`. Runs `createAICodeGate`
   against the profile and (when a manifest is provided) the registered intent allowlist.
   Returns `{ valid, violations, layer }`; `isError` is `true` when invalid. If `layer` is

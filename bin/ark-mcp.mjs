@@ -355,9 +355,7 @@ function printSessionContext(config, profile, forbiddenGlobals, args, configPath
   const governedPercent = coverage?.coverage?.governed?.percent ?? coverage?.governed?.percent;
   if (shouldShowNewHereNudge(args.root, configPath, governedPercent, false)) {
     lines.push('');
-    lines.push(
-      `New to Ark? Run /ark-architect or: ${arkCommand(args.root, 'ark-check', '--recommend')}`
-    );
+    lines.push('New to Ark? Run /ark-architect or: ark-check --recommend');
   }
 
   process.stdout.write(`${lines.join('\n')}\n`);
@@ -700,7 +698,10 @@ async function main() {
         isError: true,
       };
     }
-    return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], isError: false };
+    return {
+      content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
+      isError: data.ok === false,
+    };
   }
 
   // Deterministic placement guidance (in-process; no TS resolver needed): which layer a

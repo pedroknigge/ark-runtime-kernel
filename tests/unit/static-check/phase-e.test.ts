@@ -147,4 +147,22 @@ describe('Phase E — skills and docs cross-references', () => {
       expect(hasOnboarding, `${file} should mention onboarding`).toBe(true);
     }
   });
+
+  it('general skills contrast greenfield onboarding vs brownfield /ark-adopt', () => {
+    const mustMentionBrownfield = [
+      'ark-coverage.md',
+      'ark-upgrade.md',
+      'ark-fix.md',
+      'ark-place.md',
+      'ark-explain.md',
+      'ark-contract.md',
+      'ark-runtime.md',
+    ];
+    for (const file of mustMentionBrownfield) {
+      const text = fs.readFileSync(path.join(SKILLS_DIR, file), 'utf8');
+      const hasBrownfield =
+        text.includes('/ark-adopt') || text.toLowerCase().includes('brownfield');
+      expect(hasBrownfield, `${file} should contrast brownfield adoption`).toBe(true);
+    }
+  });
 });

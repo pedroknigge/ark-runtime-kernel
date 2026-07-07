@@ -82,7 +82,10 @@ checks the registry itself — don't assume the copy in `node_modules` is curren
 
 ## Related onboarding
 
-- After upgrade, re-run `ark-check --doctor` — `/ark-architect` and `ark-check --recommend` ship with the package.
+- After upgrade, re-run `ark-check --doctor` — `/ark-architect` and `ark-check --recommend` ship
+  with the package for **greenfield** shape adoption.
+- **Brownfield** repos: point users to `/ark-adopt` and `docs/brownfield-adoption.md`, not
+  `/ark-architect`. Demo: `docs/demos/02-brownfield-baseline-adoption.md`.
 - Refresh gates: `ark-check --install-agent-gates --force --skills-only` if skills are stale.
 
 ## Verify and report

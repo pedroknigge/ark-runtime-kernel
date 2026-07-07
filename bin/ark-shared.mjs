@@ -548,21 +548,6 @@ export function collectRepoShapeSignals(root) {
     )
   );
 
-  const why = [];
-  if (workspaces) why.push(`workspace roots declared (${workspaceDirs.join(', ')})`);
-  if (tinyTree) why.push(`few source files (${sourceFileCount})`);
-  if (ui) why.push('UI directories or multiple TSX files present');
-  if (apiSurface) why.push('API/route/controller directories present');
-  if (persistence) why.push('persistence or data-access directories present');
-  if (jobs) why.push('jobs/workers/schedules directories present');
-  if (workflows) why.push('workflows or sagas directories present');
-  if (integration) why.push('integration/webhook/sync directories present');
-  if (cli) why.push('package.json declares a bin entry');
-  if (library) why.push('publishable package shape (exports/main, no CLI bin)');
-  if (featureSlicedLayout) why.push('feature-sliced directory layout under src/');
-  if (domain) why.push('domain directory present');
-  if (application) why.push('application or services directory present');
-
   return {
     workspaces,
     workspaceDirs,
@@ -587,8 +572,62 @@ export function collectRepoShapeSignals(root) {
     uiOnly,
     featureSlicedLayout,
     toolHints,
-    why,
   };
+}
+
+const SIGNAL_WHY = {
+  workspaces: (signals) => `workspace roots declared (${signals.workspaceDirs.join(', ')})`,
+  tinyTree: (signals) => `few source files (${signals.sourceFileCount})`,
+  ui: () => 'UI directories or multiple TSX files present',
+  uiHeavy: () => 'substantial UI surface (multiple TSX files)',
+  apiSurface: () => 'API/route/controller directories present',
+  apiSurfaceOnly: () => 'API surface without a heavy UI layer',
+  persistence: () => 'persistence or data-access directories present',
+  persistenceHeavy: () => 'substantial persistence layer',
+  jobs: () => 'jobs/workers/schedules directories present',
+  jobsOnly: () => 'background jobs without UI or API entrypoints',
+  workflows: () => 'workflows or sagas directories present',
+  integration: () => 'integration/webhook/sync directories present',
+  cli: () => 'package.json declares a bin entry',
+  library: () => 'publishable package shape (exports/main, no CLI bin)',
+  libraryOnly: () => 'library package without a CLI entry',
+  featureSlicedLayout: () => 'feature-sliced directory layout under src/',
+  domain: () => 'domain directory present',
+  application: () => 'application or services directory present',
+  domainHeavy: () => 'both domain and application directories present',
+  uiOnly: () => 'UI without persistence, API, or jobs',
+};
+
+const NEGATIVE_SIGNAL_WHY = {
+  workspaces: () => 'not a workspace monorepo (penalized for this shape)',
+  cli: () => 'CLI bin entry present (penalized for this shape)',
+  ui: () => 'UI directories present (penalized for this shape)',
+  uiHeavy: () => 'heavy UI surface (penalized for this shape)',
+  persistence: () => 'persistence directories present (penalized for this shape)',
+  apiSurfaceOnly: () => 'API-only surface (penalized for this shape)',
+  tinyTree: () => 'very small source tree (penalized for this shape)',
+  jobs: () => 'background jobs present (penalized for this shape)',
+  jobsOnly: () => 'jobs without UI/API (penalized for this shape)',
+  workflows: () => 'workflows present (penalized for this shape)',
+  domainHeavy: () => 'rich domain layer (penalized for this shape)',
+  libraryOnly: () => 'library-only package (penalized for this shape)',
+  persistenceHeavy: () => 'heavy persistence usage (penalized for this shape)',
+};
+
+/** Plain-language reasons for signals that scored the winning archetype. */
+export function whyFromMatchedSignals(signals, matched) {
+  const why = [];
+  for (const token of matched ?? []) {
+    if (token.startsWith('!')) {
+      const neg = token.slice(1);
+      const label = NEGATIVE_SIGNAL_WHY[neg];
+      if (label && signals[neg]) why.push(label(signals));
+      continue;
+    }
+    const label = SIGNAL_WHY[token];
+    if (label && signals[token]) why.push(label(signals));
+  }
+  return why;
 }
 
 export function defaultPlaybookPath() {
@@ -730,7 +769,7 @@ export function buildArchitectureRecommendation(root, options = {}) {
     analogy: result.analogy,
     antiPatterns: result.antiPatterns,
     books: result.books,
-    why: signals.why,
+    why: whyFromMatchedSignals(signals, result.matched),
     matchedSignals: result.matched,
     runnerUp: result.runnerUp,
     toolHints: signals.toolHints,

@@ -103,9 +103,12 @@ Ordered by leverage for the dual audience:
 
 ### P0 — make the co-pilot pay without lying
 
-1. **Broaden `mechanical-safe`** with labeled evals (file relocation, verbatim infra moves).  
+1. **Broaden `mechanical-safe`** with labeled evals.  
+   **Shipped (partial):** type-only imports **+** value-syntax imports of pure-type modules
+   (`targetTypeOnlyExports`). Still open: file relocation of whole modules, verbatim infra moves.  
    Bias remains: false “safe” is worse than an extra human approval.  
-2. **Grow classifier corpus** from real brownfield runs.  
+2. **Grow classifier corpus** from real brownfield runs — **in progress** (precision corpus +
+   field probes on Nest/TS starters).  
 3. **Release trust:** signed tags / verify-release path for a tool that edits repos.  
 
 ### P1 — quality & install DX

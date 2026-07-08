@@ -2461,12 +2461,11 @@ function scanCacheKey(root, args) {
       : path.join(root, args.manifest)
     : undefined;
   // Bump this schema tag whenever the cached scan shape changes, so a warm cache from an
-  // older Ark can't feed stale entries to new logic. v2: violation/edge records gained the
-  // `typeOnly` field — a v1 cache would otherwise report every violation as a value edge
-  // after upgrade until files changed. The tag invalidates every existing cache exactly once.
+  // older Ark can't feed stale entries to new logic. v2: typeOnly on edges. v3: per-file
+  // exportsOnlyTypes (target-module type-only export detection for plan classifier).
   return crypto
     .createHash('sha1')
-    .update(`ark-check-cache-v2\0${read(configPath)}\0${manifestPath ? read(manifestPath) : ''}`)
+    .update(`ark-check-cache-v3\0${read(configPath)}\0${manifestPath ? read(manifestPath) : ''}`)
     .digest('hex');
 }
 
@@ -2586,6 +2585,48 @@ function isTypeOnlyModuleReference(ts, node) {
     return false;
   }
   return false;
+}
+
+/**
+ * True when a module's public surface is types-only (export type / interface / type-only
+ * re-exports). Conservative: any ambiguous `export { X }` without the type keyword, export *,
+ * value declarations, or default export → false (stay judgment). Used so a value-syntax
+ * import of a pure-type module can be classed mechanical-safe (convert to import type).
+ */
+function sourceFileExportsOnlyTypes(ts, sourceFile) {
+  let sawTypeExport = false;
+  const hasExportModifier = (node) =>
+    Array.isArray(node.modifiers) &&
+    node.modifiers.some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+
+  for (const stmt of sourceFile.statements) {
+    if (ts.isExportDeclaration(stmt)) {
+      if (stmt.isTypeOnly) {
+        sawTypeExport = true;
+        continue;
+      }
+      // export * from '…' can re-export values — not provably type-only.
+      if (!stmt.exportClause) return false;
+      if (ts.isNamespaceExport(stmt.exportClause)) return false;
+      if (ts.isNamedExports(stmt.exportClause)) {
+        if (stmt.exportClause.elements.length === 0) return false;
+        for (const el of stmt.exportClause.elements) {
+          if (!el.isTypeOnly) return false; // bare `export { X }` — ambiguous without checker
+        }
+        sawTypeExport = true;
+        continue;
+      }
+      return false;
+    }
+    if (ts.isExportAssignment(stmt)) return false; // export = / export default expr
+    if (ts.isTypeAliasDeclaration(stmt) || ts.isInterfaceDeclaration(stmt)) {
+      if (hasExportModifier(stmt)) sawTypeExport = true;
+      continue;
+    }
+    // Any other exported value form (const/fn/class/enum/namespace) → not type-only.
+    if (hasExportModifier(stmt)) return false;
+  }
+  return sawTypeExport;
 }
 
 function propertyName(ts, node) {
@@ -4275,6 +4316,7 @@ function buildRemediationPlan(root, activeViolations, governedPercent = null, to
       ...(v.line ? { line: v.line } : {}),
       ...(v.target ? { target: v.target } : {}),
       ...(v.typeOnly ? { typeOnly: true } : {}),
+      ...(v.targetTypeOnlyExports ? { targetTypeOnlyExports: true } : {}),
     };
   });
   // Order: auto-applicable first (quick, safe wins), then human decisions, then deferred.
@@ -4836,10 +4878,17 @@ async function main() {
       ts.forEachChild(node, visit);
     };
     visit(sourceFile);
-    return { contentViolations: violations, edges };
+    return {
+      contentViolations: violations,
+      edges,
+      exportsOnlyTypes: sourceFileExportsOnlyTypes(ts, sourceFile),
+    };
   }
 
+  // Pass 1: scan every governed file into nextCacheFiles (needs complete map before
+  // targetTypeOnlyExports can be resolved for import edges).
   const importGraph = new Map();
+  const scanned = []; // { file, sourceLayer, relFile, entry }
   for (const file of files) {
     const sourceLayer = layerForFile(root, file, config.layers);
     if (!sourceLayer) continue;
@@ -4853,7 +4902,11 @@ async function main() {
         ? cached
         : { fileKey, ...scanSourceFile(file, sourceLayer) };
     nextCacheFiles[relFile] = entry;
+    scanned.push({ file, sourceLayer, relFile, entry });
+  }
 
+  // Pass 2: content violations + layer edges (with target type-export surface).
+  for (const { file, sourceLayer, relFile, entry } of scanned) {
     violations.push(...entry.contentViolations);
     for (const edge of entry.edges) {
       const target = resolveImport(ts, edge.specifier, file, compilerOptionsFor(file), moduleHost, root);
@@ -4864,14 +4917,19 @@ async function main() {
       }
       const rule = targetLayer ? isBlocked(rules, sourceLayer, targetLayer) : undefined;
       if (rule) {
+        const relTarget = normalize(path.relative(root, target));
+        // After pass 1 every in-scope target is in nextCacheFiles. Missing → not type-only.
+        const targetCached = nextCacheFiles[relTarget];
+        const targetTypeOnlyExports = Boolean(targetCached?.exportsOnlyTypes) && !edge.typeOnly;
         violations.push({
           ruleId: 'LAYER_IMPORT_VIOLATION',
           file: relFile,
           line: edge.line,
           fromLayer: sourceLayer,
           toLayer: targetLayer,
-          target: normalize(path.relative(root, target)),
+          target: relTarget,
           ...(edge.typeOnly ? { typeOnly: true } : {}),
+          ...(targetTypeOnlyExports ? { targetTypeOnlyExports: true } : {}),
           message: rule.message ?? `${sourceLayer} must not ${edge.kind} ${targetLayer}.`,
         });
       }

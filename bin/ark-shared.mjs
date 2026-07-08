@@ -541,9 +541,11 @@ export function looksLikeIntent(value) {
  *   - 'deferred'        : not enough signal to place it → a human should look first.
  *
  * Deliberately biased toward 'judgment': a false 'mechanical-safe' that auto-lands a bad edit
- * is the failure mode that sinks trust, so only the provably-safe type-only move earns 'auto'.
- * Pure function of one violation object ({ ruleId, typeOnly, ... }) so the CLI, the MCP gate,
- * and (later) the apply-loop all classify identically. Returns { class, confidence, rationale }.
+ * is the failure mode that sinks trust. Only statically-provable type-surface fixes earn 'auto':
+ *   (1) import/export already marked type-only
+ *   (2) value-syntax import of a module that *only* exports types (convert to import type)
+ * Pure function of one violation object so CLI, MCP, and apply-loop classify identically.
+ * Returns { class, confidence, rationale }.
  */
 export const REMEDIATION_CLASSES = ['mechanical-safe', 'judgment', 'deferred'];
 
@@ -556,6 +558,17 @@ export function classifyRemediation(violation) {
         confidence: 0.9,
         rationale:
           'Type-only import (erased at runtime): move the type to the layer that owns it and re-export for back-compat. Behavior-preserving, and the gate verifies it.',
+      };
+    }
+    // Target module only has type/interface exports (no value surface). The value-syntax
+    // import cannot create runtime coupling once converted to `import type` — still
+    // mechanical-safe. Mixed-export targets stay judgment (ambiguous without checker).
+    if (violation.targetTypeOnlyExports) {
+      return {
+        class: 'mechanical-safe',
+        confidence: 0.85,
+        rationale:
+          'Import targets a module that only exports types: convert to `import type` (erased at runtime) and place the type in a shared/owning layer. No runtime coupling; gate verifies.',
       };
     }
     return {
@@ -1306,11 +1319,12 @@ export function enrichViolationWithFixClass(violation) {
   const enriched = { ...violation };
   switch (violation.ruleId) {
     case 'LAYER_IMPORT_VIOLATION':
-      if (violation.typeOnly) {
+      if (violation.typeOnly || violation.targetTypeOnlyExports) {
         enriched.fixClass = 'file-move';
         enriched.effort = 'small';
-        enriched.enthusiastHint =
-          'This is a type-only import — move the type to a layer both sides may share, or relocate the file to match its role.';
+        enriched.enthusiastHint = violation.targetTypeOnlyExports
+          ? 'The imported module only exports types — use `import type` and place the type in a layer both sides may share.'
+          : 'This is a type-only import — move the type to a layer both sides may share, or relocate the file to match its role.';
       } else {
         enriched.fixClass = 'port-inversion';
         enriched.effort = 'medium';

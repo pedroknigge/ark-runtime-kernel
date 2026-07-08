@@ -1793,10 +1793,10 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
   });
 
   it('classifier precision: a labeled corpus classifies correctly with zero false mechanical-safe', () => {
-    // Phase J proof: on a corpus where each violation's correct class is known, the classifier
-    // must (a) match every label and (b) NEVER label anything but a type-only import move as
-    // mechanical-safe — the false-"safe" that would auto-land a bad edit is the trust-sinking
-    // failure mode the co-pilot must avoid.
+    // Phase J + P0 depth: labeled corpus. Classifier must (a) match every label and
+    // (b) NEVER mark judgment cases mechanical-safe. Safe surface (only):
+    //   - type-only import/export edges
+    //   - value-syntax import of a module that exports only types (targetTypeOnlyExports)
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-precision-'));
     fs.mkdirSync(path.join(root, 'src/ui'), { recursive: true });
     fs.mkdirSync(path.join(root, 'src/data'), { recursive: true });
@@ -1813,10 +1813,27 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
         rules: [{ from: 'UI', to: 'Data', allowed: false }],
       })
     );
-    fs.writeFileSync(path.join(root, 'src/data/x.ts'), 'export const q = 1;\nexport type Row = { id: string };\n');
-    // mechanical-safe: type-only import across a denied edge
-    fs.writeFileSync(path.join(root, 'src/ui/type.ts'), "import type { Row } from '../data/x';\nexport type R = Row;\n");
-    // judgment: value import across a denied edge
+    // Mixed value+type module — value import of `q` must stay judgment.
+    fs.writeFileSync(
+      path.join(root, 'src/data/x.ts'),
+      'export const q = 1;\nexport type Row = { id: string };\n'
+    );
+    // Pure type module — value-syntax import is still mechanical-safe (targetTypeOnlyExports).
+    fs.writeFileSync(
+      path.join(root, 'src/data/types-only.ts'),
+      'export type Id = string;\nexport interface Item { n: number }\n'
+    );
+    // mechanical-safe (1): type-only import across a denied edge
+    fs.writeFileSync(
+      path.join(root, 'src/ui/type.ts'),
+      "import type { Row } from '../data/x';\nexport type R = Row;\n"
+    );
+    // mechanical-safe (2): value-syntax import of pure-type module
+    fs.writeFileSync(
+      path.join(root, 'src/ui/type-target.ts'),
+      "import { Id } from '../data/types-only';\nexport type T = Id;\n"
+    );
+    // judgment: value import of a value export across a denied edge
     fs.writeFileSync(path.join(root, 'src/ui/value.ts'), "import { q } from '../data/x';\nexport const z = q;\n");
     // judgment: forbidden ambient global in a pure layer
     fs.writeFileSync(path.join(root, 'src/domain/global.ts'), 'export const p = process.env.X;\n');
@@ -1825,18 +1842,39 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
     fs.writeFileSync(path.join(root, 'src/domain/b.ts'), "import { a } from './a';\nexport const b = a;\n");
 
     const { plan } = runPlanJson(root);
-    // Invariant: every mechanical-safe step is a type-only import move — nothing else qualifies.
+    // Invariant: every mechanical-safe step is a type-surface LAYER_IMPORT_VIOLATION only.
     for (const step of plan.steps.filter((s) => s.class === 'mechanical-safe')) {
       expect(step.ruleId).toBe('LAYER_IMPORT_VIOLATION');
-      expect((step as { typeOnly?: boolean }).typeOnly).toBe(true);
+      const s = step as { typeOnly?: boolean; targetTypeOnlyExports?: boolean };
+      expect(Boolean(s.typeOnly || s.targetTypeOnlyExports)).toBe(true);
     }
     // The value import, the forbidden global, and the cycle are all judgment — never auto.
     const judgmentRules = plan.steps.filter((s) => s.class === 'judgment').map((s) => s.ruleId);
     expect(judgmentRules).toContain('FORBIDDEN_GLOBAL');
     expect(judgmentRules).toContain('CIRCULAR_DEPENDENCY');
-    expect(judgmentRules).toContain('LAYER_IMPORT_VIOLATION'); // the value import
-    // Exactly one auto-applicable step (the type-only move).
-    expect(plan.counts.mechanicalSafe).toBe(1);
+    expect(judgmentRules).toContain('LAYER_IMPORT_VIOLATION'); // the value import of q
+    // Exactly two auto-applicable steps (import type + pure-type target).
+    expect(plan.counts.mechanicalSafe).toBe(2);
+    const autoFiles = plan.steps
+      .filter((s) => s.class === 'mechanical-safe')
+      .map((s) => (s as { file?: string }).file)
+      .sort();
+    expect(autoFiles).toEqual(['src/ui/type-target.ts', 'src/ui/type.ts'].sort());
+  });
+
+  it('classifyRemediation pure unit: only type-surface layer imports are mechanical-safe', async () => {
+    const { classifyRemediation } = await import('../../../bin/ark-shared.mjs');
+    expect(classifyRemediation({ ruleId: 'LAYER_IMPORT_VIOLATION', typeOnly: true }).class).toBe(
+      'mechanical-safe'
+    );
+    expect(
+      classifyRemediation({ ruleId: 'LAYER_IMPORT_VIOLATION', targetTypeOnlyExports: true }).class
+    ).toBe('mechanical-safe');
+    expect(classifyRemediation({ ruleId: 'LAYER_IMPORT_VIOLATION' }).class).toBe('judgment');
+    expect(classifyRemediation({ ruleId: 'FORBIDDEN_GLOBAL' }).class).toBe('judgment');
+    expect(classifyRemediation({ ruleId: 'CIRCULAR_DEPENDENCY' }).class).toBe('judgment');
+    expect(classifyRemediation({ ruleId: 'UNKNOWN_RULE' }).class).toBe('judgment');
+    expect(classifyRemediation({}).class).toBe('deferred');
   });
 
   it('reports a clean goal when there are no violations', () => {

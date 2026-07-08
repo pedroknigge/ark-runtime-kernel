@@ -838,9 +838,13 @@ describe('ark init', () => {
     expect(out).toContain('Your project looks like');
     expect(out).toContain('Your architecture plan');
     expect(out).toContain('Done — Ark now guards your architecture');
-    // It actually set things up.
+    // It actually set things up — and left the gates active so it "stays that way"
+    // (the enforcement handoff): config, agent contract, and the CI gate.
     expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'AGENTS.md'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.github/workflows/ark-check.yml'))).toBe(true);
+    // The newcomer is pointed at the autopilot to actually carry the plan out.
+    expect(out).toContain('/ark-autopilot');
   });
 
   it('`ark start` adopts an established codebase (detection, not a wildcard preset)', () => {
@@ -1771,6 +1775,53 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
     expect(out).toContain('safe to auto-apply');
     expect(out).toContain('Plan only — no files changed');
     expect(fs.readFileSync(path.join(root, 'src/ui/a.ts'), 'utf8')).toBe(before);
+  });
+
+  it('classifier precision: a labeled corpus classifies correctly with zero false mechanical-safe', () => {
+    // Phase J proof: on a corpus where each violation's correct class is known, the classifier
+    // must (a) match every label and (b) NEVER label anything but a type-only import move as
+    // mechanical-safe — the false-"safe" that would auto-land a bad edit is the trust-sinking
+    // failure mode the co-pilot must avoid.
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-precision-'));
+    fs.mkdirSync(path.join(root, 'src/ui'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/data'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          { name: 'UI', patterns: ['src/ui/**'] },
+          { name: 'Data', patterns: ['src/data/**'] },
+          { name: 'DomainModel', patterns: ['src/domain/**'], forbiddenGlobals: ['process'] },
+        ],
+        rules: [{ from: 'UI', to: 'Data', allowed: false }],
+      })
+    );
+    fs.writeFileSync(path.join(root, 'src/data/x.ts'), 'export const q = 1;\nexport type Row = { id: string };\n');
+    // mechanical-safe: type-only import across a denied edge
+    fs.writeFileSync(path.join(root, 'src/ui/type.ts'), "import type { Row } from '../data/x';\nexport type R = Row;\n");
+    // judgment: value import across a denied edge
+    fs.writeFileSync(path.join(root, 'src/ui/value.ts'), "import { q } from '../data/x';\nexport const z = q;\n");
+    // judgment: forbidden ambient global in a pure layer
+    fs.writeFileSync(path.join(root, 'src/domain/global.ts'), 'export const p = process.env.X;\n');
+    // judgment: circular dependency
+    fs.writeFileSync(path.join(root, 'src/domain/a.ts'), "import { b } from './b';\nexport const a = b;\n");
+    fs.writeFileSync(path.join(root, 'src/domain/b.ts'), "import { a } from './a';\nexport const b = a;\n");
+
+    const { plan } = runPlanJson(root);
+    // Invariant: every mechanical-safe step is a type-only import move — nothing else qualifies.
+    for (const step of plan.steps.filter((s) => s.class === 'mechanical-safe')) {
+      expect(step.ruleId).toBe('LAYER_IMPORT_VIOLATION');
+      expect((step as { typeOnly?: boolean }).typeOnly).toBe(true);
+    }
+    // The value import, the forbidden global, and the cycle are all judgment — never auto.
+    const judgmentRules = plan.steps.filter((s) => s.class === 'judgment').map((s) => s.ruleId);
+    expect(judgmentRules).toContain('FORBIDDEN_GLOBAL');
+    expect(judgmentRules).toContain('CIRCULAR_DEPENDENCY');
+    expect(judgmentRules).toContain('LAYER_IMPORT_VIOLATION'); // the value import
+    // Exactly one auto-applicable step (the type-only move).
+    expect(plan.counts.mechanicalSafe).toBe(1);
   });
 
   it('reports a clean goal when there are no violations', () => {

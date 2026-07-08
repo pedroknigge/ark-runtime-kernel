@@ -2,6 +2,41 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 2.0.0 — 2026-07-08
+
+**The architecture co-pilot.** This major completes the Gate → Guide → **Co-pilot** arc: Ark can
+now take a non-developer from "I have a project" to "governed, cleaned up, and enforced," with an
+agent doing the work and Ark keeping it honest. It's built on the three primitives every modern
+agent harness uses — **plan**, **goal**, **loop** — composed into a guided, tiered flow.
+
+This is a **milestone** major, not an API break: everything from 1.x keeps working, and the two
+aliases previously earmarked for 2.0 removal (`AIGateViolation.code`, `layeredArchitectureRules()`)
+are **retained** to avoid surprising consumers. Upgrade with `npx ark upgrade`.
+
+### Added — Phase I (autopilot + tiers)
+
+- **`/ark-autopilot` skill** — the end-to-end co-pilot for non-developers. One flow: guided setup
+  (`ark start`) → show the plan (`ark-check --plan`) → drive the fixes (`/ark-loop`) → confirm the
+  gates are enforcing → report, all in plain language with approvals. It auto-applies only
+  `mechanical-safe` changes (validated, with rollback) and PROPOSES the rest; the agent edits, Ark
+  validates; code only, never weakening the gate.
+- **Two tiers, one contract** — documented in `/ark-autopilot`: newbie = the autopilot flow;
+  expert = the pieces directly (`ark init` / `/ark-contract` / `ark-check --plan` / `/ark-fix` /
+  the gate). `ark start` now points newcomers at the autopilot as the next step.
+
+### Added — Phase J (proof)
+
+- **Classifier-precision corpus test** — a labeled set (type-only / value / forbidden-global /
+  circular) asserting the classifier matches every label and NEVER marks anything but a type-only
+  import move as `mechanical-safe` (the zero-false-safe guarantee the autopilot depends on).
+- **End-to-end demo** — `docs/demos/03-copilot-autopilot.md`.
+- **Enforcement-handoff test** — verifies the guided path leaves config + AGENTS.md + the CI gate
+  active ("and stays that way").
+
+### Note
+
+- The intermittent CI "onTaskUpdate" vitest flake is fixed (single-fork test run).
+
 ## 1.19.0 — 2026-07-08
 
 Co-pilot Phase H — the safe apply loop (the `loop` primitive).

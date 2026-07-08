@@ -18,9 +18,15 @@ Last updated: 2026-07-08.
 | **1.16.0** | `ark upgrade` — one command to update Ark | **PUBLISHED 2026-07-08** (3 channels) | — |
 | **1.17.0** | Co-pilot **Phase F** — `ark-check --plan` (classifier + plan/goal primitives) | **PUBLISHED 2026-07-08** (npm+GitHub; MCP by user) | — |
 | **1.18.0** | Co-pilot **Phase G** — `ark start` (guided entry + plain language) | **PUBLISHED 2026-07-08** (3 channels) | — |
-| **1.19.0** | Co-pilot **Phase H** — `/ark-loop` (worktree-safe apply loop = the `loop` primitive) + `goal.met` | **On branch** `feat/co-pilot-phase-h-loop`; release prepared, awaiting confirm | Awaiting go-ahead |
-| **next** | Co-pilot **Phase I** — autopilot (compose F+G+H) + tiers (newbie/expert); then **Phase J** (proof + classifier-precision evals) | Planned | Per-phase |
+| **1.19.0** | Co-pilot **Phase H** — `/ark-loop` (worktree-safe apply loop = the `loop` primitive) + `goal.met` | **PUBLISHED 2026-07-08** (3 channels) | — |
+| **2.0.0** | Co-pilot **Phases I + J** — `/ark-autopilot` (compose F+G+H + newbie/expert tiers) + proof (classifier-precision corpus test, demo, handoff test). **Co-pilot milestone.** | **On branch** `feat/co-pilot-2.0`; release prepared, awaiting confirm | Awaiting go-ahead |
+| **next** | Depth: broaden `mechanical-safe` (file/verbatim-infra relocation) with evals; grow classifier corpus | Planned | Per-phase |
 | ongoing | Trust hardening | Partial (provenance + trusted publishing done) | Can ride any release |
+
+**2.0 scope decision (2026-07-08):** the major bump is the **co-pilot milestone** (I+J), not an
+API break. The two deprecated aliases earmarked "removal planned for 2.0" (`AIGateViolation.code`,
+`layeredArchitectureRules()`) are **KEPT** for now — removing them mid-milestone could surprise
+consumers (amarilla/PREDIAL). Revisit their removal in a later major once confirmed unused.
 
 Delivery method (user goal, 2026-07-08): build the co-pilot **phase by phase**, incorporating the
 harness primitives **plan / loop / goal**. At the end of EACH phase: present what shipped, bring
@@ -61,14 +67,14 @@ are proposed, never auto-applied.
    (agent-driven, by principle — Ark validates, doesn't codemod): discardable worktree, apply
    one `mechanical-safe` step → `ark-check` → keep/rollback, propose `judgment` steps, loop to
    `goal.met` or no-progress. `goal.met` added to `--plan`. Code-only; big rocks proposed.
-5. **The autopilot orchestration.** NEEDED: an agent-driven skill/workflow reading
-   `ark-adoption-plan.json`, driving phases — auto-apply the safe class (validated), present
-   judgment items for yes/no, re-run the gate, explain in plain language. Composes 1–4.
-6. **Tiered UX.** NEEDED: newbie mode (full autopilot with approvals) vs expert mode
-   (manual skills + gate), same contract + gates underneath. Likely a mode flag / detection.
-7. **Enforcement handoff.** EXISTS: gates install during init (CI + write-gate + hooks), so
-   "and stays that way" is already true once the loop ends. Verify the newbie path leaves
-   them installed and active without extra steps.
+5. **The autopilot orchestration. ✅ SHIPPED in Phase I / 2.0.0** as the `/ark-autopilot` skill:
+   composes setup (G) + plan (F) + loop (H), proposes judgment items, verifies gates, reports
+   in plain language. `ark start` points newcomers to it.
+6. **Tiered UX. ✅ SHIPPED in Phase I / 2.0.0** — documented in `/ark-autopilot`: newbie = the
+   autopilot flow; expert = the pieces directly (init/contract/plan/fix/gate). Same contract;
+   realized by the two entry styles, not a mode flag.
+7. **Enforcement handoff. ✅ VERIFIED (Phase J / 2.0.0).** `ark start` leaves config + AGENTS.md
+   + CI workflow in place; asserted by the `ark start` test.
 8. **Honesty in autonomy (principle, not a feature).** Never auto-apply what the gate can't
    validate; never green while auto-skipping; always show auto-done vs proposed vs deferred.
 

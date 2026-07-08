@@ -22,8 +22,8 @@ The co-pilot is built from the three primitives every modern agent harness relie
 - **loop** — apply → validate → keep-or-rollback, iterated over the plan until the goal holds.
   Lands in Phase H (the worktree-safe apply loop), driven by the autopilot in Phase I.
 
-Progress: **plan ✅ (F) · goal ✅ (F) · loop ✅ (H, `/ark-loop`)**. Next: compose them into
-the autopilot (Phase I).
+Progress: **plan ✅ (F) · goal ✅ (F) · loop ✅ (H) · autopilot ✅ (I) · proof ✅ (J)** — the
+co-pilot milestone ships as **2.0.0**.
 
 ## Problem statement
 
@@ -123,20 +123,21 @@ Useful immediately (shows the burn-down's shape) even before any autonomy exists
   keeps on green / rolls back on regression, proposes `judgment` steps, and loops until
   `goal.met` or no-progress. Agent edits, Ark validates — code only. `goal.met` in `--plan`
   is the termination signal. (An agent-driven skill rather than a CLI codemod, by principle.)
-- **D4 — Autopilot orchestration.** An agent-driven skill/workflow (`/ark-autopilot`) that reads
-  the classified plan and drives phases: auto-applies `mechanical-safe` (via D3, validated),
-  presents `judgment` items as plain-language proposals + diff for yes/no, re-runs the gate,
-  and reports progress. Composes D1–D3.
-- **D5 — Tiered UX.** `--mode newbie|expert` (or detection). Newbie = autopilot with approvals +
-  plain language; expert = current manual skills + gate. Same contract/gates.
-- **D6 — Plain-language layer. ◑ STARTED (1.18.0).** `ark start` and `--plan` state the shape,
-  each step, and the result in outcome terms first. Generalized into a shared renderer with the
-  autopilot (D4/D5).
-- **D7 — Enforcement handoff verification.** Confirm the newbie path leaves gates installed and
-  active (CI + write-gate + hooks) with zero extra steps — the "and stays that way" half.
-- **D8 — Proof: a non-dev completes the loop.** A recorded end-to-end run on a real repo
-  (install → accept → watch safe changes land validated → approve/decline big rocks → leave
-  green with gates on), plus eval cases measuring classifier precision.
+- **D4 — Autopilot orchestration. ✅ SHIPPED (2.0.0).** The `/ark-autopilot` skill composes
+  setup (G) + plan (F) + loop (H): confirms the plan, drives `/ark-loop` for the
+  `mechanical-safe` steps (validated), proposes `judgment` items for yes/no, verifies the gates,
+  and reports auto-applied vs proposed vs deferred — in plain language.
+- **D5 — Tiered UX. ✅ SHIPPED (2.0.0).** Two tiers over one contract, documented in
+  `/ark-autopilot`: newbie = the autopilot flow with approvals + plain language; expert = the
+  pieces directly (`ark init` / `/ark-contract` / `ark-check --plan` / `/ark-fix` / gate).
+  Realized by the two entry styles rather than a mode flag.
+- **D6 — Plain-language layer. ✅ SHIPPED (1.18.0 → 2.0.0).** `ark start`, `--plan`, and
+  `/ark-autopilot` state the shape, each step, and the result in outcome terms first.
+- **D7 — Enforcement handoff. ✅ SHIPPED (2.0.0).** The guided path leaves the gates installed
+  and active (config + AGENTS.md + CI workflow), verified by the `ark start` test.
+- **D8 — Proof. ✅ SHIPPED (2.0.0).** Deterministic classifier-precision corpus test (zero
+  false-`mechanical-safe` across type-only / value / forbidden-global / circular cases) +
+  the end-to-end demo `docs/demos/03-copilot-autopilot.md`.
 
 ## Implementation phases
 
@@ -153,11 +154,14 @@ Each phase ships independently and leaves the product strictly better.
 - **Phase H — Apply loop (D3). ✅ SHIPPED (1.19.0).** `/ark-loop`: worktree-safe, single-step,
   validated, reversible. Applies `mechanical-safe` items (validate-or-rollback), proposes
   `judgment` ones, loops to `goal.met` or no-progress. Delivers the `loop` primitive.
-- **Phase I — Autopilot (D4, D5).** Compose F–H into the end-to-end loop with tiers.
-  Acceptance: newbie mode auto-applies the safe class (validated), proposes the rest, ends with
-  gates green; expert mode unchanged.
-- **Phase J — Proof + handoff (D7, D8).** End-to-end run by a non-dev on a real repo; eval
-  numbers; enforcement handoff verified. Acceptance: the North Star success criteria met.
+- **Phase I — Autopilot (D4, D5). ✅ SHIPPED (2.0.0).** `/ark-autopilot` composes F–H into the
+  end-to-end flow with newbie/expert tiers over one contract; `ark start` points newcomers to it.
+- **Phase J — Proof + handoff (D7, D8). ✅ SHIPPED (2.0.0).** Classifier-precision corpus test
+  (zero false-`mechanical-safe`), the end-to-end demo, and the enforcement-handoff test.
+
+**Milestone reached — the co-pilot ships as 2.0.0.** Remaining work is depth, not primitives:
+broaden the `mechanical-safe` class (file relocation, verbatim infra relocation) as evals prove
+each safe, and grow the classifier corpus from real runs.
 
 ## Dependency graph
 

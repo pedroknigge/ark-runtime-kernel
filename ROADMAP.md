@@ -35,6 +35,12 @@ reports green while skipping work, and always shows what it did automatically vs
 is proposing vs what it deferred for a human decision. Judgment-heavy refactors
 ("big rocks") are always proposed, never silently applied.
 
+**Status: the co-pilot ships in 2.0.0.** Its primitives are built on the three every modern
+agent harness uses — **plan** (`ark-check --plan`), **goal** (the plan's `goal` block),
+**loop** (`/ark-loop`) — composed by **`ark start`** (guided setup) and **`/ark-autopilot`**
+(the end-to-end flow, two tiers). What remains is depth: broadening what's safe to auto-apply,
+proven by evals.
+
 ## Direction
 
 Ark's focus has sharpened from "enforce a clean architecture" to **helping a team
@@ -113,7 +119,7 @@ Enthusiast doc track: [docs/enthusiast/README.md](docs/enthusiast/README.md).
   `packageManager` field wins; a stray lockfile can't hijack an npm project).
 - CLI polish: `ark --help` exits 0; generated CI enables corepack before `setup-node`.
 
-### Co-pilot — Phases F, G & H (plan · goal · loop)
+### Co-pilot — Phases F–J (plan · goal · loop · autopilot) — 2.0.0
 
 - **`ark-check --plan`** (Phase F) — the classified remediation plan: every violation tagged
   `mechanical-safe` (safe to auto-apply) / `judgment` (your call) / `deferred`, ordered
@@ -123,28 +129,27 @@ Enthusiast doc track: [docs/enthusiast/README.md](docs/enthusiast/README.md).
   adopts an established codebase instead of imposing a shape.
 - **`/ark-loop`** (Phase H) — the **loop** primitive: drives the plan to a clean architecture in
   a discardable worktree, auto-applying the safe fixes (validate-or-rollback) and proposing the
-  rest, never weakening the gate. See [docs/co-pilot-plan.md](docs/co-pilot-plan.md).
+  rest, never weakening the gate.
+- **`/ark-autopilot`** (Phase I) — the end-to-end co-pilot: set up → plan → drive the fixes →
+  enforce, in plain language with approvals, over two tiers (newbie/expert) on one contract.
+  **This completes the co-pilot milestone (2.0.0).** See [docs/co-pilot-plan.md](docs/co-pilot-plan.md)
+  and the demo [docs/demos/03-copilot-autopilot.md](docs/demos/03-copilot-autopilot.md).
 
-## Now — co-pilot enablers
+## Now — after the co-pilot milestone (2.0.0)
 
-These are the building blocks that turn "Guide" into "Co-pilot." Each ships and is useful
-on its own; together they compose the autonomous loop.
+The co-pilot's primitives are complete (plan · goal · loop · autopilot). Next is depth and
+trust, not new primitives:
 
-- **Trust hardening**: npm provenance, signed release tags, CI security scanning — a co-pilot
-  that edits your repo has to be verifiably trustworthy.
+- **Broaden `mechanical-safe`.** Add file relocation and verbatim infra relocation to the
+  auto-appliable class — each only once evals prove it behavior-preserving. Grow the classifier
+  corpus from real runs. Full plan: [docs/co-pilot-plan.md](docs/co-pilot-plan.md).
+- **Trust hardening**: npm provenance (done), signed release tags, CI security scanning — a
+  co-pilot that edits your repo has to be verifiably trustworthy.
 - **ESLint parity**: keep the editor plugin aligned with `ark-check` so violations surface as
   you type, with CI as the authoritative gate.
 
-## Later — full co-pilot
+## Later
 
-Full implementation plan: [docs/co-pilot-plan.md](docs/co-pilot-plan.md).
-
-- **The autopilot orchestration.** An agent-driven skill/workflow that reads
-  `ark-adoption-plan.json` and drives the phases: auto-applies the safe class (validated),
-  presents judgment items for a yes/no, re-runs the gate, and explains each step in plain
-  language. Composes the "Now" enablers into the end-to-end loop.
-- **Tiered UX.** A newbie mode (full autopilot with approvals) and an expert mode (manual
-  skills + gate), over the same contract and gates.
 - **Deployed docs site** (VitePress / GitHub Pages) — content already lives in-repo under `docs/`.
 - **Optional locale packs** for wizard and `/ark-architect` (English remains canonical).
 - **Runtime package split**: decide whether the optional runtime kernel becomes a separate

@@ -356,6 +356,8 @@ async function start(args) {
     console.log('Done — Ark now guards your architecture as you and your AI agents write code.');
     console.log('What happens now:');
     console.log('  • Every edit is checked against the plan above (in CI and, if wired, at write time).');
+    console.log('  • Want the plan actually carried out? Run /ark-autopilot in your agent — it applies');
+    console.log('    the safe fixes (validated) and proposes the rest, in a discardable worktree.');
     console.log(`  • Re-run the plan anytime:   ${arkCommand(root, 'ark-check', '--plan')}`);
     console.log(`  • Check the whole project:   ${arkCommand(root, 'ark-check', '--root . --config ark.config.json --strict-config')}`);
     console.log(`  • Update Ark later:          ${arkCommand(root, 'ark', 'upgrade')}`);

@@ -1,216 +1,164 @@
-# Ark Roadmap
+# Roadmap — Architecture Co-pilot for AI TypeScript
 
-**Product:** Ark — Architecture Co-pilot for AI TypeScript  
-**npm / repo (historical name):** `ark-runtime-kernel` (a clearer package name is planned;
-this roadmap describes the product, not the old “runtime kernel” framing).
+**What this is:** a **machine-readable architecture contract** for TypeScript, enforced when
+AI agents write code and again before merge — plus a **co-pilot** that plans and drives safe
+cleanup without lying about coverage.
 
-Ark is an **AI architecture gate + co-pilot** for TypeScript: one machine-readable
-architecture contract, enforced when agents write code and again before code merges.
+**What this is not:** a web framework, ORM, job runner, or “runtime kernel” product. An optional
+runtime API may exist; it is not the wedge.
 
-The optional runtime kernel is not the product. The public focus is the static and
-agent-native gate: `ark-check`, `ark-mcp`, `ark://manifest`, and the `/ark-*`
-workflows that help agents place code correctly.
+**npm today:** `ark-runtime-kernel` (historical name — see [Identity cutover](#identity-cutover)).  
+**Product shape:** write gate (`*-mcp`) · CI gate (`*-check`) · plan / goal / loop · agent skills.
 
-## North Star — an architecture co-pilot for everyone
+---
 
-Ark's arc has three stages: **Gate → Guide → Co-pilot.**
+## North star
 
-- **Gate** (shipped): catch violations at write time and before merge; one contract.
-- **Guide** (shipped, 1.11–1.14): stop false-greens, recommend an application shape,
-  write an adoption plan, route mature repos to honest adoption.
-- **Co-pilot** (**ships in 2.0.0**): take a non-developer from *"I have a project"* to
-  *"my architecture is sound and stays that way"* — with an agent doing the work and
-  Ark keeping it honest.
+**Gate → Guide → Co-pilot** (shipped through 2.0.x).
 
-The co-pilot loop: Ark analyzes the repo and proposes an application shape in plain
-language; the user accepts; an agent — driven by Ark's plan — proposes the full set of
-changes, sequences them into a roadmap, and improves the architecture incrementally,
-running `ark-check` after every step and enforcing the contract from then on.
+One contract, two entries:
 
-Two entry styles, **three operating modes**, one contract underneath:
+| Entry | Who | Path |
+|-------|-----|------|
+| **Newbie** | Builders who ship with agents, not architecture jargon | `start` + autopilot skill |
+| **Expert** | Leads who want precise contract + CI | `init` / plan / fix / strict check |
 
-- **Newbie entry** gets the whole loop — Ark proposes, plans, applies the safe changes, and
-  enforces. They never need to know "hexagonal" or "layer glob" to benefit.
-- **Expert entry** takes only the parts they want — adjust the contract, run the gate — and
-  ignores the autopilot.
+Three **operating modes** (what the tool is doing — not who you are):
 
-Operating modes (what Ark is doing right now, not who you are):
+- **Suggest** — shape a thin/greenfield tree  
+- **Adapt** — raise governed coverage / match real layout; freeze only real debt  
+- **Enforce** — gates honestly hold; clean plan with ~0% governed is *not* enforce  
 
-- **Suggest** — greenfield / thin tree: propose an application shape and install a starter contract.
-- **Adapt** — brownfield or low governed%: match the contract to real layout, raise coverage, freeze only real debt.
-- **Enforce** — contract actually governs code; write gate + CI hold the line. A clean plan with ~0% governed is *not* enforce.
+**Hard lines (never planned):** codemod engine; auto-applying judgment-heavy “big rocks”;
+false-green “healthy” with no real coverage.
 
-Honesty scales into autonomy: Ark never auto-applies a change it can't validate, never
-reports green while skipping work, and always shows what it did automatically vs what it
-is proposing vs what it deferred for a human decision. Judgment-heavy refactors
-("big rocks") are always proposed, never silently applied.
+### Audience strategy (natural path)
 
-**Status: 2.0.0 shipped = co-pilot milestone + field-hardened honesty; 2.0.1 = report + host polish.**
-Primitives — **plan** (`ark-check --plan`), **goal** (plan `goal` block, including governed%),
-**loop** (`/ark-loop`) — composed by **`ark start`** and **`/ark-autopilot`**. Field hardening
-closes false-greens, detects Nest/Next/express, overlays real globs, and uses a pnpm-safe runner.
-**2.0.1** adds the showcase HTML report (origin/latest/history), documents all eleven `/ark-*`
-skills, and treats **Grok Build** as a first-class agent host next to Claude, Cursor, and Codex.
-What remains after 2.0.x is **depth** (broader mechanical-safe, evals), not new primitives.
+The product is **dev-grade** (staff eng would trust the gate) and **newbie-perfect** (co-pilot
+interface, plain language) *because* the bar stays high — not because it was diluted.
 
-## Direction
+1. **Now** — best architecture gate + co-pilot for **TypeScript + AI agents** (real market).  
+2. **Next** — deeper safe autonomy + evals (so newbies don’t stall and experts don’t distrust).  
+3. **Then** — teams (CI, baselines, reports, light ownership).  
+4. **Later** — org-scale monorepo / control-plane only if a de-facto standard emerges.  
+5. **Identity** — successor package name that doesn’t say “runtime kernel” (see below).
 
-Ark's focus has sharpened from "enforce a clean architecture" to **helping a team
-organize a messy, pre-existing codebase — without ever presenting a false-green.**
-A gate that freezes every violation and reports green, or that silently governs a
-fraction of the tree, looks safe while checking almost nothing — worse than no gate.
-The tool should tell the truth about what it governs and guide the cleanup in order.
+We do **not** optimize first for “Meta/Google monorepo platform.” That is a later order of
+magnitude. We optimize for **agents that write TS in real product repos** — where the same
+gate serves experts and newbies.
 
-A second focus is now explicit: **enthusiast-first onboarding** — users who build with
-AI but are not professional developers need a plain-language path from "what I want to
-build" to the right preset and layers, before the write gate can help them. The
-[North Star](#north-star--an-architecture-co-pilot-for-everyone) extends this from
-onboarding into ongoing, agent-driven improvement.
+---
 
-Five principles drive this:
+## Shipped (through 2.0.1)
 
-- **Honesty over green.** Report the governed fraction, separate real debt from false
-  positives, and refuse to freeze a baseline that buries a contract bug.
-- **Protect the border around a framework, not its internals.** A repo using a
-  DI/kernel framework (dcouplr, NestJS, a custom kernel) declares that framework's
-  public surface as one layer and treats the rest as a black box. Ark guards the
-  boundary; it does not duplicate the framework's own wiring. This is how Ark stays
-  compatible with any runtime.
-- **Diagnose → classify → freeze only real debt.** Adoption is not "freeze
-  everything." When most violations concentrate on one edge, the contract is usually
-  wrong, not the code — fix the contract first (allow the edge, or split the target
-  layer into a public surface + internals), then freeze the genuine remainder.
-- **Suggestions come from Ark's own canonical sources.** Layer proposals are harvested
-  from the 11-layer profile and the named presets — never an ad-hoc heuristic. A
-  directory Ark does not recognize is flagged for the user to classify, never guessed.
-  **Architecture archetypes** (application shape, not vendor stack) are curated in
-  `templates/architecture-playbook.json` and map to those same presets and layers.
-- **Autonomy is validated and reversible.** As Ark starts to apply changes (not just
-  propose them), every step runs in a discardable worktree, is validated by `ark-check`
-  before it counts, and is rolled back if it fails or regresses. Only mechanically-safe,
-  gate-verifiable changes are auto-applied; anything requiring judgment is proposed for a
-  human yes/no. The agent does the edits; Ark decides whether they're allowed to land.
+### Gate & honesty
 
-Public onboarding for builders: [docs/enthusiast/README.md](docs/enthusiast/README.md).
-(Maintainer implementation notes live outside the public tree — see `internal/` locally.)
+- Write gate + CI + optional runtime; zero runtime dependencies on the static path  
+- Governed %, baselines, concentration guards, layer `exclude`, mature-repo routing  
+- `goal.met` requires meaningful coverage; suggest / adapt / enforce modes  
+- Framework overlays (Nest/Next/express/library), pnpm-safe runner, TS resolution  
 
-## Recently shipped
+### Guide & onboarding
 
-### Core gates and brownfield
+- Architecture playbook, `--recommend`, enthusiast track, policy packs, gallery starters  
 
-- **Package-manager-aware commands.** Every command Ark emits follows the project's
-  package manager (`pnpm exec` / `yarn` / `npx`).
-- **`init` proposes, coverage stops lying.** `--init` and `--coverage` with governed %
-  and ungoverned directory proposals.
-- **Violation diagnosis**, type-only tagging, facade splits, write-gate contract parity.
-- **`ark-check --doctor`**, brownfield burn-down playbook, `/ark-fix` infra relocation.
+### Co-pilot
 
-### Architect onboarding (Phases A–E)
+- `--plan` · `start` · `/…-loop` · `/…-autopilot` · classifier corpus (zero false mechanical-safe)  
+- Showcase HTML report + origin/latest/history under `.ark/reports/`  
 
-- **`templates/architecture-playbook.json`** — ten tool-agnostic archetypes.
-- **`ark-check --recommend`** (+ `--json`, **`--write-plan`** → `ark-adoption-plan.json`).
-- **`ark init` enthusiast wizard** and **`ark init --archetype <id> --yes`**.
-- **MCP `ark_recommend`**, skill **`/ark-architect`**, session-context enthusiast hint.
-- **Terminal UX**: doctor "New here?", fix-class / `enthusiastHint`, `--watch`, `--report --beginner`.
-- **Example gallery**: `examples/*-starter/` (four archetypes) + comparative eval (30 prompts).
-- **Public demos**: write-gate self-correction, brownfield baseline, co-pilot autopilot.
-- **Enthusiast policy packs**: `enthusiast-hexagonal|layered|feature-sliced|monorepo` via
-  `--list-policy-packs` / `--apply-policy-pack`.
-- **Diátaxis enthusiast track**: `docs/enthusiast/` (tutorial, how-to, reference, explanation).
+### Agent hosts
 
-### Brownfield install & onboarding hardening
+- Claude Code · Cursor · Codex · **Grok Build** (MCP + hooks + skills)  
+- Eleven agent skills (autopilot, loop, architect, adopt, contract, place, fix, explain, …)  
 
-- **No install lifecycle scripts** — Ark runs no code on install, so hardened repos that
-  block build scripts install it with zero prompts.
-- **Mature repos routed to adoption** — `ark init` and `ark-check --recommend` steer an
-  established codebase to the adoption flow instead of a thin, false-red starter.
-- **Layer `exclude` globs** — carve framework internals out of a broad pattern; resolved in
-  the one matcher shared by both gates, so CI and the write gate classify identically.
-- **`ark upgrade`** — one command to update the package, refresh gates + skills (and Codex
-  home), migrate command runners, and re-check. Robust package-manager detection (the
-  `packageManager` field wins; a stray lockfile can't hijack an npm project).
-- CLI polish: `ark --help` exits 0; generated CI enables corepack before `setup-node`.
+### Trust (partial)
 
-### Co-pilot — Phases F–J (plan · goal · loop · autopilot) — 2.0.0
+- npm provenance, security workflows, no install lifecycle scripts  
 
-- **`ark-check --plan`** (Phase F) — the classified remediation plan: every violation tagged
-  `mechanical-safe` (safe to auto-apply) / `judgment` (your call) / `deferred`, ordered
-  auto-first, wrapped in a `goal` block. Report-only. The **plan** + **goal** primitives.
-- **`ark start`** (Phase G) — the guided front door: looks at your project, describes the shape
-  in plain language, sets up config + gates, and shows the plan. No preset or skill name needed;
-  adopts an established codebase instead of imposing a shape.
-- **`/ark-loop`** (Phase H) — the **loop** primitive: drives the plan to a clean architecture in
-  a discardable worktree, auto-applying the safe fixes (validate-or-rollback) and proposing the
-  rest, never weakening the gate.
-- **`/ark-autopilot`** (Phase I) — the end-to-end co-pilot: set up → plan → drive the fixes →
-  enforce, in plain language with approvals, over two tiers (newbie/expert) on one contract.
-- **Proof** (Phase J) — classifier-precision corpus, demo
-  [docs/demos/03-copilot-autopilot.md](docs/demos/03-copilot-autopilot.md), enforcement-handoff test.
-- **Field-hardened honesty** (2.0 must-have, not optional polish):
-  - `goal.met` only when violations are clear **and** governed coverage is meaningful;
-  - **suggest / adapt / enforce** modes on `ark start`, `--plan`, `--doctor`;
-  - shape signals ignore `.github` / other dot-dirs;
-  - Nest / Next / express / library **layout overlays** on init so starters get real governed%;
-  - pnpm runner skips the deps-status gate that breaks real apps (`ERR_PNPM_IGNORED_BUILDS`);
-  - TypeScript resolved from the project; `--plan` still reports coverage honesty without TS.
+---
 
-**This is the co-pilot milestone (2.0.0).** User-facing demos: [docs/demos/](docs/demos/).
+## Identity cutover (next packaging track)
 
-### 2.0.1 — report showcase + Grok host (shipped / shipping)
+`ark-runtime-kernel` misnames the product. **Ark as a brand is optional** and may go away.
 
-- **Showcase HTML report** — score, onion map, senior diagnostics, left-aligned dependency
-  matrix; `--report` writes origin/latest snapshots and history under `.ark/reports/`.
-- **Autopilot report steps** — before/after architecture reports in the co-pilot loop.
-- **Agent skill inventory** — all eleven `/ark-*` skills listed in the main README with
-  one-line summaries (autopilot, loop, architect, adopt, contract, place, fix, explain,
-  coverage, runtime, upgrade).
-- **Grok Build** first-class host: `--install-agent-gates --tools grok` → `.grok/config.toml`
-  (MCP), `.grok/hooks/` (write gate + session context), `.grok/skills/`; `ark-mcp --hook`
-  accepts Claude and Grok PreToolUse payloads.
-- **Field fixes** riding the same train: empty-scope false-green, TypeScript 7 host, monorepo
-  start, exclude `*.spec.ts` / `*.test.ts` from architecture scope.
+**Plan:** publish a **successor npm package** (same codebase — not a greenfield rewrite),
+deprecate `ark-runtime-kernel`, update MCP + docs. Config dual-read and dual CLI bins for
+one major if needed.
 
-## Now — after 2.0.x
+Name is **not locked**. Candidates probed free on npm (re-check before publish), including:
 
-Primitives, field honesty, report UX, and multi-host install (Claude / Cursor / Codex / Grok)
-are complete. Next is depth and trust:
+| Style | Examples (free at 2026-07-08 probe) |
+|-------|-------------------------------------|
+| Blue-ocean brand | `formline`, `holdline`, `loadline`, `trueline`, `archline`, `northline`, `codekeel` |
+| Literal product | `architecture-gate`, `arch-gate`, `write-gate`, `agent-architecture-gate` |
+| Honesty / safety | `honestgate`, `truthgate`, `archsafe`, `layersafe`, `agentsafe`, `placewell` |
 
-- **Broaden `mechanical-safe`.** Add file relocation and verbatim infra relocation to the
-  auto-appliable class — each only once evals prove it behavior-preserving. Grow the classifier
-  corpus from real runs.
-- **Trust hardening**: npm provenance (done), signed release tags, CI security scanning — a
-  co-pilot that edits your repo has to be verifiably trustworthy.
-- **ESLint parity**: keep the editor plugin aligned with `ark-check` so violations surface as
-  you type, with CI as the authoritative gate.
-- **More framework packs** (optional): explicit Nest/Next enthusiast policy packs if overlays
-  need project-specific tuning beyond filename conventions.
-- **Agent-host DX** (optional): Codex multi-project MCP without last-wins home rewrite;
-  Grok multi-turn headless reliability is host-side, not Ark.
+Maintainer naming notes + migration playbook live in private `internal/docs/` (not on npm).
 
-## Later
+**Until cutover:** install remains `ark-runtime-kernel`; product language is co-pilot/gate.
 
-- **Deployed docs site** (VitePress / GitHub Pages) — content already lives in-repo under `docs/`.
-- **Optional locale packs** for wizard and `/ark-architect` (English remains canonical).
-- **Runtime package split**: decide whether the optional runtime kernel becomes a separate
-  package once the static and agent gate are more mature.
-- **Framework adapters**: only when examples justify them; Ark stays a governance tool, not
-  an app framework.
+---
 
-## Not Planned
+## Now — after 2.0.x (product depth)
 
-- Reimplementing workflow orchestrators such as Temporal or Restate.
-- Adding runtime dependencies to the core static gates.
-- Becoming a web framework, job runner, ORM abstraction, or deployment platform.
-- Ad-hoc layer heuristics: suggestions must trace to the canonical profile/presets or the
-  architecture playbook.
-- **A codemod/AST-rewrite engine.** The co-pilot orchestrates an agent to make edits and
-  *validates* them with the gate; Ark does not hand-roll transforms or own the refactor
-  logic. It decides what is allowed to land, not how each edit is written.
-- **Auto-applying judgment-heavy refactors.** Big rocks are always proposed for a human
-  decision, never silently applied — even in newbie mode.
+Ordered by leverage for the dual audience:
 
-## How to contribute
+### P0 — make the co-pilot pay without lying
 
-Issues and PRs welcome on [GitHub](https://github.com/pedroknigge/ark-runtime-kernel).
-For enthusiast onboarding feedback, reference the archetype id and `ark-check --recommend --json`
-output when reporting misfires.
+1. **Broaden `mechanical-safe`** with labeled evals (file relocation, verbatim infra moves).  
+   Bias remains: false “safe” is worse than an extra human approval.  
+2. **Grow classifier corpus** from real brownfield runs.  
+3. **Release trust:** signed tags / verify-release path for a tool that edits repos.  
+
+### P1 — quality & install DX
+
+4. ESLint plugin parity with CI resolver rules.  
+5. Framework policy packs only if filename overlays are not enough.  
+6. Codex multi-project MCP DX (avoid last-wins home config).  
+7. Clearer messaging when TypeScript is missing on bare repos.  
+8. **Execute identity cutover** once the successor name is chosen.  
+
+### P2 — growth surfaces (not prerequisites)
+
+9. Deployed docs site (content already under `docs/`).  
+10. Optional locale packs (English canonical).  
+11. Optional split of runtime API into a secondary package.  
+12. Team features: stronger report/export, baseline burn-down UX, package-scoped debt.  
+
+### Later / only if pulled by demand
+
+- Incremental checks + ownership-aware contracts for huge monorepos  
+- Deeper “agent control plane” (org policy inheritance, audit bus)  
+- Polyglot — only if the TS agent wedge is solid  
+
+---
+
+## Not planned
+
+- Reimplementing Temporal/Restate-style orchestrators  
+- Runtime dependencies on the core static gates  
+- Becoming a web framework, job runner, ORM, or deploy platform  
+- Ad-hoc layer guesses outside playbook/presets  
+- **Codemod/AST-rewrite engine** — agents edit; the gate decides what lands  
+- **Silent auto-apply of judgment refactors**  
+
+---
+
+## How we measure “good”
+
+| Audience | Signal |
+|----------|--------|
+| Newbie | Completes `start` → autopilot without learning “hexagonal”; no false “you’re done” |
+| Expert | Trusts deny reasons; baseline/coverage honesty; no gate bypass culture |
+| Team | CI red on real debt only; governed% trends up; agents self-correct on write |
+| Package | Name and docs describe gate/co-pilot — never “runtime kernel” as the product |
+
+---
+
+## Contributing
+
+Issues and PRs: [github.com/pedroknigge/ark-runtime-kernel](https://github.com/pedroknigge/ark-runtime-kernel)
+(repo name may follow the package successor).
+
+For onboarding misfires, include archetype id and `ark-check --recommend --json` (or successor CLI).

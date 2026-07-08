@@ -2,6 +2,16 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## Unreleased
+
+### Planning
+
+- **Identity cutover (planned):** successor npm package with an honest name; deprecate
+  `ark-runtime-kernel`. Same codebase — not a greenfield rewrite. Candidate names probed
+  free on npm (e.g. brand: `formline` / `holdline` / `loadline`; literal: `architecture-gate`).
+  Public strategy rewritten in [ROADMAP.md](ROADMAP.md) (natural path: TS+agents dual audience →
+  depth → teams → optional org scale; rename when name locked).
+
 ## 2.0.1 — 2026-07-08
 
 Docs + agent-host polish on top of the 2.0.0 co-pilot release.

@@ -206,9 +206,9 @@ npm run typecheck
 npm run check:architecture   # Ark gates itself
 ```
 
-**npm package name (historical):** `ark-runtime-kernel` — install path and GitHub repo stay
-on that name for now. Product name is **Ark** (architecture co-pilot / gate). A clearer
-package name is planned for a future major; this line is not the product identity.
+**npm today (historical):** `ark-runtime-kernel`. Product = **architecture co-pilot / gate**
+for AI TypeScript — not a runtime kernel. A **successor package name** (new npm identity,
+same product) is on the roadmap; brand “Ark” is optional and may go away.
 
 Node ≥ 18 · **MIT**.
 

@@ -52,7 +52,10 @@ If Ark isn't set up yet, run `ark start` (or `ark-check --recommend` then `ark i
 6. **Report honestly.** Show the final diff and a summary: what was AUTO-APPLIED (validated),
    what is PROPOSED (awaiting your decision), and what was DEFERRED (and why). Never report a
    clean/green result while steps were skipped. Only merge the worktree back after the user
-   reviews.
+   reviews. When invoked from **`/ark-autopilot`**, the parent skill already owns the
+   before/after HTML reports (`--report` + `.ark/reports/` origin/latest). If you are running
+   standalone and the user wants a visual close-out, end with
+   `ark-check --report ark-report.html` so evolution vs origin is updated.
 
 ## Operating rules
 

@@ -38,25 +38,50 @@ Never tell a user "your architecture is guarded" while `--plan` reports `goal.me
 
 1. **Set up if needed.** If there's no `ark.config.json`, run the guided setup: `ark start`
    (which itself uses `ark-check --recommend` to suggest a shape in plain language, then writes
-   the config + agent/CI gates). On an established codebase it adopts the real structure. If
+   the config + agent/CI gates, and captures the **origin** architecture report under
+   `.ark/reports/`). On an established codebase it adopts the real structure. If
    Ark is already set up, skip to step 2.
 
-2. **Show the plan.** Run `ark-check --plan` and explain it in outcome terms: how many fixes are
+2. **Freeze / confirm the starting picture.** Always run once before changing code:
+
+   ```bash
+   npx ark-check --root . --config ark.config.json --report ark-report.html
+   ```
+
+   - If `.ark/reports/origin.json` did not exist, this **creates the origin snapshot** (day-one
+     baseline). Do **not** pass `--reset-origin` unless the user explicitly wants a new baseline.
+   - Open / point the user at `ark-report.html` (and `.ark/reports/origin.html` when first created).
+   - This is the “before” picture the autopilot will improve against.
+
+3. **Show the plan.** Run `ark-check --plan` and explain it in outcome terms: how many fixes are
    _safe to auto-apply_ vs _need your decision_ vs _deferred_, and what the goal is (a clean,
    enforced architecture). Confirm before changing anything.
 
-3. **Drive the loop.** Hand off to **`/ark-loop`**: in a discardable git worktree, auto-apply
+4. **Drive the loop.** Hand off to **`/ark-loop`**: in a discardable git worktree, auto-apply
    the `mechanical-safe` steps one at a time (validate with `ark-check`, roll back regressions),
    and PROPOSE each `judgment` step in plain language for a yes/no. Loop until the plan's
    `goal.met` is true or a round makes no progress.
 
-4. **Confirm it stays clean.** Verify the gates are installed and active so the architecture is
+5. **Confirm it stays clean.** Verify the gates are installed and active so the architecture is
    enforced from now on (in CI, and at write time if the MCP hook is wired) — the
    "and stays that way" half of the promise. Run the final `ark-check --strict-config`.
 
-5. **Report honestly, in plain language.** Summarize what was auto-applied, what you proposed
-   and the user decided, and what's deferred (and why). Show the diff. Only merge the worktree
-   back after the user reviews. Never report "done / clean" while steps were skipped.
+6. **Close with the after report + evolution.** Run again:
+
+   ```bash
+   npx ark-check --root . --config ark.config.json --report ark-report.html
+   ```
+
+   The HTML now includes **Evolution vs origin** (score, governed%, violations, files per layer)
+   when origin already existed. Point the user at:
+   - `ark-report.html` / `.ark/reports/latest.html` — **after**
+   - `.ark/reports/origin.html` — **before** (frozen)
+   - `.ark/reports/history/` — optional JSON trail
+
+7. **Report honestly, in plain language.** Summarize what was auto-applied, what you proposed
+   and the user decided, and what's deferred (and why). Tie the narrative to the before/after
+   report numbers. Show the diff. Only merge the worktree back after the user reviews. Never
+   report "done / clean" while steps were skipped.
 
 ## Operating rules
 

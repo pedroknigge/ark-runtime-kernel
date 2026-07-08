@@ -564,7 +564,10 @@ describe('ark-check --install-agent-gates', () => {
   it('installs the /ark-* skills into each detected tool command location', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-agent-gates-skills-'));
 
-    const result = runInstallAgentGates(root, ['--tools', 'claude,cursor,codex,windsurf,cline,copilot']);
+    const result = runInstallAgentGates(root, [
+      '--tools',
+      'claude,cursor,codex,grok,windsurf,cline,copilot',
+    ]);
     expect(result.status).toBe(0);
 
     const skillNames = fs
@@ -578,10 +581,17 @@ describe('ark-check --install-agent-gates', () => {
       expect(fs.existsSync(path.join(root, `.claude/skills/${name}/SKILL.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.cursor/commands/${name}.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.codex/prompts/${name}.md`))).toBe(true);
+      expect(fs.existsSync(path.join(root, `.grok/skills/${name}/SKILL.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.windsurf/workflows/${name}.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.clinerules/workflows/${name}.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.github/prompts/${name}.prompt.md`))).toBe(true);
     }
+
+    expect(fs.existsSync(path.join(root, '.grok/config.toml'))).toBe(true);
+    expect(fs.existsSync(path.join(root, '.grok/hooks/ark-write-gate.json'))).toBe(true);
+    expect(fs.readFileSync(path.join(root, '.grok/config.toml'), 'utf8')).toContain(
+      '[mcp_servers.ark]'
+    );
 
     const claudeSkill = fs.readFileSync(
       path.join(root, '.claude/skills/ark-coverage/SKILL.md'),

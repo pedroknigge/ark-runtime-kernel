@@ -2,9 +2,10 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
-## Unreleased
+## 1.15.0 — 2026-07-08
 
-Brownfield install & onboarding hardening — from a real install session on a mature repo.
+Brownfield install & onboarding hardening + layer `exclude` — from a real install session
+on a mature repo.
 
 ### Changed
 

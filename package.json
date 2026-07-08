@@ -117,9 +117,13 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/pedroknigge/ark-runtime-kernel.git"
+    "url": "git+https://github.com/pedroknigge/arkgate.git"
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/pedroknigge/arkgate/issues"
+  },
+  "homepage": "https://github.com/pedroknigge/arkgate#readme"
 }

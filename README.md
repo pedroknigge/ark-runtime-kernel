@@ -7,7 +7,7 @@
 Your AI writes most of the code. **ArkGate** keeps that code inside an architecture you can
 trust — and makes sure a “green” check means something real.
 
-[![CI](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml)
+[![CI](https://github.com/pedroknigge/arkgate/actions/workflows/ci.yml/badge.svg)](https://github.com/pedroknigge/arkgate/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/arkgate?color=cb3837&label=npm)](https://www.npmjs.com/package/arkgate)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js)
@@ -166,7 +166,7 @@ CI (example):
 
 ```yaml
 - run: npx arkgate-check --root . --config ark.config.json --strict-config
-# or: uses: pedroknigge/ark-runtime-kernel@main   # Action still on this repo until rename
+# or: uses: pedroknigge/arkgate@main   # Action still on this repo until rename
 ```
 
 ---

@@ -921,7 +921,7 @@ _From downstream consumer feedback after a real upgrade + CI-failure session._
 
 ### Added — GitHub Action
 
-- Composite action at the repo root: `uses: pedroknigge/ark-runtime-kernel@main` runs
+- Composite action at the repo root: `uses: pedroknigge/arkgate@main` runs
   `ark-check`, writes the result to the step summary, and (with `github-token`) comments
   violations on the PR. Inputs: `root`, `config`, `strict-config`, `baseline`, `version`.
 

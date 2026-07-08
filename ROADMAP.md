@@ -90,9 +90,10 @@ Product and package identity:
 | **Compat bins** | `ark`, `ark-check`, `ark-mcp` (one major) |
 | **Config** | `ark.config.json` (unchanged for now) |
 | **Skills** | `/ark-*` (same contract family) |
-| **Predecessor** | `ark-runtime-kernel` — deprecate on npm after `arkgate` is published |
+| **Predecessor** | `ark-runtime-kernel` (npm **deprecated**) |
+| **GitHub** | [pedroknigge/arkgate](https://github.com/pedroknigge/arkgate) (old `…/ark-runtime-kernel` URL redirects) |
 
-Same codebase; not a greenfield rewrite. GitHub repo may be renamed later (`ark-runtime-kernel` → `arkgate`); redirects preserve old links.
+Same codebase; not a greenfield rewrite.
 
 ---
 
@@ -154,7 +155,7 @@ Ordered by leverage for the dual audience:
 
 ## Contributing
 
-Issues and PRs: [github.com/pedroknigge/ark-runtime-kernel](https://github.com/pedroknigge/ark-runtime-kernel)
+Issues and PRs: [github.com/pedroknigge/arkgate](https://github.com/pedroknigge/arkgate)
 (repo name may follow the package successor).
 
 For onboarding misfires, include archetype id and `ark-check --recommend --json` (or successor CLI).

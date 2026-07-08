@@ -2,6 +2,64 @@
 
 All notable changes to `ark-runtime-kernel` are documented here.
 
+## 2.0.0 — 2026-07-08
+
+**The architecture co-pilot.** This major completes the Gate → Guide → **Co-pilot** arc: Ark can
+now take a non-developer from "I have a project" to "governed, cleaned up, and enforced," with an
+agent doing the work and Ark keeping it honest. It's built on the three primitives every modern
+agent harness uses — **plan**, **goal**, **loop** — composed into a guided, tiered flow.
+
+This is a **milestone** major, not an API break: everything from 1.x keeps working, and the two
+aliases previously earmarked for 2.0 removal (`AIGateViolation.code`, `layeredArchitectureRules()`)
+are **retained** to avoid surprising consumers. Upgrade with `npx ark upgrade`.
+
+### Added — Phase I (autopilot + tiers)
+
+- **`/ark-autopilot` skill** — the end-to-end co-pilot for non-developers. One flow: guided setup
+  (`ark start`) → show the plan (`ark-check --plan`) → drive the fixes (`/ark-loop`) → confirm the
+  gates are enforcing → report, all in plain language with approvals. It auto-applies only
+  `mechanical-safe` changes (validated, with rollback) and PROPOSES the rest; the agent edits, Ark
+  validates; code only, never weakening the gate.
+- **Two tiers, one contract** — documented in `/ark-autopilot`: newbie = the autopilot flow;
+  expert = the pieces directly (`ark init` / `/ark-contract` / `ark-check --plan` / `/ark-fix` /
+  the gate). `ark start` now points newcomers at the autopilot as the next step.
+
+### Added — Phase J (proof)
+
+- **Classifier-precision corpus test** — a labeled set (type-only / value / forbidden-global /
+  circular) asserting the classifier matches every label and NEVER marks anything but a type-only
+  import move as `mechanical-safe` (the zero-false-safe guarantee the autopilot depends on).
+- **End-to-end demo** — `docs/demos/03-copilot-autopilot.md`.
+- **Enforcement-handoff test** — verifies the guided path leaves config + AGENTS.md + the CI gate
+  active ("and stays that way").
+
+### Added — Field-hardened co-pilot (honesty · detection · frameworks)
+
+- **Three operating modes** on one contract: **suggest** (greenfield shape), **adapt** (raise
+  coverage / match real layout), **enforce** (gates honestly hold the line). Surfaced by
+  `ark start`, `--plan`, and `--doctor` — not just "newbie vs expert" entry styles.
+- **False-green closed.** `ark-check --plan` embeds `governedPercent` and sets `goal.met` only
+  when violations are clear *and* coverage is meaningful (≥50%). A 0% governed repo no longer
+  prints "meets contract / Done — guards your architecture."
+- **Shape-signal hygiene.** Dot-directories (`.github`, `.claude`, `.codex`, …) are skipped when
+  scoring archetypes — CI YAML and Ark's own gates no longer flip recommend to
+  "event-coordinator."
+- **Framework layout overlays** on init/start presets: Nest (`*.controller.ts` /
+  `*.service.ts` / `*.module.ts`), Next (app/pages/components), express, and library
+  conventions are merged into hexagonal/layered globs so starters get real governed% on day one.
+- **Stronger detection:** `@nestjs/*`, Nest filename conventions, `next`, express-like HTTP
+  frameworks weighted in the architecture playbook.
+- **pnpm runner reliability:** emitted commands use
+  `pnpm --config.verify-deps-before-run=false exec …` so `ERR_PNPM_IGNORED_BUILDS` (sharp,
+  esbuild, tailwind oxide, …) no longer blocks Ark on common pnpm apps.
+- **TypeScript resolution:** load TS from the project, then Ark; `--plan` still reports coverage
+  honesty when TS is missing (instead of a hard crash mid-start).
+
+### Note
+
+- The intermittent CI "onTaskUpdate" vitest flake is fixed (single-fork test run).
+- Field matrix harness (not shipped in the package): `../beta-field-test/run-matrix.mjs`.
+
 ## 1.19.0 — 2026-07-08
 
 Co-pilot Phase H — the safe apply loop (the `loop` primitive).
@@ -16,7 +74,8 @@ Co-pilot Phase H — the safe apply loop (the `loop` primitive).
   principle: the agent edits, Ark validates — code only, never DB/schema. Installed for every
   detected agent CLI like the other `/ark-*` skills.
 - **`goal.met`** in `ark-check --plan --json` — the loop's termination signal (true when there
-  are no active violations left).
+  are no active violations left). **Note (2.0.0):** `goal.met` was tightened to also require
+  meaningful governed coverage — see 2.0 field-hardening above.
 
 ## 1.18.0 — 2026-07-08
 

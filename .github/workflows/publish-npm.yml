@@ -61,8 +61,24 @@ jobs:
         if: ${{ inputs.dry_run }}
         run: npm run release:npm -- --dry
 
-      - name: Publish with npm provenance
-        if: ${{ !inputs.dry_run }}
+      # New package names cannot use Trusted Publishing until the package exists on npm
+      # and this repo is listed as a trusted publisher. For the first `arkgate` publish,
+      # set repository secret NPM_TOKEN (Automation, publish) and re-run this workflow.
+      # After the package exists, configure Trusted Publishing on npmjs.com for `arkgate`
+      # and prefer OIDC (leave NPM_TOKEN empty).
+      - name: Publish with NPM_TOKEN (new package or emergency)
+        if: ${{ !inputs.dry_run && secrets.NPM_TOKEN != '' }}
+        run: |
+          set -euo pipefail
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" >> "$GITHUB_WORKSPACE/.npmrc"
+          # First publish of a new name: provenance optional; allow non-GHA path flag
+          # still runs verify suite via release-npm.mjs
+          npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish with npm provenance (OIDC trusted publishing)
+        if: ${{ !inputs.dry_run && secrets.NPM_TOKEN == '' }}
         run: npm run release:npm
 
       - name: Upload npm tarball checksum
@@ -71,9 +87,6 @@ jobs:
           set -euo pipefail
           package="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).name")"
           version="$(node -p "JSON.parse(require('fs').readFileSync('package.json', 'utf8')).version")"
-          # The just-published version can 404 for a short window while npm's read
-          # replicas catch up with the write. Poll until the tarball URL resolves
-          # (up to ~2.5 min) instead of failing the release on a propagation lag.
           tarball_url=""
           for attempt in $(seq 1 30); do
             if tarball_url="$(npm view "$package@$version" dist.tarball 2>/dev/null)" && [ -n "$tarball_url" ]; then

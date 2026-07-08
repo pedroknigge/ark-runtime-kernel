@@ -82,9 +82,9 @@ Interactive mode (TTY, no --yes): asks what application shape you are building a
 `;
 }
 
-// The package-manager command that adds ark-runtime-kernel@latest as a dev dependency.
+// The package-manager command that adds arkgate@latest as a dev dependency.
 function packageInstallArgv(root) {
-  const spec = 'ark-runtime-kernel@latest';
+  const spec = 'arkgate@latest';
   const pm = detectPackageManager(root);
   if (pm === 'pnpm') return ['pnpm', ['add', '-D', spec]];
   if (pm === 'yarn') return ['yarn', ['add', '-D', spec]];

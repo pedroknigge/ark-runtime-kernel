@@ -107,7 +107,7 @@ describe('ark-mcp server (write-path gate)', () => {
 
   it('handshakes and echoes the protocol version', async () => {
     const res = await client.request('initialize', { protocolVersion: '2024-11-05' });
-    expect(res.result.serverInfo.name).toBe('ark-runtime-kernel');
+    expect(res.result.serverInfo.name).toBe('arkgate');
     expect(res.result.protocolVersion).toBe('2024-11-05');
     expect(res.result.capabilities).toHaveProperty('tools');
     expect(res.result.capabilities).toHaveProperty('resources');

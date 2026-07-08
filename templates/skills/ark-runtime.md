@@ -5,7 +5,7 @@ description: Replace hand-rolled infra with the Ark runtime kernel — event bus
 
 # /ark-runtime — Adopt the runtime kernel (opt-in features)
 
-`ark-runtime-kernel` is not just static checking: it ships a runtime kernel
+`arkgate` is not just static checking: it ships a runtime kernel
 (`createArkKernel`) with an event bus, event contracts, outbox, audit trail,
 policy engine, workflow/saga coordination, projections, observability hooks,
 and NestJS adapters. This skill migrates hand-rolled versions of those to the
@@ -21,14 +21,14 @@ kernel, one feature at a time.
    - saga/workflow orchestration (multi-step processes with compensation)
    - read-model/projection builders
    - policy/authorization checks scattered across use cases
-   Also check whether `@nestjs/common` is present → the `ark-runtime-kernel/nestjs`
+   Also check whether `@nestjs/common` is present → the `arkgate/nestjs`
    adapters apply.
 2. **Pick ONE target** — the smallest, most self-contained candidate (fewest
    call sites). Migrating everything at once is how adoptions die. List the
    rest as follow-ups in the report.
-3. **Migrate** — import from `ark-runtime-kernel` (root export) or
-   `ark-runtime-kernel/nestjs`, and read the package's `docs/agent-guide.md`
-   (in `node_modules/ark-runtime-kernel/docs/`) for the runtime API before
+3. **Migrate** — import from `arkgate` (root export) or
+   `arkgate/nestjs`, and read the package's `docs/agent-guide.md`
+   (in `node_modules/arkgate/docs/`) for the runtime API before
    writing code. Wire the kernel at the composition root; keep the domain
    ignorant of it (handlers/ports, not kernel imports inside domain code —
    the write gate will enforce this anyway). Note: the kernel bounds in-memory

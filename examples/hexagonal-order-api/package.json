@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "ark-runtime-kernel": "file:../.."
+    "arkgate": "file:../.."
   },
   "devDependencies": {
     "tsx": "^4.19.0",

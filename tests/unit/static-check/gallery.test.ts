@@ -61,7 +61,7 @@ describe('Phase D — example gallery starters', () => {
         'ark-check --root . --config ark.config.json --strict-config'
       );
       expect(pkg.scripts.check).not.toContain('../..');
-      expect(pkg.devDependencies?.['ark-runtime-kernel']).toBeDefined();
+      expect(pkg.devDependencies?.['arkgate']).toBeDefined();
     });
   }
 
@@ -74,7 +74,7 @@ describe('Phase D — example gallery starters', () => {
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as {
       devDependencies: Record<string, string>;
     };
-    pkg.devDependencies['ark-runtime-kernel'] = `file:${REPO}`;
+    pkg.devDependencies['arkgate'] = `file:${REPO}`;
     fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
     execSync('npm install --ignore-scripts', { cwd: tmp, stdio: 'pipe' });

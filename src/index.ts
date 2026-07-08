@@ -1,8 +1,9 @@
 /**
- * Ark — Architecture Co-pilot for AI TypeScript
+ * ArkGate — Architecture Co-pilot for AI TypeScript
  *
  * Zero-dependency write gate + CI gate + co-pilot (plan / goal / loop) for
  * TypeScript repos and agents. Optional runtime kernel is not the product.
+ * npm package: `arkgate` (formerly `ark-runtime-kernel`).
  *
  * @packageDocumentation
  */

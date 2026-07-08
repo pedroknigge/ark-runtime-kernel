@@ -1,11 +1,11 @@
 ---
 name: ark-upgrade
-description: Update ark-runtime-kernel to the latest published version, then refresh gates and /ark-* skills for every agent CLI and re-verify the architecture check. Autonomous.
+description: Update arkgate to the latest published version, then refresh gates and /ark-* skills for every agent CLI and re-verify the architecture check. Autonomous.
 ---
 
 # /ark-upgrade — Update Ark and refresh its gates
 
-Update the `ark-runtime-kernel` dependency to the latest published version and
+Update the `arkgate` dependency to the latest published version and
 bring the repo's generated artifacts and gates in line with it. This skill
 checks the registry itself — don't assume the copy in `node_modules` is current.
 
@@ -25,9 +25,9 @@ reports a problem to triage.
 ## Steps
 
 1. **Check the registry, then update.** Compare the installed version
-   (`node_modules/ark-runtime-kernel/package.json`) against the latest published:
-   `npm view ark-runtime-kernel version`. If a newer version exists, update it —
-   `npm install -D ark-runtime-kernel@latest` (or the project's package manager:
+   (`node_modules/arkgate/package.json`) against the latest published:
+   `npm view arkgate version`. If a newer version exists, update it —
+   `npm install -D arkgate@latest` (or the project's package manager:
    `pnpm add -D` / `yarn add -D`) — so the lockfile moves too; a pinned lockfile
    is exactly why "just re-run install" often stays on the old version. If the
    installed version already equals the latest, say so and still run steps 3-4
@@ -41,12 +41,12 @@ reports a problem to triage.
    `minimumReleaseAgeExclude` in `pnpm-workspace.yaml` FIRST, bump the dependency spec, then
    run a plain `pnpm install`, and verify with `pnpm install --frozen-lockfile` before moving
    on. Only exclude a first-party package you trust.
-2. **Changelog triage** — read `node_modules/ark-runtime-kernel/CHANGELOG.md`
+2. **Changelog triage** — read `node_modules/arkgate/CHANGELOG.md`
    (shipped in the package) for the versions between old and new, and pick out
    only entries that affect THIS repo (new flags, changed defaults, new gate
    templates, new skills). Summarize each in one sentence with what, if
    anything, the repo must do about it. If the file is absent (older releases
-   didn't ship it), fall back to `npm view ark-runtime-kernel@<version> ...` or
+   didn't ship it), fall back to `npm view arkgate@<version> ...` or
    the GitHub release notes — say which source you used.
 3. **Refresh templates** — run `ark-check --install-agent-gates`. Without
    `--force` it only writes missing files (new skills, new tool templates) and

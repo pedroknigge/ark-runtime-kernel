@@ -1478,7 +1478,7 @@ const SKILL_TOOL_TARGETS = {
   copilot: (name) => `.github/prompts/${name}.prompt.md`,
 };
 
-// The version of the ark-runtime-kernel package these bins ship with. Used to
+// The version of the arkgate package these bins ship with. Used to
 // stamp installed skills so a normal ark-check can tell "outdated skill from an
 // older Ark" apart from "user-customized skill" — the stamp moves with the
 // package, editing the body doesn't.
@@ -2916,7 +2916,7 @@ function detectEnforcement(root) {
     return hit ? `.github/workflows/${hit}` : null;
   };
   const eslintFile = ['eslint.config.mjs', 'eslint.config.js', 'eslint.config.cjs', '.eslintrc.json', '.eslintrc.cjs'].find(
-    (f) => has(f) && fileIncludes(f, 'ark-runtime-kernel')
+    (f) => has(f) && (fileIncludes(f, 'arkgate') || fileIncludes(f, 'ark-runtime-kernel'))
   );
   const writeGateFile =
     (fileIncludes('.claude/settings.json', 'ark-mcp') && '.claude/settings.json') ||

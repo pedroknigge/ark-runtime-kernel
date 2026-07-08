@@ -1,4 +1,4 @@
-import type { EventPublisher, IntentCreator } from 'ark-runtime-kernel';
+import type { EventPublisher, IntentCreator } from 'arkgate';
 import { ORDER_PLACED, placeOrder, type OrderPlacedPayload } from '../domain/order.js';
 import type { OrderRepository } from '../domain/order-repository.js';
 

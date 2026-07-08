@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.pedroknigge/ark",
-  "description": "Architecture co-pilot for AI TypeScript (write gate, CI, plan/loop)",
+  "name": "io.github.pedroknigge/arkgate",
+  "description": "ArkGate \u2014 architecture co-pilot for AI TypeScript (write gate, CI, plan/loop)",
   "repository": {
     "url": "https://github.com/pedroknigge/ark-runtime-kernel",
     "source": "github"
   },
-  "version": "2.0.1",
+  "version": "2.1.0",
   "packages": [
     {
       "registryType": "npm",
-      "identifier": "ark-runtime-kernel",
-      "version": "2.0.1",
+      "identifier": "arkgate",
+      "version": "2.1.0",
       "runtimeHint": "npx",
       "transport": {
         "type": "stdio"
@@ -19,7 +19,7 @@
       "packageArguments": [
         {
           "type": "positional",
-          "value": "ark-mcp"
+          "value": "arkgate-mcp"
         },
         {
           "type": "named",
@@ -31,7 +31,7 @@
           "type": "named",
           "name": "--config",
           "value": "ark.config.json",
-          "description": "Path to the Ark architecture config"
+          "description": "Path to the ArkGate architecture config"
         }
       ]
     }

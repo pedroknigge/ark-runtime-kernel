@@ -41,7 +41,7 @@ npm run check
 # ✔ Ark check passed.
 ```
 
-`ark-runtime-kernel` supplies the `ark-check` CLI via `devDependencies`.
+`arkgate` supplies the `ark-check` CLI via `devDependencies`.
 
 ## Next steps
 

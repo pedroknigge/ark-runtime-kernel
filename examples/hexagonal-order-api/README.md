@@ -6,7 +6,7 @@ A tiny but real order API with a hexagonal architecture, governed by Ark's three
 - **ark-mcp** — AI gate: the same rules, exposed to coding agents via MCP.
 - **Ark kernel runtime** — strict event bus, intent registry, event contracts, projections.
 
-No frameworks, no external runtime dependencies — just `node:http` and `ark-runtime-kernel`.
+No frameworks, no external runtime dependencies — just `node:http` and `arkgate`.
 
 ## Layout
 

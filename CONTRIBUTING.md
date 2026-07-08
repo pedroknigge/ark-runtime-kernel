@@ -5,8 +5,8 @@ Thanks for your interest! Ark is young and contributions of every size are welco
 ## Setup
 
 ```bash
-git clone https://github.com/pedroknigge/ark-runtime-kernel
-cd ark-runtime-kernel
+git clone https://github.com/pedroknigge/arkgate
+cd arkgate
 npm ci
 npm run build        # bin/ark-mcp.mjs loads dist/, so build first
 npx vitest run       # full test suite (npm test starts watch mode)

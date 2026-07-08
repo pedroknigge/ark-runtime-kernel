@@ -7,8 +7,8 @@ cleanup without lying about coverage.
 **What this is not:** a web framework, ORM, job runner, or “runtime kernel” product. An optional
 runtime API may exist; it is not the wedge.
 
-**npm today:** `ark-runtime-kernel` (historical name — see [Identity cutover](#identity-cutover)).  
-**Product shape:** write gate (`*-mcp`) · CI gate (`*-check`) · plan / goal / loop · agent skills.
+**npm:** [`arkgate`](https://www.npmjs.com/package/arkgate) (product **ArkGate**; formerly `ark-runtime-kernel`).  
+**Product shape:** write gate (`arkgate-mcp`) · CI gate (`arkgate-check`) · plan / goal / loop · agent skills.
 
 ---
 
@@ -78,25 +78,21 @@ gate serves experts and newbies.
 
 ---
 
-## Identity cutover (next packaging track)
+## Identity — ArkGate (`arkgate`) — locked
 
-`ark-runtime-kernel` misnames the product. **Ark as a brand is optional** and may go away.
+Product and package identity:
 
-**Plan:** publish a **successor npm package** (same codebase — not a greenfield rewrite),
-deprecate `ark-runtime-kernel`, update MCP + docs. Config dual-read and dual CLI bins for
-one major if needed.
+| | |
+|--|--|
+| **Product** | **ArkGate** — architecture co-pilot / write+CI gate for AI TypeScript |
+| **npm** | `arkgate` |
+| **CLI** | `arkgate`, `arkgate-check`, `arkgate-mcp` |
+| **Compat bins** | `ark`, `ark-check`, `ark-mcp` (one major) |
+| **Config** | `ark.config.json` (unchanged for now) |
+| **Skills** | `/ark-*` (same contract family) |
+| **Predecessor** | `ark-runtime-kernel` — deprecate on npm after `arkgate` is published |
 
-Name is **not locked**. Candidates probed free on npm (re-check before publish), including:
-
-| Style | Examples (free at 2026-07-08 probe) |
-|-------|-------------------------------------|
-| Blue-ocean brand | `formline`, `holdline`, `loadline`, `trueline`, `archline`, `northline`, `codekeel` |
-| Literal product | `architecture-gate`, `arch-gate`, `write-gate`, `agent-architecture-gate` |
-| Honesty / safety | `honestgate`, `truthgate`, `archsafe`, `layersafe`, `agentsafe`, `placewell` |
-
-Maintainer naming notes + migration playbook live in private `internal/docs/` (not on npm).
-
-**Until cutover:** install remains `ark-runtime-kernel`; product language is co-pilot/gate.
+Same codebase; not a greenfield rewrite. GitHub repo may be renamed later (`ark-runtime-kernel` → `arkgate`); redirects preserve old links.
 
 ---
 
@@ -117,7 +113,7 @@ Ordered by leverage for the dual audience:
 5. Framework policy packs only if filename overlays are not enough.  
 6. Codex multi-project MCP DX (avoid last-wins home config).  
 7. Clearer messaging when TypeScript is missing on bare repos.  
-8. **Execute identity cutover** once the successor name is chosen.  
+8. ~~Identity cutover~~ → **done as ArkGate / `arkgate`** (deprecate predecessor package).  
 
 ### P2 — growth surfaces (not prerequisites)
 

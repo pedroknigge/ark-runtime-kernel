@@ -513,7 +513,7 @@ async function main() {
     return;
   }
 
-  const SERVER_INFO = { name: 'ark-runtime-kernel', version: ark.version };
+  const SERVER_INFO = { name: 'arkgate', version: ark.version };
   const DEFAULT_PROTOCOL = '2024-11-05';
 
   const TOOLS = [

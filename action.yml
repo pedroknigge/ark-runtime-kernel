@@ -1,5 +1,5 @@
-name: 'Ark Architecture Check'
-description: 'Block merges on architecture violations (cross-layer imports, intent references) with ark-check'
+name: 'ArkGate Architecture Check'
+description: 'Block merges on architecture violations (cross-layer imports, intent references) with arkgate-check'
 author: 'pedroknigge'
 branding:
   icon: 'shield'
@@ -19,7 +19,7 @@ inputs:
     description: 'Baseline file of frozen violations (empty = disabled)'
     default: ''
   version:
-    description: 'ark-runtime-kernel version to run'
+    description: 'arkgate version to run'
     default: 'latest'
   github-token:
     description: 'Token used to comment violations on the PR (empty = no comment)'
@@ -28,7 +28,7 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Run ark-check
+    - name: Run arkgate-check
       id: ark
       shell: bash
       env:
@@ -42,13 +42,14 @@ runs:
         ARGS=(--root "$INPUT_ROOT" --config "$INPUT_CONFIG")
         [ "$INPUT_STRICT" = "true" ] && ARGS+=(--strict-config)
         [ -n "$INPUT_BASELINE" ] && ARGS+=(--baseline "$INPUT_BASELINE")
-        npx --yes --package "ark-runtime-kernel@$INPUT_VERSION" ark-check "${ARGS[@]}" 2>&1 | tee ark-check-output.txt
+        # Prefer arkgate-check; fall back to ark-check if an older tarball is pinned.
+        npx --yes --package "arkgate@$INPUT_VERSION" arkgate-check "${ARGS[@]}" 2>&1 | tee arkgate-check-output.txt
         STATUS=${PIPESTATUS[0]}
         {
-          echo "## 🏛️ Ark architecture check"
+          echo "## ArkGate architecture check"
           echo ""
           echo '```'
-          cat ark-check-output.txt
+          cat arkgate-check-output.txt
           echo '```'
         } >> "$GITHUB_STEP_SUMMARY"
         echo "status=$STATUS" >> "$GITHUB_OUTPUT"
@@ -63,12 +64,12 @@ runs:
         REPO: ${{ github.repository }}
       run: |
         {
-          echo "### 🏛️ Ark architecture check failed"
+          echo "### ArkGate architecture check failed"
           echo ""
           echo '```'
-          cat ark-check-output.txt
+          cat arkgate-check-output.txt
           echo '```'
           echo ""
           echo "_Layer rules live in \`ark.config.json\`. Docs: https://github.com/pedroknigge/ark-runtime-kernel_"
-        } > ark-comment.md
-        gh pr comment "$PR" --repo "$REPO" --body-file ark-comment.md
+        } > arkgate-comment.md
+        gh pr comment "$PR" --repo "$REPO" --body-file arkgate-comment.md

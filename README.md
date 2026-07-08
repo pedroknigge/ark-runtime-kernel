@@ -1,14 +1,14 @@
 <div align="center">
 
-# Ark — Architecture Co-pilot for AI TypeScript
+# ArkGate — Architecture Co-pilot for AI TypeScript
 
 **Write gate · CI gate · co-pilot** for TypeScript projects that use AI agents.
 
-Your AI writes most of the code. Ark keeps that code inside an architecture you can trust —
-and makes sure a “green” check means something real.
+Your AI writes most of the code. **ArkGate** keeps that code inside an architecture you can
+trust — and makes sure a “green” check means something real.
 
 [![CI](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/pedroknigge/ark-runtime-kernel/actions/workflows/ci.yml)
-[![npm](https://img.shields.io/npm/v/ark-runtime-kernel?color=cb3837&label=npm)](https://www.npmjs.com/package/ark-runtime-kernel)
+[![npm](https://img.shields.io/npm/v/arkgate?color=cb3837&label=npm)](https://www.npmjs.com/package/arkgate)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js)
 ![Zero deps](https://img.shields.io/badge/dependencies-0-success)
@@ -19,12 +19,12 @@ and makes sure a “green” check means something real.
 
 ## What it is
 
-Ark is a **machine-readable architecture contract** for TypeScript, enforced in three places:
+**ArkGate** is a **machine-readable architecture contract** for TypeScript, enforced in three places:
 
 | When | Tool | What happens |
 |------|------|----------------|
-| **While the AI writes** | `ark-mcp` (write gate) | Blocks bad edits; agent self-corrects |
-| **Before merge** | `ark-check` (CI) | Full TypeScript import graph + rules |
+| **While the AI writes** | `arkgate-mcp` (write gate) | Blocks bad edits; agent self-corrects |
+| **Before merge** | `arkgate-check` (CI) | Full TypeScript import graph + rules |
 | **At runtime** *(optional)* | `createArkKernel()` | Event/intent governance if you opt in |
 
 One file drives all of it: **`ark.config.json`**.
@@ -41,7 +41,7 @@ plus tools agents can read *before* generating code (`ark_place`, `ark://manifes
 
 | You are… | You want… | Start with |
 |----------|-----------|------------|
-| **Builder with AI** (not necessarily an architect) | Order without learning “hexagonal” first | `npx ark start` → `/ark-autopilot` |
+| **Builder with AI** (not necessarily an architect) | Order without learning “hexagonal” first | `npx arkgate start` → `/ark-autopilot` |
 | **Engineer / tech lead** | A strict contract, CI, baselines, precise control | `ark init` + `ark-check` + write gate |
 | **Team on a messy repo** | Truth about coverage + a cleanup path, not a false green | `ark-check --coverage` → `/ark-adopt` |
 
@@ -69,8 +69,9 @@ Three **operating modes** (not “user types”) on the same contract:
 ## Start in one minute
 
 ```bash
-npm install -D ark-runtime-kernel typescript
-npx ark start          # look at the project → setup → plan (plain language)
+npm install -D arkgate typescript
+npx arkgate start          # look at the project → setup → plan (plain language)
+# (aliases: ark start / ark-check / ark-mcp still work)
 ```
 
 Then, in your agent (Claude / Cursor / Codex / **Grok** / …):
@@ -84,10 +85,10 @@ That is the **co-pilot**: set up → plan → apply safe fixes (validated, rever
 **Prefer manual control?**
 
 ```bash
-npx ark init           # config + gates
-npx ark-check          # CI gate
-npx ark-check --plan   # classified fix list
-npx ark-check --coverage
+npx arkgate init              # config + gates
+npx arkgate-check             # CI gate
+npx arkgate-check --plan      # classified fix list
+npx arkgate-check --coverage
 ```
 
 Works with **npm, pnpm, and yarn**. No install lifecycle scripts (safe for hardened CI).
@@ -99,7 +100,7 @@ Works with **npm, pnpm, and yarn**. No install lifecycle scripts (safe for harde
 Install with agent gates:
 
 ```bash
-npx ark-check --install-agent-gates
+npx arkgate-check --install-agent-gates
 # or pick hosts: --tools claude,cursor,codex,grok
 ```
 
@@ -152,20 +153,20 @@ ark.config.json
 ## Common commands
 
 ```bash
-npx ark start                         # guided setup + plan
-npx ark-check --doctor                # health + operating mode
-npx ark-check --plan                  # safe-to-auto-fix vs your call
-npx ark-check --coverage              # Governed: N%
-npx ark-check --report ark-report.html  # showcase HTML + origin/latest snapshots
-npx ark-check --baseline              # only NEW violations fail
-npx ark upgrade                       # update package + refresh gates/skills
+npx arkgate start                         # guided setup + plan
+npx arkgate-check --doctor                # health + operating mode
+npx arkgate-check --plan                  # safe-to-auto-fix vs your call
+npx arkgate-check --coverage              # Governed: N%
+npx arkgate-check --report ark-report.html  # showcase HTML + origin/latest snapshots
+npx arkgate-check --baseline              # only NEW violations fail
+npx arkgate upgrade                       # update package + refresh gates/skills
 ```
 
 CI (example):
 
 ```yaml
-- run: npx ark-check --root . --config ark.config.json --strict-config
-# or: uses: pedroknigge/ark-runtime-kernel@main
+- run: npx arkgate-check --root . --config ark.config.json --strict-config
+# or: uses: pedroknigge/ark-runtime-kernel@main   # Action still on this repo until rename
 ```
 
 ---
@@ -175,11 +176,11 @@ CI (example):
 Gates need **no app code changes**. If you also want runtime intent/event contracts:
 
 ```ts
-import { createStrictArkKernelFromConfig } from 'ark-runtime-kernel';
+import { createStrictArkKernelFromConfig } from 'arkgate';
 // see docs/production-hardening.md and package exports
 ```
 
-NestJS: `ark-runtime-kernel/nestjs` (optional peer `@nestjs/common`).
+NestJS: `arkgate/nestjs` (optional peer `@nestjs/common`).
 
 ---
 
@@ -206,9 +207,9 @@ npm run typecheck
 npm run check:architecture   # Ark gates itself
 ```
 
-**npm today (historical):** `ark-runtime-kernel`. Product = **architecture co-pilot / gate**
-for AI TypeScript — not a runtime kernel. A **successor package name** (new npm identity,
-same product) is on the roadmap; brand “Ark” is optional and may go away.
+**npm:** [`arkgate`](https://www.npmjs.com/package/arkgate) · formerly `ark-runtime-kernel`  
+**Product:** **ArkGate** — architecture co-pilot / gate for AI TypeScript (not a runtime kernel).  
+CLI: `arkgate` · `arkgate-check` · `arkgate-mcp` (aliases `ark` / `ark-check` / `ark-mcp` still work).
 
 Node ≥ 18 · **MIT**.
 

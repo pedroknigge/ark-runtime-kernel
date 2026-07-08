@@ -1,7 +1,7 @@
 {
-  "name": "ark-runtime-kernel",
-  "version": "2.0.1",
-  "description": "Architecture co-pilot for AI TypeScript: write gate, CI gate, plan/loop (package name ark-runtime-kernel is historical)",
+  "name": "arkgate",
+  "version": "2.1.0",
+  "description": "ArkGate — architecture co-pilot for AI TypeScript (write gate, CI gate, plan/loop)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -25,11 +25,14 @@
     "./package.json": "./package.json"
   },
   "bin": {
+    "arkgate": "bin/ark.mjs",
+    "arkgate-check": "bin/ark-check.mjs",
+    "arkgate-mcp": "bin/ark-mcp.mjs",
     "ark": "bin/ark.mjs",
     "ark-check": "bin/ark-check.mjs",
     "ark-mcp": "bin/ark-mcp.mjs"
   },
-  "mcpName": "io.github.pedroknigge/ark",
+  "mcpName": "io.github.pedroknigge/arkgate",
   "files": [
     "bin",
     "dist",
@@ -92,25 +95,24 @@
     "node": ">=18"
   },
   "keywords": [
+    "arkgate",
     "architecture",
-    "ddd",
-    "event-driven",
-    "hexagonal",
-    "clean-architecture",
-    "governance",
-    "kernel",
-    "policy",
-    "nestjs",
+    "architecture-gate",
     "ai-agents",
     "mcp",
-    "lint",
-    "architecture-fitness",
-    "architecture-enforcement",
+    "write-gate",
+    "hexagonal",
+    "clean-architecture",
+    "layered-architecture",
     "import-rules",
     "dependency-rules",
     "boundaries",
-    "layered-architecture",
-    "ai-code-gate"
+    "co-pilot",
+    "governance",
+    "typescript",
+    "eslint",
+    "nestjs",
+    "architecture-enforcement"
   ],
   "license": "MIT",
   "repository": {

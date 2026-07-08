@@ -286,7 +286,7 @@ flat-config preset you can spread directly:
 
 ```js
 // eslint.config.js  (flat config)
-import ark from 'ark-runtime-kernel/eslint';
+import ark from 'arkgate/eslint';
 
 export default [
   ark.configs.recommended,   // ark/no-domain-infra-imports, no-raw-event-publish, require-publish-source
@@ -299,7 +299,7 @@ domain directories — a global block would flag legitimate infrastructure code.
 as its own block with a `files` glob matching your `DomainModel` layer:
 
 ```js
-import ark from 'ark-runtime-kernel/eslint';
+import ark from 'arkgate/eslint';
 
 export default [
   ark.configs.recommended,

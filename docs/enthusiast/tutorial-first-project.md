@@ -7,7 +7,7 @@ This tutorial walks one path end-to-end. You need Node 18+ and a new empty folde
 ```bash
 mkdir my-app && cd my-app
 npm init -y
-npm install -D ark-runtime-kernel typescript
+npm install -D arkgate typescript
 ```
 
 ## 2. Discover your application shape

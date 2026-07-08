@@ -141,7 +141,7 @@ projections, metadata, workflow engine, and 11-layer architecture profile:
 ```ts
 import {
   createStrictArkKernel,
-} from 'ark-runtime-kernel';
+} from 'arkgate';
 
 const ark = createStrictArkKernel();
 // ... define intents, event contracts, metadata, projections, and workflows through ark.*
@@ -336,7 +336,7 @@ project is ready to fail CI on coverage gaps.
 Use the optional ESLint plugin for fast local feedback:
 
 ```js
-import ark from 'ark-runtime-kernel/eslint';
+import ark from 'arkgate/eslint';
 
 export default [
   ark.configs.recommended,
@@ -484,7 +484,7 @@ must remember to call.
 2. **Generate** code using registered intents, profiles, metadata, projections, and workflow definitions
 3. **Validate snippets** with `createAICodeGate().validate(source, { layer })`
 4. **Validate repository** with `ark-check --root . --config ark.config.json`
-5. **Lint** with `ark-runtime-kernel/eslint` recommended rules
+5. **Lint** with `arkgate/eslint` recommended rules
 6. **Wire** relationships via `registry.define(..., { dependsOn, produces })`
 7. **Register** event contracts before publishing in strict mode
 8. **Observe** runtime via `bus.getTrace()`, `auditTrail.query()`, outbox records, projection checkpoints, and `ark.observability.report()`

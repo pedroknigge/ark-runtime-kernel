@@ -1,16 +1,31 @@
 # Changelog
 
-All notable changes to `ark-runtime-kernel` are documented here.
+All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
-## Unreleased
+## 2.1.0 — 2026-07-08
 
-### Planning
+**Identity: ArkGate.** Same product and codebase; honest package name.
 
-- **Identity cutover (planned):** successor npm package with an honest name; deprecate
-  `ark-runtime-kernel`. Same codebase — not a greenfield rewrite. Candidate names probed
-  free on npm (e.g. brand: `formline` / `holdline` / `loadline`; literal: `architecture-gate`).
-  Public strategy rewritten in [ROADMAP.md](ROADMAP.md) (natural path: TS+agents dual audience →
-  depth → teams → optional org scale; rename when name locked).
+### Changed
+
+- **npm package renamed to [`arkgate`](https://www.npmjs.com/package/arkgate)** (was
+  `ark-runtime-kernel`). Product name: **ArkGate** — architecture co-pilot / gate for AI
+  TypeScript. The optional runtime API is not the product.
+- **CLI bins:** primary `arkgate`, `arkgate-check`, `arkgate-mcp`. Compat aliases
+  `ark` / `ark-check` / `ark-mcp` remain for one major.
+- **MCP / server.json:** identifier `arkgate`, MCP name `io.github.pedroknigge/arkgate`.
+- **GitHub Action** and docs/examples install paths point at `arkgate`.
+- Config file remains `ark.config.json`; skills remain `/ark-*` (contract family).
+
+### Migration
+
+```bash
+npm uninstall ark-runtime-kernel
+npm install -D arkgate typescript
+# bins: npx arkgate-check …  (or still npx ark-check …)
+```
+
+Predecessor package will be **deprecated** on npm with a pointer here after publish.
 
 ## 2.0.1 — 2026-07-08
 

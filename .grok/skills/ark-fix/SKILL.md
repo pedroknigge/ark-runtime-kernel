@@ -1,7 +1,7 @@
 ---
 name: ark-fix
 description: Resolve Ark architecture violations at the root cause — fix the code (ports, adapters, moves), never weaken the contract. Runs ark-check, fixes, verifies.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-fix — Fix architecture violations properly
@@ -48,18 +48,22 @@ paste output you can generate yourself.
   with the impure implementation outside the domain, and pass it in.
 - **Intent prefix mismatch**: rename the intent to the layer's declared prefix,
   or move the handler to the layer that owns that prefix.
-- **Type-only inversion** (a lower layer `import type`s something from an upper layer,
-  e.g. a domain module importing a type that happens to live in a UI hook): move the
-  TYPE down to the layer that owns it (e.g. `src/lib/<domain>/types.ts`), and re-export
-  it from the original module for back-compat (`export type { X } from "@/lib/<domain>/types"`)
-  so no consumer breaks. This is the highest-volume, safest adoption fix — verify with
-  `tsc --noEmit`. It often also breaks a circular dependency that ran through the hook.
-  Two cases where the move is NOT mechanical — stop and flag instead of forcing it:
-  (a) the type extends a persistence/ORM row (e.g. a Drizzle schema type) — moving it to a
-  domain layer would couple domain→Persistence (the write gate will block it), so it needs a
-  domain-owned type or port, not a move; (b) the source file mixes the type with runtime
-  logic (stubs, helpers, mock builders) — split the types into their own module first, then
-  move.
+- **Type-only inversion** (`typeOnly: true` on a `LAYER_IMPORT_VIOLATION` — plan class
+  `mechanical-safe`, `remediationKind: type-only-import-move`): a lower layer `import type`s
+  something from an upper layer (e.g. domain importing a type that lives in a UI hook). Move the
+  TYPE down to the layer that owns it and re-export for back-compat
+  (`export type { X } from "@/lib/<domain>/types"`). Highest-volume safe fix — verify with the
+  gate (and `tsc --noEmit` if present). Not mechanical if: (a) the type extends a persistence/ORM
+  row — needs a domain-owned type/port; (b) the source mixes types with runtime logic — split
+  first, then move (or use pure-type file relocate when the *whole file* is type-only).
+- **Pure-type file relocate** (`sourcePureTypeModule` + type-only edge —
+  `remediationKind: pure-type-file-relocate`): the entire source file is type-surface only (no
+  runtime statements). Relocate the **file** to the owning layer (or extract the type module
+  there). Behavior-preserving; do not invent runtime ports.
+- **Value-syntax import of a pure type-only module** (`targetTypeOnlyExports` —
+  `remediationKind: import-type-from-pure-type-module`): convert static `import { T } from …`
+  to `import type { T } from …`. Never auto-apply for `require()` / dynamic `import()` (those stay
+  judgment — they still execute the module).
 - **Raw infrastructure access in an orchestration/UI layer** (a route/handler or component
   that runs SQL or imports the DB client directly — e.g. `sqlClient\`SELECT …\`` or
   `import { db } from "@/lib/db"` inside `src/app/**`): this is the value-import counterpart

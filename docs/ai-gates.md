@@ -1,32 +1,36 @@
-# Gating AI Agents with Ark
+# Gating AI Agents with ArkGate
 
-**Ark** is the architecture co-pilot for AI TypeScript (write gate · CI · plan/loop).
+**ArkGate** (`arkgate`) is the architecture co-pilot for AI TypeScript (write gate · CI · plan/loop).
 The write-path gate is what makes it different from every other architecture linter:
 generated code is validated against your architecture **before it lands on disk**, not
 after the PR is red.
 
-Everything below uses the same `ark.config.json` as `ark-check` (CI) — one contract, enforced everywhere. Generate it once:
+Everything below uses the same `ark.config.json` as `arkgate-check` / `ark-check` (CI) — one
+contract, enforced everywhere. Generate it once:
 
 ```bash
-npx ark-check --init
+npx arkgate-check --init
+# aliases: ark-check, ark init, arkgate start
 ```
 
 For guided setup with prompts, use:
 
 ```bash
-npx ark init
+npx arkgate start
+# or: npx ark init
 ```
 
 For non-interactive defaults, use:
 
 ```bash
-npx ark init --yes
+npx arkgate start --yes
+# or: npx ark init --yes
 ```
 
 You can also generate only the starter gate files for common agent runtimes and CI:
 
 ```bash
-npx ark-check --install-agent-gates
+npx arkgate-check --install-agent-gates
 ```
 
 The command writes templates for `.mcp.json`, Claude hooks, Cursor MCP/rules,

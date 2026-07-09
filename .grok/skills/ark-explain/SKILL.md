@@ -1,7 +1,7 @@
 ---
 name: ark-explain
 description: Explain this project's architecture in plain language and generate the showcase HTML report — layers, rules, coverage, gates, and why the contract exists.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-explain — Understand this project's architecture
@@ -37,15 +37,20 @@ Your job is to **teach with this repo's real data** and leave a shareable visual
    ```bash
    npx ark-check --coverage
    npx ark-check --doctor
+   npx ark-check --plan
    ```
 
-   so your spoken explanation matches the report's governed% and operating mode
-   (SUGGEST / ADAPT / ENFORCE).
+   so your spoken explanation matches the report's governed%, operating mode
+   (SUGGEST / ADAPT / ENFORCE), and the plan's safe-to-auto vs decision counts.
 
 The HTML report is the visual twin of this skill: architecture map, files per layer,
 dependency direction, matrix, violations, enforcement points, Ark fitness score, and a
 **Senior diagnostics** block (coupling fan-in/out, deny density, purity surface, pattern
 forensics, baseline taxonomy) for tech leads.
+
+When explaining the **plan**, name the three `mechanical-safe` remediation kinds only
+(type-only move, pure-type file relocate, `import type` of pure-type modules) — everything
+else is judgment/deferred and must not be auto-applied.
 
 ## Spoken / written explanation
 

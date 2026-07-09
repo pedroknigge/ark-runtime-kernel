@@ -1,7 +1,7 @@
 ---
 name: ark-contract
 description: Safely edit ark.config.json (layers, rules, forbiddenGlobals, intent prefixes), validated with strict ark-check. The one sanctioned way to change the architecture contract.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-contract — Evolve the architecture contract safely

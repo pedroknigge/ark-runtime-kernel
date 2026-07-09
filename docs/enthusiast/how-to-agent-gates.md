@@ -1,15 +1,17 @@
 # How to install agent gates
 
 ```bash
-npx ark-check --install-agent-gates
-npx ark-check --install-agent-gates --tools claude,cursor,codex,grok
+npx arkgate-check --install-agent-gates
+npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
+# aliases: ark-check …
 ```
 
 Installs:
 
 - Write-gate hook configuration (Claude / Grok PreToolUse; Cursor advisory + MCP)
 - MCP server entry (`.mcp.json`, Cursor/Codex/Grok equivalents)
-- `/ark-*` skills including **`/ark-architect`** and **`/ark-autopilot`**
+- `/ark-*` skills including **`/ark-architect`**, **`/ark-autopilot`**, **`/ark-loop`**
+  (with current `mechanical-safe` remediation kinds)
 
 | Host | Extra paths |
 |------|-------------|
@@ -20,7 +22,7 @@ Installs:
 
 ## Session hint
 
-`ark-mcp --session-context` appends when governed coverage is low:
+`arkgate-mcp --session-context` appends when governed coverage is low:
 
 ```
 New to Ark? Run /ark-architect or: ark-check --recommend
@@ -29,8 +31,14 @@ New to Ark? Run /ark-architect or: ark-check --recommend
 ## Verify gates
 
 ```bash
-npx ark-check --doctor
-npx ark-check --require-gates
+npx arkgate-check --doctor
+npx arkgate-check --require-gates
+```
+
+After upgrading the package, refresh skills so agents see the latest plan kinds:
+
+```bash
+npx arkgate-check --install-agent-gates --skills-only --force
 ```
 
 Full copy-paste setups: [docs/ai-gates.md](../ai-gates.md).

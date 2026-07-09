@@ -18,6 +18,11 @@ npx arkgate-check --install-agent-gates --force
 
 Guide: `docs/migrate-from-ark-runtime-kernel.md` in the package (or on GitHub).
 
+**TypeScript 7 projects:** ArkGate falls back to a nested JS-API TypeScript when the
+project's `typescript` main export is version-only (TS 7.0). After upgrade, point users at
+`docs/typescript-support.md` if the gate or `ARK_DEBUG_TS=1` mentions fallback. Dual install
+(TS6 JS API + TS7 CLI) is optional for tooling that still needs classic `tsc` APIs.
+
 ## Fast path
 
 One command does the whole flow — update the package, refresh gates + `/ark-*` skills
@@ -30,7 +35,12 @@ arkgate upgrade
 
 Use it when the user just wants the update done. Run the detailed steps below instead when
 you need to inspect the changelog first, handle a pnpm cooling-off window, or the one-liner
-reports a problem to triage.
+reports a problem to triage. Always refresh skills so agents pick up new `mechanical-safe`
+kinds and TS guidance:
+
+```
+npx arkgate-check --install-agent-gates --skills-only --force
+```
 
 ## Steps
 

@@ -1,12 +1,12 @@
 ---
 name: ark-coverage
 description: Audit which Ark capabilities this project isn't using and report how to close each gap, ranked by value. Autonomous — reads the repo, decides, reports.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-coverage — What Ark can do for you that you're not using
 
-You are auditing this project's use of the `ark-runtime-kernel` package. Work
+You are auditing this project's use of the `arkgate` package. Work
 autonomously: read everything from the repo, never ask questions you can answer
 from files, and end with a ranked report.
 
@@ -50,7 +50,7 @@ from files, and end with a ranked report.
    `ark-check --install-agent-gates`.
 5. **CI gate** — `.github/workflows/ark-check.yml` (or equivalent) present and
    running `ark-check`? Is `--require-gates` used so missing gates fail CI?
-6. **ESLint plugin** — is `ark-runtime-kernel/eslint` configured for in-editor
+6. **ESLint plugin** — is `arkgate/eslint` configured for in-editor
    feedback? (Check eslint config files.)
 7. **Domain purity** — do domain-model layers declare `forbiddenGlobals`
    (e.g. `fetch`, `process`, `Date.now`, `Math.random`)? If domain code calls these
@@ -78,12 +78,12 @@ from files, and end with a ranked report.
     dependency direction is obvious (e.g. domain → adapters should be denied).
 11. **Runtime kernel** — does the app hand-roll things the kernel ships? Grep for
     homemade event buses, outbox tables, audit logs, workflow/saga orchestration,
-    projections. If found, point to the matching `ark-runtime-kernel` module
+    projections. If found, point to the matching `arkgate` module
     (event-bus, outbox, audit, workflow, projections) and `/ark-runtime`. But if the
     repo already runs a DI/kernel framework (dcouplr, NestJS), do NOT recommend
     replacing it — Ark governs the border around it, it doesn't supplant it.
 12. **NestJS adapters** — if `@nestjs/common` is a dependency and
-    `ark-runtime-kernel/nestjs` is unused, flag it.
+    `arkgate/nestjs` is unused, flag it.
 
 ## Output format
 

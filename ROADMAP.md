@@ -53,10 +53,11 @@ gate serves experts and newbies.
 
 ### Gate & honesty
 
-- Write gate + CI + optional runtime; zero runtime dependencies on the static path  
+- Write gate + CI + optional runtime; minimal runtime deps (`typescript` JS-API host for the gate)  
 - Governed %, baselines, concentration guards, layer `exclude`, mature-repo routing  
 - `goal.met` requires meaningful coverage; suggest / adapt / enforce modes  
-- Framework overlays (Nest/Next/express/library), pnpm-safe runner, TS resolution  
+- Framework overlays (Nest/Next/express/library), pnpm-safe runner, **TypeScript 5 / 6 / 7** load + fallback  
+- Mechanical-safe depth: type-only move · pure-type file relocate · `import type` of pure-type modules  
 
 ### Guide & onboarding
 
@@ -141,7 +142,7 @@ Ordered by leverage for the dual audience:
 ## Not planned
 
 - Reimplementing Temporal/Restate-style orchestrators  
-- Runtime dependencies on the core static gates  
+- Growing production deps beyond the intentional TypeScript gate host  
 - Becoming a web framework, job runner, ORM, or deploy platform  
 - Ad-hoc layer guesses outside playbook/presets  
 - **Codemod/AST-rewrite engine** — agents edit; the gate decides what lands  

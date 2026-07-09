@@ -1,7 +1,11 @@
-# Ark — Agent Integration Guide
+# ArkGate — Agent Integration Guide
 
-**Ark — Architecture Co-pilot for AI TypeScript.** This guide describes how AI agents
-and codegen tools can safely interact with the write gate, MCP tools, and `/ark-*` skills.
+**ArkGate** (`arkgate`) — architecture co-pilot for AI TypeScript. This guide describes how AI
+agents and codegen tools safely interact with the write gate, MCP tools, and `/ark-*` skills.
+
+CLI names: prefer **`arkgate` / `arkgate-check` / `arkgate-mcp`**; aliases `ark` / `ark-check` /
+`ark-mcp` still work for one major. TypeScript **5.x / 6.x / 7.x** as the project compiler:
+see [typescript-support.md](typescript-support.md).
 
 ## Architecture playbook and `ark-check --recommend`
 
@@ -120,7 +124,8 @@ directories (`utils/`, `lib/`) must be classified explicitly via `/ark-contract`
 Wire write-gate + MCP + `/ark-*` skills with:
 
 ```bash
-npx ark-check --install-agent-gates --tools claude,cursor,codex,grok
+npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
+# alias: npx ark-check --install-agent-gates --tools claude,cursor,codex,grok
 ```
 
 | Host | Write gate | MCP | Skills path |
@@ -424,7 +429,8 @@ not replace your web framework, HTTP clients, or job scheduler.
 ## Write-Path Gate (MCP)
 
 The strongest place to constrain an AI agent is the moment it writes a file, not after.
-`ark-mcp` exposes Ark over MCP (zero dependencies, JSON-RPC over stdio) so a host can gate
+`arkgate-mcp` / `ark-mcp` exposes ArkGate over MCP (JSON-RPC over stdio; gate host needs a
+JS-API TypeScript — nested or project) so a host can gate
 the write path:
 
 ```bash

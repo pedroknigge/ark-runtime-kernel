@@ -1,7 +1,7 @@
 ---
 name: ark-adopt
 description: Onboard an existing codebase onto Ark — get the contract to reflect reality, classify ungoverned code, then freeze only genuine debt with a plan. Autonomous.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-adopt — Bring Ark into an existing codebase

@@ -61,19 +61,20 @@ violations — the ratchet only moves toward zero.
 
 ## 5. Burn down, in order
 
-`summary.edges` is the burn-down order. Two patterns cover most of it — and Ark tells you
-which is which via the `typeOnly` tag (value = real coupling, fix first; type-only = placement):
+`summary.edges` is the burn-down order. Prefer `ark-check --plan`: it tags each step
+`mechanical-safe` / `judgment` / `deferred` and sets `remediationKind` for auto-safe cases.
 
-- **Type-only inversion** (a lower layer `import type`s a type that lives in an upper layer):
-  move the type down to the layer that owns it and re-export it from the original module for
-  back-compat. Cosmetic at runtime, `tsc`-verifiable, safe to sweep. (Not mechanical if the
-  type extends a persistence/ORM row — that needs a domain-owned type/port — or if the source
-  file mixes types with logic — split first.)
-- **Raw infrastructure access** (a route/handler running SQL or importing the DB directly):
-  relocate the data-access **verbatim** into a repository/adapter method the route calls. Same
-  query bytes = same behavior; do NOT rewrite the query. This edits the data layer — if your
-  repo reserves that to core maintainers, migrate one route as a demonstrated pattern and hand
-  the bulk over; a route with interleaved transactions isn't a pure relocation, so flag it.
+- **Type-only inversion** (`typeOnly` — plan: `type-only-import-move`): move the type to the
+  owning layer + re-export for back-compat. Safe to sweep when mechanical-safe.
+- **Pure-type file** (`sourcePureTypeModule` — plan: `pure-type-file-relocate`): whole file is
+  type-surface only — relocate the file (or extract types) to the owning layer.
+- **Value import of pure type module** (`targetTypeOnlyExports` — plan:
+  `import-type-from-pure-type-module`): convert static import to `import type`. Not safe for
+  `require()` / dynamic `import()`.
+- **Raw infrastructure access** (value coupling — always **judgment**): relocate data-access
+  **verbatim** into a repository/adapter. Same query bytes = same behavior; do NOT rewrite the
+  query. If CODEOWNERS reserves the data layer, migrate one route as a pattern and hand bulk
+  work over; interleaved transactions aren't a pure relocation — flag them.
 
 `/ark-fix` resolves each cluster at the root cause; fixing a frozen violation shrinks the
 baseline permanently. Re-freeze lower with `--update-baseline` as you go.

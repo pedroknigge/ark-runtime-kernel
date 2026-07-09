@@ -30,15 +30,16 @@ describe('publish manifest', () => {
     }
   });
 
-  it('package.json has zero runtime dependencies and dev scripts', () => {
+  it('package.json has only the intentional TypeScript host dep and dev scripts', () => {
     const p = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-    expect(p.dependencies ?? {}).toEqual({});
+    // Gate host only — JS-API TypeScript for resolve when project ships TS7 version-only export.
+    expect(Object.keys(p.dependencies ?? {}).sort()).toEqual(['typescript']);
     expect(p.scripts.test).toBe('vitest');
     expect(p.scripts.typecheck).toBe('tsc --noEmit');
     expect(p.scripts.prepack).toBe('npm run build');
   });
 
-  it('npm pack ships bin + dist with zero runtime deps', () => {
+  it('npm pack ships bin + dist + dual CLIs and typescript host dep', () => {
     // prepack rebuilds dist/, which races with the MCP suite's build — serialize.
     withDistLock(() => run('npm', ['pack', '--pack-destination', tmp, '--silent']));
 
@@ -53,7 +54,7 @@ describe('publish manifest', () => {
     const inner = JSON.parse(
       fs.readFileSync(path.join(extract, 'package', 'package.json'), 'utf8')
     );
-    expect(inner.dependencies ?? {}).toEqual({});
+    expect(Object.keys(inner.dependencies ?? {}).sort()).toEqual(['typescript']);
     expect(inner.exports['./nestjs']).toEqual({
       types: './dist/nestjs/index.d.ts',
       import: './dist/nestjs/index.js',
@@ -64,8 +65,10 @@ describe('publish manifest', () => {
       import: './dist/eslint/index.js',
       require: './dist/eslint/index.cjs',
     });
+    expect(inner.bin['arkgate-check']).toBe('bin/ark-check.mjs');
     expect(inner.bin['ark-check']).toBe('bin/ark-check.mjs');
     expect(fs.existsSync(path.join(extract, 'package', 'bin', 'ark-check.mjs'))).toBe(true);
     expect(fs.existsSync(path.join(extract, 'package', 'dist', 'eslint', 'index.js'))).toBe(true);
+    expect(fs.existsSync(path.join(extract, 'package', 'docs', 'typescript-support.md'))).toBe(true);
   }, 30_000);
 });

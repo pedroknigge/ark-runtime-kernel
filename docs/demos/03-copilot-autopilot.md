@@ -39,9 +39,11 @@ npx ark-check --plan            # human view (includes Governed: N%)
 npx ark-check --plan --json     # { ok, plan: { goal, counts, steps } }
 ```
 
-Each step is tagged `mechanical-safe` / `judgment` / `deferred` with a `confidence` and a
-plain-language `rationale`. `goal.met` is true only when there are no active violations **and**
-governed coverage is meaningful — so a clean plan that checks almost nothing is not "done."
+Each step is tagged `mechanical-safe` / `judgment` / `deferred` with a `confidence`,
+`rationale`, and often `remediationKind`. Only three kinds are auto-safe: type-only type move,
+pure-type **file** relocate, and `import type` of pure-type modules. `goal.met` is true only when
+there are no active violations **and** governed coverage is meaningful — so a clean plan that
+checks almost nothing is not "done."
 
 ### 3. Carry the plan out — the autopilot
 

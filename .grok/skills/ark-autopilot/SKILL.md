@@ -1,7 +1,7 @@
 ---
 name: ark-autopilot
 description: The end-to-end architecture co-pilot for non-developers. One flow: look at the project, set up the guardrails, then drive the plan to a clean architecture — auto-applying the safe fixes and proposing the rest, always validated by ark-check, never weakening the gate. Composes setup + plan + the apply loop. Autonomous within those limits.
-arkVersion: 2.0.1
+arkVersion: 2.4.0
 ---
 
 # /ark-autopilot — Get to a sound architecture, end to end
@@ -56,12 +56,14 @@ Never tell a user "your architecture is guarded" while `--plan` reports `goal.me
 
 3. **Show the plan.** Run `ark-check --plan` and explain it in outcome terms: how many fixes are
    _safe to auto-apply_ vs _need your decision_ vs _deferred_, and what the goal is (a clean,
-   enforced architecture). Confirm before changing anything.
+   enforced architecture). Safe auto steps are only the three `mechanical-safe` kinds:
+   type-only type move, pure-type **file** relocate, and converting static imports of pure-type
+   modules to `import type` (see `/ark-loop`). Confirm before changing anything.
 
 4. **Drive the loop.** Hand off to **`/ark-loop`**: in a discardable git worktree, auto-apply
-   the `mechanical-safe` steps one at a time (validate with `ark-check`, roll back regressions),
-   and PROPOSE each `judgment` step in plain language for a yes/no. Loop until the plan's
-   `goal.met` is true or a round makes no progress.
+   the `mechanical-safe` steps one at a time (match each `remediationKind`; validate with
+   `ark-check`, roll back regressions), and PROPOSE each `judgment` step in plain language for
+   a yes/no. Loop until the plan's `goal.met` is true or a round makes no progress.
 
 5. **Confirm it stays clean.** Verify the gates are installed and active so the architecture is
    enforced from now on (in CI, and at write time if the MCP hook is wired) — the

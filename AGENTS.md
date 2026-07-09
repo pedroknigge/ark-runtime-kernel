@@ -1,9 +1,9 @@
-# Ark Enforcement (self-hosted)
+# ArkGate Enforcement (self-hosted)
 
-This repo IS Ark, governed by its own working-tree gates — not the published package.
+This repo **is** ArkGate, governed by its own working-tree gates — not the published package.
 The PreToolUse hook and the `ark` MCP server run `node bin/ark-mcp.mjs`, which loads
 `dist/index.js`: run `npm run build` after cloning or the write gate reports an error
-instead of validating.
+instead of validating. Product name **ArkGate**; npm `arkgate`; dual bins `arkgate*` + `ark*`.
 
 Before editing TypeScript or JavaScript source files:
 

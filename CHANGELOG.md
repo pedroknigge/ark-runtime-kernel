@@ -2,7 +2,7 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
-## Unreleased
+## 2.4.0 — 2026-07-08
 
 ### Added — TypeScript 5 / 6 / 7 compatibility bar
 
@@ -15,6 +15,14 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - **Docs:** [docs/typescript-support.md](docs/typescript-support.md) (supported ranges,
   TS7 version-only entry, tsconfig 6→7, dual-install 6+7, `ARK_DEBUG_TS`).
 - Optional peer `typescript: >=5 <8` (project compiler); runtime dependency pins JS-API host.
+
+### Docs & skills — full surface update for 2.4
+
+- Skills (`/ark-loop`, `/ark-fix`, `/ark-autopilot`, `/ark-explain`, `/ark-upgrade`) document
+  all three `mechanical-safe` `remediationKind`s and TS7 fallback notes.
+- README / CONTRIBUTING / SECURITY / enthusiast track: **ArkGate** branding, dual CLIs,
+  TS 5–7 badge; drop incorrect “zero dependencies” claim.
+- Agent / AI-gates / brownfield / demos / migrate guide aligned with plan classifier + TS7.
 
 ## 2.3.0 — 2026-07-08
 

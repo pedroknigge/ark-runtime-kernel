@@ -21,15 +21,25 @@ If Ark isn't set up yet, run `ark start` (or `ark-check --recommend` then `ark i
 1. **Read the plan.** Run `ark-check --plan --json` (add `--baseline .ark-baseline.json` if the
    repo uses a baseline). It returns `goal` (with `met`, `activeViolations`, `autoApplicable`,
    `needsDecision`, `deferred`) and `steps[]`, each tagged `class` (`mechanical-safe` /
-   `judgment` / `deferred`) with a `confidence` and a plain-language `rationale`. If
-   `goal.met` is already true, report "nothing to do" and stop.
+   `judgment` / `deferred`) with a `confidence`, plain-language `rationale`, and often
+   `remediationKind`. If `goal.met` is already true, report "nothing to do" and stop.
+
+   **`mechanical-safe` kinds you may auto-apply** (zero false-safe — never invent others):
+
+   | `remediationKind` | What to do |
+   |-------------------|------------|
+   | `type-only-import-move` | Edge is already `import type` / type-only: move the **type** to the owning layer + re-export for back-compat |
+   | `pure-type-file-relocate` | Whole **source file** is pure type-surface (`sourcePureTypeModule`) + type-only edge: relocate the file (or extract types) to the owning layer |
+   | `import-type-from-pure-type-module` | Static value-syntax import of a pure type-only **target** module (`targetTypeOnlyExports`): convert to `import type` (and place type if needed) |
+
+   Still **judgment** (never auto): value imports, `require()` / dynamic `import()`, mixed modules with side effects, forbidden globals, cycles, verbatim infra relocation.
 
 2. **Work in a discardable git worktree.** Create one (`git worktree add`) so the entire run is
    reversible and never disturbs the user's working tree. Do all edits there. Nothing is
    permanent until the user reviews the final diff.
 
-3. **Apply the `mechanical-safe` steps, one at a time, validated.** For each such step
-   (e.g. a type-only import moved to the layer that owns it + a re-export for back-compat):
+3. **Apply the `mechanical-safe` steps, one at a time, validated.** Match the step's
+   `remediationKind` (table above) — do not expand the edit into a broader refactor:
    - Record the current active-violation count from the plan.
    - Make the edit at the SOURCE (fix the placement; don't add an `ark-*-disable` or edit the
      baseline/config to hide it).

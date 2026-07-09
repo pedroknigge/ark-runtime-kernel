@@ -1,8 +1,9 @@
-# Ark Examples
+# ArkGate Examples
 
 Clone a starter that matches your **application shape** (archetype), not your framework.
 Each gallery starter is a phase-1 scaffold with an enthusiast README, `ark.config.json`, and a
-passing `ark-check --strict-config`. For deep teaching exercises, use `hexagonal-order-api`.
+passing `arkgate-check` / `ark-check --strict-config`. For deep teaching exercises, use
+`hexagonal-order-api`.
 
 ## Gallery starters (by archetype)
 

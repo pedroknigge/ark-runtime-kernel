@@ -11,7 +11,7 @@ trust — and makes sure a “green” check means something real.
 [![npm](https://img.shields.io/npm/v/arkgate?color=cb3837&label=npm)](https://www.npmjs.com/package/arkgate)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%3E%3D18-339933?logo=node.js)
-![Zero deps](https://img.shields.io/badge/dependencies-0-success)
+![TS 5–7](https://img.shields.io/badge/TypeScript-5%20%7C%206%20%7C%207-3178c6?logo=typescript)
 
 </div>
 
@@ -121,7 +121,7 @@ npx arkgate-check --install-agent-gates
 | Skill | What it does |
 |-------|----------------|
 | **`/ark-autopilot`** | End-to-end co-pilot: setup → plan → safe auto-fixes → propose the rest → leave gates on |
-| **`/ark-loop`** | Drive the remediation plan in a discardable worktree; only `mechanical-safe` steps auto-apply |
+| **`/ark-loop`** | Drive the plan in a worktree; auto-apply only `mechanical-safe` (type-only move, pure-type file relocate, `import type` of pure-type modules) |
 | **`/ark-architect`** | Greenfield: pick application shape, phase-1 layers, scaffold, verify honestly |
 | **`/ark-adopt`** | Brownfield: match contract to reality, raise coverage, freeze only real debt |
 | **`/ark-contract`** | Safely edit `ark.config.json` (smallest change, strict re-check) |
@@ -153,14 +153,15 @@ ark.config.json
 
 ### Why not only ESLint / dependency-cruiser / Nx?
 
-| | Ark | Typical boundary linter |
+| | ArkGate | Typical boundary linter |
 |--|:---:|:---:|
 | CI import rules | ✅ | ✅ |
 | Block **AI writes** before they land | ✅ | ❌ |
 | Contract agents can read (`ark://manifest`) | ✅ | ❌ |
 | Placement tools (`ark_place`, …) | ✅ | ❌ |
 | Honest governed % + adoption path | ✅ | ❌ |
-| Zero runtime dependencies | ✅ | varies |
+| Classified plan (`mechanical-safe` / judgment) | ✅ | ❌ |
+| TypeScript 5 / 6 / 7 project compilers | ✅ | varies |
 
 ---
 

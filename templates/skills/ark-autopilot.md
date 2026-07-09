@@ -55,12 +55,14 @@ Never tell a user "your architecture is guarded" while `--plan` reports `goal.me
 
 3. **Show the plan.** Run `ark-check --plan` and explain it in outcome terms: how many fixes are
    _safe to auto-apply_ vs _need your decision_ vs _deferred_, and what the goal is (a clean,
-   enforced architecture). Confirm before changing anything.
+   enforced architecture). Safe auto steps are only the three `mechanical-safe` kinds:
+   type-only type move, pure-type **file** relocate, and converting static imports of pure-type
+   modules to `import type` (see `/ark-loop`). Confirm before changing anything.
 
 4. **Drive the loop.** Hand off to **`/ark-loop`**: in a discardable git worktree, auto-apply
-   the `mechanical-safe` steps one at a time (validate with `ark-check`, roll back regressions),
-   and PROPOSE each `judgment` step in plain language for a yes/no. Loop until the plan's
-   `goal.met` is true or a round makes no progress.
+   the `mechanical-safe` steps one at a time (match each `remediationKind`; validate with
+   `ark-check`, roll back regressions), and PROPOSE each `judgment` step in plain language for
+   a yes/no. Loop until the plan's `goal.met` is true or a round makes no progress.
 
 5. **Confirm it stays clean.** Verify the gates are installed and active so the architecture is
    enforced from now on (in CI, and at write time if the MCP hook is wired) — the

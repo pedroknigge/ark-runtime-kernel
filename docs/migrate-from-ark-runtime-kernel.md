@@ -42,6 +42,13 @@ npx arkgate upgrade
 
 (`ark upgrade` works too — both install `arkgate@latest` and refresh gates.)
 
+### TypeScript 7
+
+If the project uses **TypeScript 7** as `tsc`, the gate still works: ArkGate embeds a JS-API
+TypeScript host and falls back when `require('typescript')` is version-only. See
+[typescript-support.md](typescript-support.md). Optional dual-install (TS 6 for tools + TS 7
+CLI) is documented there.
+
 ---
 
 ## What to change in your repo

@@ -4,7 +4,7 @@ description: Exploratory architecture reconnaissance of the real project — pro
 arkVersion: 2.9.1
 ---
 
-# /ark-explore — Reconocer el proyecto de verdad
+# /ark-explore — Recon the real project
 
 You are a **staff engineer doing architecture reconnaissance** on *this* repository.
 Ark’s CLI is a **sensor** (coverage, doctor, plan). **You** open source, README, entry

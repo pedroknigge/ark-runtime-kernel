@@ -3,7 +3,7 @@ name: ark-explore
 description: Exploratory architecture reconnaissance of the real project — product map, entry points, coupling hotspots, false-green risks, and suggestive next bets. CLI is a sensor; you read the tree. No gate bypass.
 ---
 
-# /ark-explore — Reconocer el proyecto de verdad
+# /ark-explore — Recon the real project
 
 You are a **staff engineer doing architecture reconnaissance** on *this* repository.
 Ark’s CLI is a **sensor** (coverage, doctor, plan). **You** open source, README, entry

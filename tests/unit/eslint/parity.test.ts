@@ -183,4 +183,59 @@ describe('ESLint ↔ ark-check parity', () => {
     );
     expect(resolved && fs.existsSync(resolved)).toBe(true);
   });
+
+  it('ESLint-10 shaped context (filename only, no getFilename) still loads ark.config.json', () => {
+    // ESLint 10 removed context.getFilename(); only context.filename / physicalFilename remain.
+    const root = fixture();
+    const domainFile = path.join(root, 'src/domain/eslint10.ts');
+    fs.writeFileSync(domainFile, "import { db } from '../infra/db';\nexport const x = db;\n");
+
+    const check = runArkCheckJson(root);
+    expect(check.ok).toBe(false);
+    expect(check.violations.some((v) => v.ruleId === 'LAYER_IMPORT_VIOLATION')).toBe(true);
+
+    const reports: Array<Record<string, unknown>> = [];
+    const eslint10Context = {
+      // No getFilename — must use .filename
+      filename: domainFile,
+      report: (descriptor: Record<string, unknown>) => reports.push(descriptor),
+    };
+    noDomainInfraImports.create(eslint10Context).ImportDeclaration({
+      source: { value: '../infra/db' },
+    });
+    expect(reports.length).toBeGreaterThanOrEqual(1);
+    expect(reports[0].messageId).toBe('forbiddenImport');
+    expect((reports[0].data as { fromLayer: string }).fromLayer).toBe('DomainModel');
+    expect((reports[0].data as { toLayer: string }).toLayer).toBe('PersistenceAdapters');
+
+    const globalReports: Array<Record<string, unknown>> = [];
+    const purityFile = path.join(root, 'src/domain/eslint10-globals.ts');
+    fs.writeFileSync(purityFile, 'export const t = Date.now();\n');
+    noForbiddenGlobals
+      .create({
+        filename: purityFile,
+        report: (d: Record<string, unknown>) => globalReports.push(d),
+      })
+      .MemberExpression?.({
+        object: { type: 'Identifier', name: 'Date' },
+        property: { name: 'now' },
+      });
+    expect(globalReports.length).toBeGreaterThanOrEqual(1);
+    expect((globalReports[0].data as { name: string }).name).toBe('Date.now');
+  });
+
+  it('physicalFilename is preferred when both physicalFilename and filename are set', () => {
+    const root = fixture();
+    const real = path.join(root, 'src/domain/phys.ts');
+    fs.writeFileSync(real, "import { db } from '../infra/db';\nexport const x = db;\n");
+    const reports: Array<Record<string, unknown>> = [];
+    noDomainInfraImports
+      .create({
+        filename: '/virtual/does-not-exist.ts',
+        physicalFilename: real,
+        report: (d: Record<string, unknown>) => reports.push(d),
+      })
+      .ImportDeclaration({ source: { value: '../infra/db' } });
+    expect(reports[0]?.messageId).toBe('forbiddenImport');
+  });
 });

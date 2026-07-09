@@ -19,6 +19,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - Dual-driver tests: same fixtures → ESLint rule + `ark-check --json` agree.
 - Recommended config enables `ark/no-forbidden-globals`.
 - Without `ark.config.json`, legacy domain→infra path heuristic remains for bare trees.
+- **ESLint 8–10 filename API:** rules read `physicalFilename` → `filename` → `getFilename()`
+  so config walk-up works on ESLint 10 (where `getFilename` was removed).
 
 ## 2.4.0 — 2026-07-08
 

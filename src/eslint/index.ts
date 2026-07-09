@@ -10,9 +10,33 @@ import path from 'node:path';
 
 type RuleContext = {
   report(descriptor: Record<string, unknown>): void;
+  /** ESLint 9+ / 10: preferred path on the context object. */
+  filename?: string;
+  /** ESLint 8-style physical path when linting with processors / virtual files. */
+  physicalFilename?: string;
+  /** ESLint ≤8 API — still present on some hosts; removed in ESLint 10. */
   getFilename?: () => string;
   options?: unknown[];
 };
+
+/** Resolve the file path being linted across ESLint 8–10 context shapes. */
+function lintedFilename(context: RuleContext): string {
+  if (typeof context.physicalFilename === 'string' && context.physicalFilename.length > 0) {
+    return context.physicalFilename;
+  }
+  if (typeof context.filename === 'string' && context.filename.length > 0) {
+    return context.filename;
+  }
+  if (typeof context.getFilename === 'function') {
+    try {
+      const name = context.getFilename();
+      if (typeof name === 'string' && name.length > 0) return name;
+    } catch {
+      /* ignore */
+    }
+  }
+  return '';
+}
 
 type RuleListener = Record<string, (node: AstNode) => void>;
 
@@ -300,7 +324,7 @@ export const noDomainInfraImports: ArkRule = {
     schema: [],
   },
   create(context) {
-    const filename = context.getFilename?.() ?? '';
+    const filename = lintedFilename(context);
     const configPath = findConfigPath(filename);
     const config = configPath ? loadArkConfig(configPath) : null;
     const root = configPath ? path.dirname(configPath) : null;
@@ -425,7 +449,7 @@ export const noForbiddenGlobals: ArkRule = {
     ],
   },
   create(context) {
-    const filename = context.getFilename?.() ?? '';
+    const filename = lintedFilename(context);
     const option = context.options?.[0] as { globals?: string[] } | undefined;
     const configPath = findConfigPath(filename);
     const config = configPath ? loadArkConfig(configPath) : null;

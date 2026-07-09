@@ -13,6 +13,23 @@ conventional directories, and a passing honest check — without weakening the g
 Commands below are written as `ark-check` / `ark`; run each through the project's
 package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
 
+## Dual engine (mandatory)
+
+| Engine | Role |
+|--------|------|
+| **Deterministic** | CLI / MCP / contract sensors — exit codes, plan kinds, coverage numbers, install status |
+| **Exploratory** | You open **this** repo's real files and product surface before concluding |
+
+The CLI is a **sensor**, never the whole job. Claiming done without the exploratory bar for this skill is **incomplete**.
+
+
+## Subagent fan-out (optional, host-dependent)
+
+If the host supports **parallel subagents** and the task splits cleanly (e.g. multiple
+dirs to sample), fan out read-only scouts; otherwise **fall back to sequential**.
+Parent merges and still emits the **### Completion** contract. Never parallel-write
+the same files or weaken the gate.
+
 ## Relationship to other skills
 
 | Skill | When |
@@ -40,7 +57,7 @@ package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
    or `ark-check --apply-policy-pack enthusiast-<preset>` for the enthusiast variant.
    Optional team record: `ark-check --recommend --write-plan` → `ark-adoption-plan.json`.
    If a config already exists, use `/ark-contract` to align it — do not regenerate
-   unasked.
+   unasked. On a messy brownfield tree: **STOP — do not continue this skill as complete.** Invoke **/ark-adopt** instead of forcing greenfield shape.
 
 4. **Scaffold phase 1** — create conventional directories from the preset/playbook
    (`src/domain`, `src/application`, …). Add a one-line README per folder explaining
@@ -92,3 +109,17 @@ package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
 End with `ark-check --root . --config ark.config.json --strict-config` when the
 tree is ready. Report: archetype + preset, directories created, governed %, and
 the next command if anything remains ungoverned.
+
+## Completion contract (skill incomplete if missing)
+
+End with **exactly** these headings (markdown `###`):
+
+### Completion
+- **Sensor:** commands/tools run
+- **Opened:** real paths read (or `n/a` only if pure install/upgrade with no source analysis)
+- **Result:** one-line outcome
+- **Handoff:** `/ark-…` / CLI / `none`
+- **Incomplete?** `no` | `yes — <what is missing>`
+
+If a **STOP** handoff applies and you continued as if done, set **Incomplete?** to `yes`.
+**Skill incomplete if missing** any of the bullets above.

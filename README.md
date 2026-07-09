@@ -144,19 +144,25 @@ npx arkgate-check --coverage
 Install once: `npx arkgate-check --install-agent-gates`  
 (`--tools claude,cursor,codex,grok` to pick hosts.)
 
-**Default is always `/ark-autopilot`.** The rest are escapes, not a second curriculum:
+**Default is always `/ark-autopilot`.** The rest are escapes, not a second curriculum.
+Generated `AGENTS.md` includes a **skill routing table** (trigger → skill). Skills are
+**dual-engine** (CLI sensor + read real source) and end with a fixed **completion contract**;
+critical handoffs say **STOP** and name the next skill (hosts must follow — markdown cannot chain calls).
+When the host allows it, skills may **fan out parallel subagents** (disjoint scopes);
+otherwise they **fall back to sequential**.
 
 | Need | Skill |
 |------|--------|
 | Only the apply loop (plan already exists) | `/ark-loop` |
 | Empty greenfield shape/scaffold | `/ark-architect` |
 | Deep brownfield / manifest mining alone | `/ark-adopt` |
+| Exploratory map of the real product (no apply) | `/ark-explore` |
 | New file placement | `/ark-place` |
 | Gate violation on a change | `/ark-fix` |
 | Design trade-offs within the contract (no package LLM) | `/ark-think` |
 | Edit `ark.config.json` safely | `/ark-contract` |
 | Plain-language tour of the report | `/ark-explain` |
-| Deep “what am I not using?” audit | `/ark-coverage` |
+| Deep coverage + opportunities audit | `/ark-coverage` |
 | Migrate hand-rolled bus/outbox (TS) | `/ark-runtime` |
 | Bump ArkGate + refresh all agent hosts | `/ark-upgrade` |
 

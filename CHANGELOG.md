@@ -4,6 +4,34 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+## 2.9.2 — 2026-07-09
+
+Skill surface hardening: dual-engine, explore, STOP handoffs, AGENTS routing, subagent fan-out.
+**No intentional CLI flag or JSON shape breaks.**
+
+### Added
+
+- **`/ark-explore` skill:** exploratory architecture reconnaissance — product map, entry
+  points, coupling hotspots, false-green risk, ranked *suggestions* (not only residual
+  violations). CLI remains a sensor; host agent reads the real tree.
+- **Skill completion contract:** every `/ark-*` template ends with fixed
+  `### Completion` fields (Sensor / Opened / Result / Handoff / Incomplete?) —
+  **skill incomplete if missing**.
+- **Hard STOP handoffs:** critical paths (false-green, concentrated edge, bulk debt,
+  wrong skill) use `STOP — do not continue this skill as complete` + named next skill.
+- **AGENTS skill routing table:** trigger → skill map in generated `AGENTS.md` while
+  keeping `/ark-autopilot` as the default when unsure.
+- **Subagent fan-out protocol:** every `/ark-*` skill documents optional **parallel
+  subagents** when the host supports them (disjoint read-only scopes + parent merge);
+  otherwise **fall back to sequential**. AGENTS.md repeats the rule.
+
+### Changed
+
+- **Skills dual-engine (deterministic + exploratory):** **all** shipped skill templates
+  require dual-engine behavior (CLI sensor + real source/product pass where applicable).
+  Plan empty ≠ architecture healthy without explore. Refresh installed skills with
+  `ark-check --install-agent-gates --skills-only --force`.
+
 ## 2.9.1 — 2026-07-09
 
 Field-install honesty: non-TTY start, baseline→CI sync, pin, false-green soft block, Grok defaults.

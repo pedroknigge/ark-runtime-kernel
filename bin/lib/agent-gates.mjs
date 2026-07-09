@@ -465,13 +465,39 @@ export function agentInstructions(root) {
 
 1. If \`ark.config.json\` is missing: run \`${startCmd}\` once.
 2. For adoption / cleanup / “make architecture sound”: run the **\`/ark-autopilot\`** skill
-   (origin report → adopt → plan → safe fixes → gates). Do **not** invent a parallel workflow
-   from the long skill list.
+   (origin report → adopt → plan → safe fixes → gates). Do **not** invent a second
+   architecture curriculum outside the routing table below — when a trigger matches, use
+   that skill; when unsure, stay on autopilot.
 3. Status anytime: \`${doctorCmd}\` (status light + next action — not a mode picker).
 4. After ordinary feature edits: run \`${checkCmd}\`. On violations → **\`/ark-fix\`** (or
    \`/ark-place\` for new files, \`/ark-contract\` only if the contract itself is wrong).
 
-Other \`/ark-*\` skills are optional escapes (adopt, coverage, runtime, …), not required steps.
+Skills are **dual-engine**: deterministic CLI sensors + exploratory read of *this* repo — not JSON-only wrappers.
+When a skill says **STOP — do not continue this skill as complete**, stop and invoke the named handoff skill.
+
+### Subagent fan-out
+If the host supports **parallel subagents**, skills may ask you to fan out **read-only**
+scouts (disjoint path scopes) and merge in the parent. If the host does **not**,
+**fall back to sequential** — one cluster/step at a time. Never parallel-write the same
+files; never weaken the gate via subagents.
+
+## Skill routing (triggers → skill)
+
+| When | Invoke |
+|------|--------|
+| Unsure / make architecture sound | **/ark-autopilot** (default) |
+| Need map / opportunities only (no apply) | \`/ark-explore\` |
+| Greenfield shape / empty tree | \`/ark-architect\` |
+| Brownfield / wrong contract / false-green | \`/ark-adopt\` then \`/ark-contract\` if globs wrong |
+| Edit \`ark.config.json\` layers/rules/intents | \`/ark-contract\` |
+| New file “where does this go?” | \`/ark-place\` |
+| Gate violation on a change | \`/ark-fix\` |
+| Drive plan to goal.met | \`/ark-loop\` |
+| Deep coverage + ranked audit | \`/ark-coverage\` |
+| Design trade-offs (no package LLM) | \`/ark-think\` |
+| Explain / HTML report tour | \`/ark-explain\` |
+| Bump arkgate + refresh hosts | \`/ark-upgrade\` |
+| Optional runtime kernel migrate | \`/ark-runtime\` |
 
 ## Before editing TypeScript or JavaScript source files
 

@@ -542,20 +542,33 @@ export function looksLikeIntent(value) {
  *
  * Deliberately biased toward 'judgment': a false 'mechanical-safe' that auto-lands a bad edit
  * is the failure mode that sinks trust. Only statically-provable type-surface fixes earn 'auto':
- *   (1) import/export already marked type-only
- *   (2) value-syntax import of a module that *only* exports types (convert to import type)
+ *   (1) whole source file is pure type-surface + type-only edge → relocate the file
+ *   (2) import/export already marked type-only → move/re-export the type
+ *   (3) static value-syntax import of a pure type-only *target* module → import type
  * Pure function of one violation object so CLI, MCP, and apply-loop classify identically.
- * Returns { class, confidence, rationale }.
+ * Returns { class, confidence, rationale, remediationKind? }.
  */
 export const REMEDIATION_CLASSES = ['mechanical-safe', 'judgment', 'deferred'];
 
 export function classifyRemediation(violation) {
   const ruleId = violation?.ruleId;
   if (ruleId === 'LAYER_IMPORT_VIOLATION') {
+    // Pure type-only *source file* with a type-only edge: relocating the whole file is
+    // behavior-preserving (no runtime body). Distinct from a single import-type move.
+    if (violation.typeOnly && violation.sourcePureTypeModule) {
+      return {
+        class: 'mechanical-safe',
+        confidence: 0.88,
+        remediationKind: 'pure-type-file-relocate',
+        rationale:
+          'Whole source file is type-only surface (no runtime statements) with a type-only cross-layer edge: relocate the file to the owning layer (or extract the type there). Behavior-preserving; gate verifies.',
+      };
+    }
     if (violation.typeOnly) {
       return {
         class: 'mechanical-safe',
         confidence: 0.9,
+        remediationKind: 'type-only-import-move',
         rationale:
           'Type-only import (erased at runtime): move the type to the layer that owns it and re-export for back-compat. Behavior-preserving, and the gate verifies it.',
       };
@@ -576,6 +589,7 @@ export function classifyRemediation(violation) {
       return {
         class: 'mechanical-safe',
         confidence: 0.85,
+        remediationKind: 'import-type-from-pure-type-module',
         rationale:
           'Static import targets a pure type-only module: convert to `import type` (erased at runtime) and place the type in a shared/owning layer. No runtime coupling; gate verifies.',
       };

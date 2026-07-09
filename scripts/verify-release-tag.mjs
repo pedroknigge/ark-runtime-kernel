@@ -1,37 +1,75 @@
 #!/usr/bin/env node
+/**
+ * Release-trust gate for ArkGate publishes.
+ *
+ * Policy (P0):
+ * - Tag name MUST match package.json version (`v${version}`).
+ * - Tag MUST be annotated (not lightweight).
+ * - Signed/verified tags are preferred. Unsigned fails by default.
+ * - Override: ARK_ALLOW_UNSIGNED_RELEASE_TAG=true for intentional unsigned annotated tags.
+ * - Legacy: ARK_REQUIRE_SIGNED_RELEASE_TAG=true also requires signed (redundant with default).
+ *
+ * Test hooks (not for production publishes):
+ * - ARK_VERIFY_PACKAGE_VERSION — override package.json version
+ * - ARK_VERIFY_FORCE_UNSIGNED — after annotation check, treat as unsigned
+ * - ARK_VERIFY_SKIP_GIT — only check tag/version match (unit path)
+ */
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const root = process.cwd();
-const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const tag =
-  process.argv[2] ??
-  process.env.GITHUB_REF_NAME ??
-  process.env.GITHUB_REF?.replace(/^refs\/tags\//, '');
+
+function readPackageVersion() {
+  if (process.env.ARK_VERIFY_PACKAGE_VERSION) {
+    return process.env.ARK_VERIFY_PACKAGE_VERSION;
+  }
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  return pkg.version;
+}
+
+/** @param {NodeJS.ProcessEnv} [env] */
+export function resolveSignedTagPolicy(env = process.env) {
+  if (env.ARK_ALLOW_UNSIGNED_RELEASE_TAG === 'true') {
+    return { allowUnsigned: true, requireSigned: false };
+  }
+  if (env.ARK_REQUIRE_SIGNED_RELEASE_TAG === 'false') {
+    // explicit legacy opt-out (prefer ARK_ALLOW_UNSIGNED_RELEASE_TAG)
+    return { allowUnsigned: true, requireSigned: false };
+  }
+  // Default fail-closed: co-pilot releases should be signed.
+  return { allowUnsigned: false, requireSigned: true };
+}
+
+/** @param {{ tag: string, packageVersion: string }} args */
+export function checkTagMatchesVersion({ tag, packageVersion }) {
+  if (!tag) {
+    return { ok: false, message: 'missing release tag argument' };
+  }
+  const expectedTag = `v${packageVersion}`;
+  if (tag !== expectedTag) {
+    return {
+      ok: false,
+      message: `tag ${tag} does not match package version ${packageVersion}; expected ${expectedTag}`,
+    };
+  }
+  return { ok: true };
+}
 
 function fail(message) {
   console.error(`[verify-release-tag] ${message}`);
   process.exit(1);
 }
 
-if (!tag) {
-  fail('missing release tag argument');
-}
-
-const expectedTag = `v${pkg.version}`;
-const requireSignedTag = process.env.ARK_REQUIRE_SIGNED_RELEASE_TAG === 'true';
-if (tag !== expectedTag) {
-  fail(`tag ${tag} does not match package version ${pkg.version}; expected ${expectedTag}`);
-}
-
-function handleUnsignedTag(message) {
-  if (requireSignedTag) {
-    fail(message);
+function handleUnsignedTag(message, policy) {
+  if (!policy.allowUnsigned) {
+    fail(
+      `${message}. Refusing unsigned release tag (set ARK_ALLOW_UNSIGNED_RELEASE_TAG=true to override).`
+    );
   }
   console.warn(
-    `[verify-release-tag] ${message}; continuing because ` +
-      'ARK_REQUIRE_SIGNED_RELEASE_TAG is not true'
+    `[verify-release-tag] ${message}; continuing because ARK_ALLOW_UNSIGNED_RELEASE_TAG=true`
   );
 }
 
@@ -53,10 +91,15 @@ async function readGitHubJson(url, token) {
   return response.json();
 }
 
-async function verifyWithGitHub() {
+async function verifyWithGitHub(tag, policy) {
   const repo = process.env.GITHUB_REPOSITORY;
   const token = process.env.GITHUB_TOKEN;
   if (!repo || !token) return false;
+
+  if (process.env.ARK_VERIFY_FORCE_UNSIGNED === 'true') {
+    handleUnsignedTag(`tag ${tag} forced unsigned (ARK_VERIFY_FORCE_UNSIGNED)`, policy);
+    return true;
+  }
 
   const refUrl = `https://api.github.com/repos/${repo}/git/ref/tags/${encodeURIComponent(tag)}`;
   const ref = await readGitHubJson(refUrl, token);
@@ -71,7 +114,8 @@ async function verifyWithGitHub() {
   if (!verification?.verified) {
     handleUnsignedTag(
       `tag ${tag} is not verified by GitHub` +
-        (verification?.reason ? ` (${verification.reason})` : '')
+        (verification?.reason ? ` (${verification.reason})` : ''),
+      policy
     );
   } else {
     console.log(`[verify-release-tag] verified signed annotated tag ${tag}`);
@@ -80,7 +124,12 @@ async function verifyWithGitHub() {
   return true;
 }
 
-function verifyWithLocalGit() {
+function verifyWithLocalGit(tag, policy) {
+  if (process.env.ARK_VERIFY_FORCE_UNSIGNED === 'true') {
+    handleUnsignedTag(`tag ${tag} forced unsigned (ARK_VERIFY_FORCE_UNSIGNED)`, policy);
+    return;
+  }
+
   const type = execFileSync('git', ['cat-file', '-t', tag], {
     cwd: root,
     encoding: 'utf8',
@@ -97,10 +146,42 @@ function verifyWithLocalGit() {
     });
     console.log(`[verify-release-tag] verified signed annotated tag ${tag}`);
   } catch {
-    handleUnsignedTag(`tag ${tag} is not signed or cannot be verified locally`);
+    handleUnsignedTag(`tag ${tag} is not signed or cannot be verified locally`, policy);
   }
 }
 
-if (!(await verifyWithGitHub())) {
-  verifyWithLocalGit();
+export async function main(argv = process.argv, env = process.env) {
+  const tag =
+    argv[2] ??
+    env.GITHUB_REF_NAME ??
+    env.GITHUB_REF?.replace(/^refs\/tags\//, '');
+
+  const packageVersion = env.ARK_VERIFY_PACKAGE_VERSION ?? readPackageVersion();
+  const match = checkTagMatchesVersion({ tag, packageVersion });
+  if (!match.ok) fail(match.message);
+
+  const policy = resolveSignedTagPolicy(env);
+  console.log(
+    `[verify-release-tag] policy: requireSigned=${policy.requireSigned} allowUnsigned=${policy.allowUnsigned}`
+  );
+
+  if (env.ARK_VERIFY_SKIP_GIT === 'true') {
+    console.log(`[verify-release-tag] ARK_VERIFY_SKIP_GIT=true — version/tag match only for ${tag}`);
+    return 0;
+  }
+
+  // Use process.env for GitHub path (fetch needs real env tokens)
+  process.env = { ...process.env, ...env };
+  if (!(await verifyWithGitHub(tag, policy))) {
+    verifyWithLocalGit(tag, policy);
+  }
+  return 0;
+}
+
+const isDirectRun =
+  process.argv[1] &&
+  path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
+
+if (isDirectRun) {
+  await main();
 }

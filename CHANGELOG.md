@@ -2,6 +2,21 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
+## 2.3.0 — 2026-07-08
+
+### Added — P0 complete (mechanical-safe depth + release-trust)
+
+- **Third `mechanical-safe` remediation:** pure-type **file** relocate when the whole source
+  file is type-surface only (`sourcePureTypeModule` + type-only edge) —
+  `remediationKind: pure-type-file-relocate`.
+- Keeps 2.2.0 classes: type-only import move; static import of pure-type target modules.
+- **Deferred:** verbatim infra relocation of value modules (cannot prove behavior-preserving).
+- **Release-trust:** `verify-release-tag` defaults to **fail-closed** on unsigned tags;
+  override only via `ARK_ALLOW_UNSIGNED_RELEASE_TAG=true` (publish workflow sets this
+  explicitly until GPG signing is wired). Unit tests cover policy + real script path.
+- Corpus: pure-type file, pure-type target, side-effect type file, require/dynamic, value
+  import, forbidden global, cycles.
+
 ## 2.2.0 — 2026-07-08
 
 ### Added — co-pilot P0 depth (mechanical-safe expansion)

@@ -4327,6 +4327,8 @@ function buildRemediationPlan(root, activeViolations, governedPercent = null, to
       ...(v.target ? { target: v.target } : {}),
       ...(v.typeOnly ? { typeOnly: true } : {}),
       ...(v.targetTypeOnlyExports ? { targetTypeOnlyExports: true } : {}),
+      ...(v.sourcePureTypeModule ? { sourcePureTypeModule: true } : {}),
+      ...(verdict.remediationKind ? { remediationKind: verdict.remediationKind } : {}),
     };
   });
   // Order: auto-applicable first (quick, safe wins), then human decisions, then deferred.
@@ -4935,6 +4937,9 @@ async function main() {
         const staticEdge = edge.kind === 'import' || edge.kind === 'export';
         const targetTypeOnlyExports =
           staticEdge && Boolean(targetCached?.exportsOnlyTypes) && !edge.typeOnly;
+        // Importer is itself a pure type-surface file (no runtime body) — enables
+        // pure-type-file-relocate classification when the edge is type-only.
+        const sourcePureTypeModule = Boolean(entry.exportsOnlyTypes);
         violations.push({
           ruleId: 'LAYER_IMPORT_VIOLATION',
           file: relFile,
@@ -4944,6 +4949,7 @@ async function main() {
           target: relTarget,
           ...(edge.typeOnly ? { typeOnly: true } : {}),
           ...(targetTypeOnlyExports ? { targetTypeOnlyExports: true } : {}),
+          ...(sourcePureTypeModule ? { sourcePureTypeModule: true } : {}),
           ...(edge.kind ? { edgeKind: edge.kind } : {}),
           message: rule.message ?? `${sourceLayer} must not ${edge.kind} ${targetLayer}.`,
         });

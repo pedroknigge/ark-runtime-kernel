@@ -1890,6 +1890,15 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
       .map((s) => (s as { file?: string }).file)
       .sort();
     expect(autoFiles).toEqual(['src/ui/type-target.ts', 'src/ui/type.ts'].sort());
+    const pureFileStep = plan.steps.find(
+      (s) => (s as { file?: string }).file === 'src/ui/type.ts' && s.class === 'mechanical-safe'
+    ) as { remediationKind?: string; sourcePureTypeModule?: boolean };
+    expect(pureFileStep?.sourcePureTypeModule).toBe(true);
+    expect(pureFileStep?.remediationKind).toBe('pure-type-file-relocate');
+    const typeTarget = plan.steps.find(
+      (s) => (s as { file?: string }).file === 'src/ui/type-target.ts'
+    ) as { remediationKind?: string };
+    expect(typeTarget?.remediationKind).toBe('import-type-from-pure-type-module');
   });
 
   it('classifyRemediation pure unit: only type-surface layer imports are mechanical-safe', async () => {
@@ -1897,6 +1906,13 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
     expect(classifyRemediation({ ruleId: 'LAYER_IMPORT_VIOLATION', typeOnly: true }).class).toBe(
       'mechanical-safe'
     );
+    const pureFile = classifyRemediation({
+      ruleId: 'LAYER_IMPORT_VIOLATION',
+      typeOnly: true,
+      sourcePureTypeModule: true,
+    });
+    expect(pureFile.class).toBe('mechanical-safe');
+    expect(pureFile.remediationKind).toBe('pure-type-file-relocate');
     expect(
       classifyRemediation({ ruleId: 'LAYER_IMPORT_VIOLATION', targetTypeOnlyExports: true }).class
     ).toBe('mechanical-safe');

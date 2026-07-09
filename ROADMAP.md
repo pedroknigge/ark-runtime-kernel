@@ -104,12 +104,14 @@ Ordered by leverage for the dual audience:
 ### P0 — make the co-pilot pay without lying
 
 1. **Broaden `mechanical-safe`** with labeled evals.  
-   **Shipped (partial):** type-only imports **+** value-syntax imports of pure-type modules
-   (`targetTypeOnlyExports`). Still open: file relocation of whole modules, verbatim infra moves.  
+   **Shipped:** (a) type-only import edges, (b) pure-type **file** relocate when the whole
+   source file is type-surface (`sourcePureTypeModule` + type-only edge), (c) static
+   value-syntax import of pure-type modules (`targetTypeOnlyExports`).  
+   **Deferred (static proof insufficient):** verbatim infra relocation of value modules.  
    Bias remains: false “safe” is worse than an extra human approval.  
-2. **Grow classifier corpus** from real brownfield runs — **in progress** (precision corpus +
-   field probes on Nest/TS starters).  
-3. **Release trust:** signed tags / verify-release path for a tool that edits repos.  
+2. **Grow classifier corpus** — **shipped** precision corpus + pure unit + field Nest starter.  
+3. **Release trust:** **shipped** — `scripts/verify-release-tag.mjs` fail-closed on unsigned
+   tags by default; `ARK_ALLOW_UNSIGNED_RELEASE_TAG=true` intentional override (CI documents it).  
 
 ### P1 — quality & install DX
 

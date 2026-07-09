@@ -498,6 +498,11 @@ async function start(args) {
     console.log('     → origin report, adoption, plan, safe fixes, leave gates on.');
     console.log(`  2. Status anytime: ${arkCommand(root, 'ark-check', '--doctor')}`);
     console.log(`  3. After edits:    ${arkCommand(root, 'ark-check', '--root . --config ark.config.json --strict-config')}`);
+    if (mode === 'adapt' && planOk) {
+      console.log(
+        `  4. When green but cores still optional: ${arkCommand(root, 'ark-check', '--ratchet-cores')} → honest ENFORCE`
+      );
+    }
     console.log('');
     console.log('Optional later: --plan · --coverage · /ark-fix · /ark-place · ark upgrade');
 

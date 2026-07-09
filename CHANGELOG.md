@@ -4,11 +4,26 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Added
+
+- **`--ratchet-cores`:** when architecture is green (0 active violations, governed ≥ 50%),
+  set `optional: false` on **populated** core layers only so doctor can report **ENFORCE**
+  honestly. Empty cores stay optional (no false-ENFORCE theatre). Doctor core-optional gaps
+  point at this command; `/ark-autopilot` documents the step after goal.met.
+- **Typecheck bootstrap:** `ark start` / `--install-agent-gates` add `"typecheck": "tsc --noEmit"`
+  when `tsconfig.json`/`jsconfig.json` exists and no typecheck-like script is present; generated
+  CI includes the typecheck step. Existing scripts are never overwritten.
+
 ### Changed
 
 - **Official website:** product homepage is [arkgate.online](https://www.arkgate.online/)
   (`package.json` `homepage`, README badges/footer, ROADMAP identity). npm package page
   and GitHub remain source + distribution links.
+- **Repo hygiene:** scrub named field-probe host identities from docs, comments, tests, and
+  historical changelog wording; fixtures stay framework-generic (Nest/Next only).
+- **Maintainability:** `--ratchet-cores` lives in `bin/lib/core-ratchet.mjs` (not the ark-check
+  entry); typecheck detection uses shared `packageScriptsHaveTypecheck` (not full deploy-path
+  scan); typecheck bootstrap is skipped under `--skills-only`.
 
 ## 2.8.2 — 2026-07-09
 
@@ -118,7 +133,7 @@ shape breaks** for the gate/co-pilot path.
 
 ## 2.6.1 — 2026-07-09
 
-Field-test release: Next/monorepo honesty (deer-flow-style hosts), simplified **one-flow** UX for
+Field-test release: Next/monorepo honesty (frontend monorepo hosts), simplified **one-flow** UX for
 humans and autonomous agents, and skills that require real source remediation—not CLI paraphrase.
 
 ### Fixed — false greens & strict CI noise (Next / monorepo)
@@ -166,7 +181,7 @@ Templates under `templates/skills/` (and project `.grok/skills` copies) for at l
 
 ### Tests
 
-- Fixture-style unit tests drive real `bin/ark-check.mjs`: Next core governance; deer-flow-like
+- Fixture-style unit tests drive real `bin/ark-check.mjs`: Next core governance; frontend monorepo-like
   monorepo (`frontend` + `core/**/types.ts` not Domain); strict-config with dead globs;
   empty baseline removal.
 

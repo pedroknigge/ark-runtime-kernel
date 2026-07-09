@@ -127,7 +127,7 @@ export function collectConfigWarnings(root, config, files, rules, manifest) {
         // Advisory only under --strict-config: monorepo/Next presets ship many optional-looking
         // globs (e.g. src/layouts/**, app/**) that never match when include is ["frontend"].
         // Failing the release gate on dead preset globs caused false CI red while architecture
-        // edges were clean (deer-flow host validation). Real safety is import violations +
+        // edges were clean on multi-package hosts. Real safety is import violations +
         // CONFIG_UNCLASSIFIED_FILES / invalid patterns.
         warnings.push(
           configWarning(

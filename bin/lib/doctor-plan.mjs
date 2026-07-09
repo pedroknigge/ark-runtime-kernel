@@ -290,6 +290,15 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
               governedPercent: cov.governed.percent,
               planMet: activeCount === 0 && cov.governed.percent >= 50,
               mature: cov.governed.totalFiles >= 150,
+              totalFiles: cov.governed.totalFiles,
+              emptyLayers: cov.emptyLayers,
+              coreOptionalWithFiles: adoption.coreOptional?.length ?? 0,
+              presentationShare: (() => {
+                const total = cov.governed.totalFiles || 0;
+                if (total <= 0) return null;
+                const p = cov.layers.find((r) => r.name === 'PresentationAdapters');
+                return p ? p.files / total : null;
+              })(),
             }),
             governed: cov.governed,
             emptyLayers: cov.emptyLayers,
@@ -345,11 +354,18 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   console.log(color.bold(`Ark doctor — ${path.basename(path.resolve(root)) || '.'}`));
 
   const emptyScope = cov.governed.totalFiles === 0;
+  const totalFiles = cov.governed.totalFiles || 0;
+  const presentationRow = cov.layers.find((r) => r.name === 'PresentationAdapters');
   const mode = resolveOperatingMode({
     governedPercent: emptyScope ? 0 : cov.governed.percent,
     planMet:
       activeCount === 0 && !emptyScope && cov.governed.percent >= 50,
     mature: cov.governed.totalFiles >= 150,
+    totalFiles: cov.governed.totalFiles,
+    emptyLayers: cov.emptyLayers,
+    coreOptionalWithFiles: adoption.coreOptional?.length ?? 0,
+    presentationShare:
+      totalFiles > 0 && presentationRow ? presentationRow.files / totalFiles : null,
   });
   console.log('');
   console.log(color.bold('Operating mode'));

@@ -2,6 +2,34 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
+## Unreleased
+
+## 2.8.2 — 2026-07-09
+
+Field-honesty patch (Next/UI host probe): no Nest false positives, no false ENFORCE on
+ui-surface bags, honest `ark start` mode, Next proxy/middleware classification.
+**No intentional CLI flag or JSON shape breaks.**
+
+### Fixed
+
+- **Nest detection false positive:** bare `*.service.ts` / similar names no longer set
+  `nestFramework` without `@nestjs/*` or controller/module/gateway/resolver files (Next/Node
+  apps no longer get a spurious `nestjs+next` overlay).
+- **False ENFORCE on UI bags:** doctor/report mode stays **ADAPT** when Domain+Persistence are
+  empty while Presentation dominates, or when core layers with files remain `optional: true`.
+- **ui-surface / Next defaults:** drop whole-`src` and bare `**/lib/**` presentation bags;
+  classify conventional data clients (`lib/supabase`, `lib/airtable`, `lib/prisma`, …) as
+  **Persistence**; add Application patterns for actions/services.
+- **Generated CI:** when `package.json` has `lint` / `typecheck` scripts, the installed
+  GitHub Actions workflow runs them before ark-check (closes deploy-path gaps for Next hosts).
+- **`ark start` wrap-up mode:** prefers `ark-check --doctor` `operatingMode` over plan-only
+  `resolveOperatingMode` (default **adapt**, double-lock against false **ENFORCE**).
+- **Next middleware / proxy:** ui-surface + Next overlay classify `src/proxy.ts`, root
+  `proxy.ts`, and classic `middleware.ts` as **Presentation** (Next 16 rename no longer
+  leaves the edge entry ungoverned).
+- **Idempotent Next overlay:** re-applying framework overlays no longer yields
+  `frameworkOverlay: "next+next"`.
+
 ## 2.8.1 — 2026-07-09
 
 Runtime honesty release (roadmap **R8–R9**): EventBus publish pipeline decomposition and

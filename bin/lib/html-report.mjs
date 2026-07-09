@@ -153,6 +153,17 @@ export function computeReportFitness({ coverage, violations, ok, enforcement, co
   const governedPercent = coverage?.governed?.percent ?? null;
   const totalFiles = coverage?.governed?.totalFiles ?? 0;
   const classifiedFiles = coverage?.governed?.classifiedFiles ?? 0;
+  const emptyLayers = (coverage?.layers ?? [])
+    .filter((r) => (r.files ?? 0) === 0)
+    .map((r) => r.name);
+  const presentationRow = (coverage?.layers ?? []).find(
+    (r) => r.name === 'PresentationAdapters'
+  );
+  const coreOptionalWithFiles = (config?.layers ?? []).filter((layer) => {
+    if (layer.optional !== true) return false;
+    const row = (coverage?.layers ?? []).find((r) => r.name === layer.name);
+    return (row?.files ?? 0) > 0;
+  }).length;
   const mode = resolveOperatingMode({
     governedPercent: totalFiles === 0 ? 0 : governedPercent,
     planMet:
@@ -162,6 +173,10 @@ export function computeReportFitness({ coverage, violations, ok, enforcement, co
       (governedPercent == null || governedPercent >= 50),
     mature: totalFiles >= 150,
     totalFiles,
+    emptyLayers,
+    coreOptionalWithFiles,
+    presentationShare:
+      totalFiles > 0 && presentationRow ? presentationRow.files / totalFiles : null,
   });
   const modeLabel = { suggest: 'SUGGEST', adapt: 'ADAPT', enforce: 'ENFORCE' }[mode] || String(mode).toUpperCase();
   const modeBlurb = {

@@ -16,6 +16,9 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ### Changed
 
+- **Official website:** product homepage is [arkgate.online](https://www.arkgate.online/)
+  (`package.json` `homepage`, README badges/footer, ROADMAP identity). npm package page
+  and GitHub remain source + distribution links.
 - **Repo hygiene:** scrub named field-probe host identities from docs, comments, tests, and
   historical changelog wording; fixtures stay framework-generic (Nest/Next only).
 - **Maintainability:** `--ratchet-cores` lives in `bin/lib/core-ratchet.mjs` (not the ark-check

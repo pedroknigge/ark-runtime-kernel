@@ -15,7 +15,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - **Recommend thin-TS:** confidence capped + `thinTsSurface` when few/no TS files.
 - **Codex multi-project:** secondary `[mcp_servers.ark_<slug>]` when primary points at another permanent root.
 - **Deploy-path monorepo:** package-level lint/typecheck scripts counted.
-- **Soft cycles:** `cyclePolicy: "soft" | "off" | "strict"` (default strict).
+- **Soft cycles:** `cyclePolicy: "soft" | "off" | "strict"` (default strict). Soft cycles are
+  advisory (`failsStrict: false`) and do **not** fail `--strict-config` / `check:architecture`.
 
 ### Added — deploy-path adoption (universal)
 

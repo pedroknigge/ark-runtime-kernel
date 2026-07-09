@@ -1986,17 +1986,20 @@ async function main() {
 
   if (cacheKey) saveScanCache(root, cacheKey, nextCacheFiles);
 
-  // cyclePolicy: strict (default) | soft (report as warnings) | off
+  // cyclePolicy: strict (default) | soft (advisory only, never fails --strict-config) | off
   const cyclePolicy = String(config.cyclePolicy || 'strict').toLowerCase();
   if (cyclePolicy !== 'off') {
     const cycles = detectCycles(importGraph);
     if (cyclePolicy === 'soft' || cyclePolicy === 'framework-soft') {
       for (const c of cycles) {
+        // failsStrict: false — soft cycles must NOT trip --strict-config / check:architecture.
+        // Only CONFIG_* (and similar) warnings fail under --strict-config.
         warnings.push({
           ruleId: 'CIRCULAR_DEPENDENCY',
-          message: `${c.message} (soft cycle policy — warning only; set cyclePolicy: "strict" to fail)`,
+          message: `${c.message} (soft cycle policy — advisory only; set cyclePolicy: "strict" to fail the check)`,
           file: c.file,
           target: c.target,
+          failsStrict: false,
         });
       }
     } else {
@@ -2056,7 +2059,10 @@ async function main() {
     }
   }
 
-  const ok = activeViolations.length === 0 && (!args.strictConfig || warnings.length === 0);
+  // Soft/advisory warnings (failsStrict === false) never fail --strict-config.
+  const strictWarnings = warnings.filter((w) => w.failsStrict !== false);
+  const ok =
+    activeViolations.length === 0 && (!args.strictConfig || strictWarnings.length === 0);
 
   if (args.plan) {
     const cov = computeCoverage(root, config, files, rules);
@@ -2202,11 +2208,16 @@ async function main() {
       );
     }
     if (activeViolations.length === 0) {
+      const advisoryOnly = warnings.length > 0 && strictWarnings.length === 0;
       if (warnings.length === 0) {
         console.log(`${color.green('✔')} Ark check passed.${baselineNote}`);
-      } else if (args.strictConfig) {
+      } else if (args.strictConfig && strictWarnings.length > 0) {
         console.error(
-          `${color.red('✖')} Ark check failed with ${warnings.length} config warning(s).${baselineNote}`
+          `${color.red('✖')} Ark check failed with ${strictWarnings.length} config warning(s).${baselineNote}`
+        );
+      } else if (advisoryOnly) {
+        console.log(
+          `${color.green('✔')} Ark check passed with ${warnings.length} advisory warning(s).${baselineNote}`
         );
       } else {
         console.log(

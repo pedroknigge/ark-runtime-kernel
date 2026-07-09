@@ -246,13 +246,64 @@ describe('P2 soft cycles + codex multi', () => {
       "import { a } from './a.js';\nexport const b = () => a;\n"
     );
     const r = runCheck(root, ['--json']);
+    expect(r.status).toBe(0);
     const j = JSON.parse(r.stdout);
+    expect(j.ok).toBe(true);
     expect(j.violations.filter((v: { ruleId: string }) => v.ruleId === 'CIRCULAR_DEPENDENCY')).toHaveLength(
       0
     );
     expect(
       (j.warnings || []).some((w: { ruleId: string }) => w.ruleId === 'CIRCULAR_DEPENDENCY')
     ).toBe(true);
+  });
+
+  it('cyclePolicy soft passes --strict-config (advisory only); default strict still fails', () => {
+    const root = mk();
+    fs.mkdirSync(path.join(root, 'src', 'domain'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'src/domain/a.ts'),
+      "import { b } from './b.js';\nexport const a = () => b;\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'src/domain/b.ts'),
+      "import { a } from './a.js';\nexport const b = () => a;\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        cyclePolicy: 'soft',
+        layers: [{ name: 'DomainModel', patterns: ['src/domain/**'] }],
+        rules: [],
+      })
+    );
+    const soft = runCheck(root, ['--json', '--strict-config']);
+    expect(soft.status).toBe(0);
+    const softJ = JSON.parse(soft.stdout);
+    expect(softJ.ok).toBe(true);
+    expect(
+      (softJ.warnings || []).some((w: { ruleId: string }) => w.ruleId === 'CIRCULAR_DEPENDENCY')
+    ).toBe(true);
+    expect(softJ.violations.filter((v: { ruleId: string }) => v.ruleId === 'CIRCULAR_DEPENDENCY')).toHaveLength(
+      0
+    );
+
+    // Default strict: same tree without cyclePolicy soft must fail
+    fs.writeFileSync(
+      path.join(root, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [{ name: 'DomainModel', patterns: ['src/domain/**'] }],
+        rules: [],
+      })
+    );
+    const hard = runCheck(root, ['--json', '--strict-config']);
+    expect(hard.status).not.toBe(0);
+    const hardJ = JSON.parse(hard.stdout);
+    expect(hardJ.ok).toBe(false);
+    expect(
+      hardJ.violations.filter((v: { ruleId: string }) => v.ruleId === 'CIRCULAR_DEPENDENCY').length
+    ).toBeGreaterThan(0);
   });
 
   it('wireCodexMcp multi-project writes secondary table without force', () => {

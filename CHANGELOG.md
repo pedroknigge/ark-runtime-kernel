@@ -4,19 +4,10 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
-### Changed
+## 2.9.0 — 2026-07-09
 
-- **Same-layer deny semantics (locked):** classic `{ allowed: false }` without
-  `peerIsolation` never blocks same-layer edges (historical short-circuit restored /
-  confirmed). Only `peerIsolation: true` may deny, and only when slice ids differ.
-- **`peerIsolation` applies cross-layer too:** when set, deny only if slices differ
-  (enables honest DDD inter-context isolation for e.g. application→domain across contexts).
-- **`FRAMEWORK_INTERNAL_EXCLUDE`:** `src/kernel/**` + `**/src/kernel/**` only — no longer
-  `**/kernel/**` (which carved out `src/shared/kernel/**`).
-- **Write-gate import resolve:** single `resolveImportTarget` primitive in
-  `bin/lib/import-resolve.mjs`; `ark-mcp` entry stays under 1000 LOC.
-- **Gallery starters:** `npm run check:gallery-starters` fails on factory drift;
-  `generate:gallery-starters` rewrites configs from presets.
+Track P: slice isolation, vertical-slice + DDD presets, skill surface, and adoption depth.
+**No intentional CLI flag or JSON shape breaks** for existing presets; new rules/presets are opt-in.
 
 ### Added
 
@@ -33,7 +24,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   SharedKernel; peerIsolation matrix blocks **any** cross-context import (same or
   cross technical layer). Archetype, pack, gallery starter.
 - **Skills (S1/S3):** architect/place/fix/adopt/autopilot know vertical-slice + DDD;
-  new host-only `/ark-think` skill (no package LLM).
+  new host-only `/ark-think` skill (no package LLM). Refresh installs with
+  `ark-check --install-agent-gates --skills-only --force`.
 - **Eval corpus (S5):** `eval/cases/vertical-slice-cross-feature` labeled peerIsolation case
   (`cross-slice-boundary` fixClass, judgment).
 - **S2 recommend/doctor:** JSON/human output includes `galleryStarter` + `policyPack`; wizard
@@ -43,6 +35,20 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - **P6 FSD patterns:** feature-sliced accepts `src/<layer>/**` and root `<layer>/**` (app/pages).
 - **P7 aliases:** `clean-architecture` and `onion-architecture` → hexagonal factory.
 - **P8 Nest guidance:** agent-guide + doctor tip (hexagonal vs ddd-bounded-contexts).
+
+### Changed
+
+- **Same-layer deny semantics (locked):** classic `{ allowed: false }` without
+  `peerIsolation` never blocks same-layer edges (historical short-circuit restored /
+  confirmed). Only `peerIsolation: true` may deny, and only when slice ids differ.
+- **`peerIsolation` applies cross-layer too:** when set, deny only if slices differ
+  (enables honest DDD inter-context isolation for e.g. application→domain across contexts).
+- **`FRAMEWORK_INTERNAL_EXCLUDE`:** `src/kernel/**` + `**/src/kernel/**` only — no longer
+  `**/kernel/**` (which carved out `src/shared/kernel/**`).
+- **Write-gate import resolve:** single `resolveImportTarget` primitive in
+  `bin/lib/import-resolve.mjs`; `ark-mcp` entry stays under 1000 LOC.
+- **Gallery starters:** `npm run check:gallery-starters` fails on factory drift;
+  `generate:gallery-starters` rewrites configs from presets.
 
 ## 2.8.3 — 2026-07-09
 

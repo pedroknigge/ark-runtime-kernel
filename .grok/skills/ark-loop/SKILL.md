@@ -1,6 +1,7 @@
 ---
 name: ark-loop
 description: Drive ark-check --plan to zero active violations. Auto-apply only mechanical-safe kinds; design judgment fixes from real source. CLI is the validator — you edit code.
+arkVersion: 2.9.0
 ---
 
 # /ark-loop — Apply the plan safely
@@ -32,8 +33,9 @@ validating every change with `ark-check` and rolling back regressions.
 | `type-only-import-move` | Move type to owning layer; re-export for back-compat |
 | `pure-type-file-relocate` | Relocate pure-type file to owning layer (or rename out of false Domain globs) |
 | `import-type-from-pure-type-module` | Convert value import of pure-type module to `import type` |
+| `import-type-of-type-exports` | Convert value-syntax named import/export of type-only exports from a mixed module to `import type` / `export type` |
 
-Never auto: value imports, dynamic import/require, mixed modules, forbidden globals, cycles, infra moves.
+Never auto: value imports (including mixed bindings with values), dynamic import/require, forbidden globals, cycles, infra moves.
 
 ## Steps
 

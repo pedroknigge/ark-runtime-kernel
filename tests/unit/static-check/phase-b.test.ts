@@ -74,9 +74,11 @@ describe('Phase B — ark init --archetype', () => {
   });
 
   it('exposes wizard choices and maps keys to archetype ids', () => {
-    expect(INIT_WIZARD_CHOICES).toHaveLength(8);
+    expect(INIT_WIZARD_CHOICES).toHaveLength(10);
     expect(mapWizardChoiceToArchetype('1')).toBe('crud-product');
-    expect(mapWizardChoiceToArchetype('8')).toBe('auto');
+    expect(mapWizardChoiceToArchetype('8')).toBe('vertical-slice-product');
+    expect(mapWizardChoiceToArchetype('9')).toBe('ddd-bounded-contexts');
+    expect(mapWizardChoiceToArchetype('a')).toBe('auto');
     expect(resolveArchetypePreset('api-backend').preset).toBe('hexagonal');
   });
 });

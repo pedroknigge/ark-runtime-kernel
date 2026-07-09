@@ -153,6 +153,7 @@ Install once: `npx arkgate-check --install-agent-gates`
 | Deep brownfield / manifest mining alone | `/ark-adopt` |
 | New file placement | `/ark-place` |
 | Gate violation on a change | `/ark-fix` |
+| Design trade-offs within the contract (no package LLM) | `/ark-think` |
 | Edit `ark.config.json` safely | `/ark-contract` |
 | Plain-language tour of the report | `/ark-explain` |
 | Deep “what am I not using?” audit | `/ark-coverage` |

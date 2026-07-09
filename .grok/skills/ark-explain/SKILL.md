@@ -1,6 +1,7 @@
 ---
 name: ark-explain
 description: Explain this project's architecture in plain language and generate the showcase HTML report — layers, rules, coverage, gates, and why the contract exists.
+arkVersion: 2.9.0
 ---
 
 # /ark-explain — Understand this project's architecture
@@ -47,8 +48,9 @@ dependency direction, matrix, violations, enforcement points, Ark fitness score,
 **Senior diagnostics** block (coupling fan-in/out, deny density, purity surface, pattern
 forensics, baseline taxonomy) for tech leads.
 
-When explaining the **plan**, name the three `mechanical-safe` remediation kinds only
-(type-only move, pure-type file relocate, `import type` of pure-type modules) — everything
+When explaining the **plan**, name the four `mechanical-safe` remediation kinds only
+(type-only move, pure-type file relocate, `import type` of pure-type modules,
+`import-type-of-type-exports` for named type exports from mixed modules) — everything
 else is judgment/deferred and must not be auto-applied.
 
 ## Spoken / written explanation

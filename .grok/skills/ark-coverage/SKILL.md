@@ -1,6 +1,7 @@
 ---
 name: ark-coverage
 description: Deep-audit this project's real code + Ark adoption gaps. CLI is a sensor only — you must read source, propose concrete remediations, and optional manifest/intent mining. Ranked report with "así te lo re-soluciono".
+arkVersion: 2.9.0
 ---
 
 # /ark-coverage — Deep coverage + capability gaps

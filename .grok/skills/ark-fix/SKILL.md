@@ -1,6 +1,7 @@
 ---
 name: ark-fix
 description: Resolve Ark architecture violations at the root cause — ports, adapters, moves, intent/manifest alignment. Never weaken the contract. Read the real code; CLI only validates.
+arkVersion: 2.9.0
 ---
 
 # /ark-fix — Fix architecture violations at the root
@@ -12,6 +13,9 @@ You fix violations Ark reports. Prefer structural fixes over silencing the gate.
 
 - **Greenfield:** `/ark-architect` or `ark-check --recommend` / `ark start`.
 - **Brownfield:** `/ark-adopt` — match contract to reality; do not force a starter preset.
+- **peerIsolation / cross-slice:** always **judgment** — extract to shared, events/ports, or redesign ownership. Never auto-apply cross-feature or cross-context moves.
+- **`vertical-slice` ownership:** feature code stays under `src/features/<slice>/…` (no sibling-slice imports); shared primitives in `src/shared/`; infra in `src/lib/`; shell in `src/app/`. Cross-feature edges are peerIsolation — extract shared or use events/ports.
+- **`ddd-bounded-contexts` ownership:** code under `src/contexts/<context>/{domain,application,infrastructure,presentation}/`; shared kernel only under `src/shared/kernel/`. Cross-context imports (same or cross technical layer) are peerIsolation — integrate via application APIs/events, not peer technical layers.
 - **Default path:** `ark start` → `/ark-autopilot` → `ark-check --doctor`.
 
 ## Anti-wrapper rule (mandatory)

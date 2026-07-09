@@ -1,6 +1,7 @@
 ---
 name: ark-architect
 description: Choose the application shape, adopt phase-1 layers, scaffold directories, and verify honestly — for enthusiasts before codegen. Autonomous.
+arkVersion: 2.9.0
 ---
 
 # /ark-architect — Choose your application shape and adopt Ark
@@ -70,6 +71,8 @@ package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
      | `api-backend` | `examples/api-backend-starter/` |
      | `worker-pipeline` | `examples/worker-pipeline-starter/` |
      | `multi-app-workspace` | `examples/multi-app-workspace-starter/` |
+     | `vertical-slice-product` | `examples/vertical-slice-starter/` |
+     | `ddd-bounded-contexts` | `examples/ddd-context-starter/` |
 
      Say they can copy that folder as a baseline (`npm install && npm run check`).
      For a runnable API with break exercises, mention `examples/hexagonal-order-api/`.
@@ -78,7 +81,9 @@ package manager (`pnpm exec`, `yarn`, `npx`) — match the lockfile.
 ## Operating rules
 
 - Never weaken `ark.config.json`, the baseline, CI, or agent settings to pass.
-- Never invent layers outside the 11-layer profile or named presets.
+- Never invent layers outside the 11-layer profile or named presets
+  (`hexagonal`, `layered`, `feature-sliced`, `monorepo`, `ui-surface`,
+  `vertical-slice`, `ddd-bounded-contexts`).
 - Flag unrecognized dirs (`utils/`, `lib/`) — user must classify via `/ark-contract`.
 - Default to smallest viable phase 1; unlock phase 2 only when the user describes need.
 - All user-facing copy is **English**.

@@ -1,6 +1,7 @@
 ---
 name: ark-place
 description: "Where does new code go? Names the layer, directory, and naming for a new artifact from the contract, and scaffolds it there. Autonomous."
+arkVersion: 2.9.0
 ---
 
 # /ark-place — Where does this code go?
@@ -34,6 +35,13 @@ not a stalling question.
      that matches the direction (driven/persistence vs driving/http).
    - Reacts to events, long-running coordination (saga/workflow), scheduled
      jobs, projections → the event/workflow layers if the config declares them.
+   - **`vertical-slice` contract:** put co-located feature code under
+     `src/features/<slice>/…` (never import a sibling slice); shared primitives
+     under `src/shared/`; infra under `src/lib/`; shell under `src/app/`.
+   - **`ddd-bounded-contexts` contract:** put code under
+     `src/contexts/<context>/{domain,application,infrastructure,presentation}/`;
+     shared kernel only under `src/shared/kernel/`. Cross-context imports at the
+     same technical layer are peerIsolation violations.
 3. **Answer concretely**: layer name, target directory (from the layer's
    `patterns`), intent-name prefix if the layer declares `intentPrefixes`, and
    which layers it may/may not import (from `rules`).

@@ -2,6 +2,16 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
+## Unreleased
+
+### Changed
+
+- **R8 — EventBus decomposition:** publish pipeline split into cohesive modules under
+  `src/kernel/event-bus/` (`payloadPatch`, `publishGuards`, `publishInterceptors`,
+  `observedLayerFlow`, `publishPolicy`, `publishRecording`). `EventBus.ts` is
+  orchestration + public surface only. **`createEventBus` API and enforcement order
+  unchanged.**
+
 ## 2.8.0 — 2026-07-09
 
 Co-pilot quality release (roadmap **R5–R7**): labeled eval corpus, fourth mechanical-safe kind,

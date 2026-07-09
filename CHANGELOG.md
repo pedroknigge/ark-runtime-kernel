@@ -16,6 +16,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   **Persistence**; add Application patterns for actions/services.
 - **Generated CI:** when `package.json` has `lint` / `typecheck` scripts, the installed
   GitHub Actions workflow runs them before ark-check (closes deploy-path gaps for Next hosts).
+- **`ark start` wrap-up mode:** prefers `ark-check --doctor` `operatingMode` over plan-only
+  `resolveOperatingMode` (default **adapt**, double-lock against false **ENFORCE**).
 
 ## 2.8.1 — 2026-07-09
 

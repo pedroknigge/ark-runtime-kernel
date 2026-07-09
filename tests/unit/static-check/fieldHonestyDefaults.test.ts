@@ -160,6 +160,46 @@ describe('githubWorkflow quality scripts', () => {
   });
 });
 
+describe('ark start wrap-up — Next-like host false ENFORCE', () => {
+  it('prints ADAPT (not ENFORCE) after ark start --yes on optional ui-surface host', () => {
+    const root = mkTemp('ark-start-adapt-');
+    writeTree(root, {
+      'package.json': JSON.stringify({
+        name: 'next-start-host',
+        version: '0.1.0',
+        dependencies: { next: '16.1.6', react: '19.0.0' },
+        scripts: { lint: 'eslint .', typecheck: 'tsc --noEmit' },
+      }),
+      'src/app/page.tsx': 'export default function P(){return null}\n',
+      'src/components/A.tsx': 'export const A=1\n',
+      'src/lib/supabase/client.ts': 'export const c=1\n',
+      'src/lib/types.ts': 'export type Id = string\n',
+      'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true }, include: ['src'] }),
+    });
+
+    const ARK = path.join(REPO, 'bin/ark.mjs');
+    const res = spawnSync(
+      process.execPath,
+      [ARK, 'start', '--root', root, '--yes', '--force', '--tools', 'claude'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
+    );
+    // Capture wrap-up lines from ark start (shipped bin/ark.mjs path)
+    const out = `${res.stdout || ''}${res.stderr || ''}`;
+    expect(out).toMatch(/status: ADAPT/i);
+    expect(out).not.toMatch(/status: ENFORCE \(gates can honestly protect you\)/i);
+
+    // Doctor on the same tree must agree with start wrap-up
+    const doctor = spawnSync(
+      process.execPath,
+      [ARK_CHECK, '--root', root, '--config', 'ark.config.json', '--doctor', '--json'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }
+    );
+    const doc = JSON.parse(doctor.stdout || '{}');
+    expect(doc.doctor.operatingMode).toBe('adapt');
+    expect(doc.doctor.operatingMode).not.toBe('enforce');
+  });
+});
+
 describe('doctor CLI — Next-like host false ENFORCE', () => {
   it('reports ADAPT when default-style optional presentation bag would have claimed ENFORCE', () => {
     const root = mkTemp('ark-doctor-adapt-');

@@ -393,27 +393,64 @@ async function start(args) {
     console.log('Your architecture plan:');
     runArkCheck(['--root', root, '--config', 'ark.config.json', '--plan'], { cwd: root });
 
-    // Capture plan JSON for an honest wrap-up (governed% + goal.met) without re-printing.
+    // Capture plan + doctor JSON for an honest wrap-up. Mode MUST match --doctor
+    // (emptyLayers, core-optional, presentation bag) — never claim ENFORCE from plan alone.
     const planCapture = spawnSync(
       process.execPath,
       [arkCheck, '--root', root, '--config', 'ark.config.json', '--plan', '--json'],
       { cwd: root, encoding: 'utf8' }
     );
+    const doctorCapture = spawnSync(
+      process.execPath,
+      [arkCheck, '--root', root, '--config', 'ark.config.json', '--doctor', '--json'],
+      { cwd: root, encoding: 'utf8' }
+    );
     let planOk = true;
     let governedPercent = null;
-    let mode = 'enforce'; // suggest | adapt | enforce
+    let mode = 'adapt'; // conservative default — never default to enforce
     try {
       const parsed = JSON.parse(planCapture.stdout || '{}');
       planOk = parsed.ok === true && parsed.plan?.goal?.met === true;
       governedPercent = parsed.plan?.goal?.governedPercent ?? null;
       const totalFiles = parsed.plan?.goal?.totalFiles ?? null;
-      mode = resolveOperatingMode({
-        governedPercent:
-          totalFiles === 0 ? 0 : governedPercent,
-        planMet: parsed.plan?.goal?.met === true,
-        mature: Boolean(rec?.mature),
-        totalFiles,
-      });
+
+      let doctorMode = null;
+      try {
+        const doc = JSON.parse(doctorCapture.stdout || '{}');
+        doctorMode = doc.doctor?.operatingMode ?? null;
+        // Prefer doctor's mode (includes emptyLayers + coreOptional + presentation-bag honesty).
+        if (doctorMode === 'suggest' || doctorMode === 'adapt' || doctorMode === 'enforce') {
+          mode = doctorMode;
+        } else {
+          // Fallback: recompute with honesty inputs from doctor payload when present.
+          const emptyLayers = doc.doctor?.emptyLayers ?? [];
+          const coreOptionalWithFiles = Array.isArray(doc.doctor?.adoption?.coreOptional)
+            ? doc.doctor.adoption.coreOptional.length
+            : 0;
+          const total = totalFiles || doc.doctor?.governed?.totalFiles || 0;
+          const presentationShare =
+            total > 0 && typeof doc.doctor?.governed?.percent === 'number'
+              ? null // presentationShare only from coverage layers when available
+              : null;
+          mode = resolveOperatingMode({
+            governedPercent: totalFiles === 0 ? 0 : governedPercent,
+            planMet: parsed.plan?.goal?.met === true,
+            mature: Boolean(rec?.mature),
+            totalFiles: totalFiles ?? total,
+            emptyLayers,
+            coreOptionalWithFiles,
+            presentationShare,
+          });
+        }
+      } catch {
+        mode = resolveOperatingMode({
+          governedPercent: totalFiles === 0 ? 0 : governedPercent,
+          planMet: parsed.plan?.goal?.met === true,
+          mature: Boolean(rec?.mature),
+          totalFiles,
+        });
+      }
+
       // Fresh greenfield with good coverage but no real tree yet → suggest, not enforce theatre.
       if (mode === 'enforce' && rec && !rec.mature && (governedPercent ?? 0) < 80) {
         mode = 'suggest';
@@ -422,6 +459,10 @@ async function start(args) {
       if (parsed.plan?.goal?.emptyScope || totalFiles === 0) {
         mode = 'adapt';
         planOk = false;
+      }
+      // Never claim ENFORCE wrap-up if doctor would not (double-lock).
+      if (mode === 'enforce' && doctorMode && doctorMode !== 'enforce') {
+        mode = doctorMode;
       }
     } catch {
       // If capture fails, stay conservative: don't claim full enforcement.

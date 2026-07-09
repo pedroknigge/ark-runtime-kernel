@@ -142,7 +142,9 @@ describe('Phase E — skills and docs cross-references', () => {
 
   it('every installable skill references architect onboarding surfaces', () => {
     const skills = fs.readdirSync(SKILLS_DIR).filter((name) => name.endsWith('.md'));
-    expect(skills.length).toBe(12);
+    // Keep in lockstep with templates/skills inventory (skillsSurface.test.ts).
+    expect(skills.length).toBeGreaterThanOrEqual(13);
+    expect(skills).toContain('ark-explore.md');
     for (const file of skills) {
       const text = fs.readFileSync(path.join(SKILLS_DIR, file), 'utf8');
       const hasOnboarding =

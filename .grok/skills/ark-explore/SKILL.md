@@ -13,6 +13,12 @@ points, and git history. Output is **suggestive and ranked**, not a green checkb
 Use alone when the user wants a map / options / “what should we do next?”.  
 `/ark-autopilot`, `/ark-coverage`, and `/ark-adopt` embed a lighter version of this pass.
 
+## Related onboarding
+
+- **Greenfield / thin tree:** `/ark-architect` or `ark-check --recommend` / `ark start`.
+- **Brownfield:** `/ark-adopt` after the map (or hand off from explore STOP paths).
+- **Default path:** `ark start` → `/ark-autopilot` → `ark-check --doctor`.
+
 ## Dual engine (mandatory)
 
 | Engine | Role | Never confuse with |

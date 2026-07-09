@@ -3,10 +3,19 @@
  *
  * Layer / import / forbidden-globals rules load `ark.config.json` from the linted
  * project (walk-up from the file) and use the same glob specificity + edge semantics
- * as ark-check. Tooling layer: pure Node + local helpers only (no Kernel imports).
+ * as ark-check. Matching primitives come from `bin/ark-layer-match.mjs` (bundled) so
+ * CLI and editor share one implementation — no Kernel imports.
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import {
+  globToRegExp,
+  patternSpecificity,
+  layerForRelativePath,
+  isEdgeDenied,
+} from '../domain/layerMatch';
+
+export { globToRegExp, patternSpecificity, layerForRelativePath, isEdgeDenied };
 
 type RuleContext = {
   report(descriptor: Record<string, unknown>): void;
@@ -84,109 +93,7 @@ type ArkConfig = {
   rules?: EdgeRule[];
 };
 
-// ── Pure helpers (mirror bin/ark-shared.mjs layer matching; no CLI imports) ──
-
-const _regexpCache = new Map<string, RegExp>();
-
-function bracesBalanced(glob: string): boolean {
-  let depth = 0;
-  for (let i = 0; i < glob.length; i += 1) {
-    if (glob[i] === '\\' && i + 1 < glob.length) {
-      i += 1;
-      continue;
-    }
-    if (glob[i] === '{') depth += 1;
-    else if (glob[i] === '}') {
-      depth -= 1;
-      if (depth < 0) return false;
-    }
-  }
-  return depth === 0;
-}
-
-function escapeLiteral(c: string): string {
-  return c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/** Same glob → RegExp semantics as ark-check / ark-shared.mjs. */
-export function globToRegExp(pattern: string): RegExp {
-  const cached = _regexpCache.get(pattern);
-  if (cached) return cached;
-  const glob = pattern.split(path.sep).join('/');
-  const useBraces = bracesBalanced(glob);
-  let out = '';
-  let braceDepth = 0;
-  for (let i = 0; i < glob.length; i += 1) {
-    const c = glob[i];
-    if (c === '\\' && i + 1 < glob.length) {
-      out += escapeLiteral(glob[i + 1]);
-      i += 1;
-    } else if (c === '*') {
-      if (glob[i + 1] === '*') {
-        if (glob[i + 2] === '/') {
-          out += '(?:.*/)?';
-          i += 2;
-        } else {
-          out += '.*';
-          i += 1;
-        }
-      } else {
-        out += '[^/]*';
-      }
-    } else if (c === '?') {
-      out += '[^/]';
-    } else if (c === '{' && useBraces) {
-      out += '(?:';
-      braceDepth += 1;
-    } else if (c === '}' && useBraces && braceDepth > 0) {
-      out += ')';
-      braceDepth -= 1;
-    } else if (c === ',' && useBraces && braceDepth > 0) {
-      out += '|';
-    } else {
-      out += escapeLiteral(c);
-    }
-  }
-  const re = new RegExp(`^${out}$`);
-  _regexpCache.set(pattern, re);
-  return re;
-}
-
-export function patternSpecificity(pattern: string): number {
-  const glob = String(pattern).split(path.sep).join('/');
-  const beforeWildcard = glob.split('*')[0];
-  const literalSegments = beforeWildcard.split('/').filter(Boolean).length;
-  const literalLength = glob.replace(/\*/g, '').length;
-  return literalSegments * 10000 + literalLength;
-}
-
-/** Same file→layer resolution as ark-check (most-specific pattern wins; exclude honored). */
-export function layerForRelativePath(relPath: string, layers: LayerConfig[] | undefined): string | undefined {
-  const rel = relPath.split(path.sep).join('/');
-  let bestName: string | undefined;
-  let bestScore = -1;
-  for (const layer of layers ?? []) {
-    if ((layer.exclude ?? []).some((pattern) => globToRegExp(pattern).test(rel))) {
-      continue;
-    }
-    for (const pattern of layer.patterns ?? []) {
-      if (globToRegExp(pattern).test(rel)) {
-        const score = patternSpecificity(pattern);
-        if (score > bestScore) {
-          bestScore = score;
-          bestName = layer.name;
-        }
-      }
-    }
-  }
-  return bestName;
-}
-
-export function isEdgeDenied(rules: EdgeRule[] | undefined, from: string, to: string): boolean {
-  if (from === to) return false;
-  const hit = (rules ?? []).find((r) => r.from === from && r.to === to);
-  return hit?.allowed === false;
-}
+// ── Config I/O (editor-only; matching primitives come from ark-layer-match.mjs) ──
 
 export function findConfigPath(startFile: string): string | null {
   if (!startFile || startFile === '<input>' || startFile.startsWith('stdin')) return null;

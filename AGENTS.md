@@ -22,12 +22,13 @@ Before editing TypeScript or JavaScript source files:
 |-------|-------------|-------|
 | DomainModel | `src/domain/` | Pure types and invariants. `fetch`, `process`, `Date.now`, `Math.random` are forbidden globals here — inject a port instead. |
 | Kernel | `src/kernel/`, `src/index.ts`, `src/version.ts` | The library itself. May depend on DomainModel only. |
-| Tooling | `src/eslint/` | Standalone ESLint plugin. No imports from any other layer. |
+| Tooling | `src/eslint/` | ESLint plugin. May import **DomainModel only** (pure layer-match helpers). Not Kernel. |
 | FrameworkAdapters | `src/nestjs/` | Optional NestJS integration. May depend on Kernel only. |
 
-The CLIs (`bin/*.mjs`) run standalone and must not import from `src/` or `dist/`
-except `ark-mcp` loading the built library; shared CLI logic lives in `bin/ark-shared.mjs`,
-deliberately duplicated from the library where noted in comments.
+The CLIs (`bin/*.mjs`, `bin/lib/*.mjs`) run standalone and must not import from `src/`
+or `dist/` except `ark-mcp` loading the built library. Shared CLI logic lives in
+`bin/ark-shared.mjs` and `bin/ark-layer-match.mjs` (layer globs; Domain twin in
+`src/domain/layerMatch.ts` for eslint). Deliberate algorithm parity is locked by tests.
 
 The project is only considered Ark-enforced when the write gate, CI gate, and runtime path all pass.
 

@@ -1,0 +1,109 @@
+/**
+ * Unclassified-path layer suggestions for coverage/doctor.
+ */
+import path from 'node:path';
+import { DEFAULT_LAYER_DIRECTORIES } from '../ark-shared.mjs';
+import { ARCHITECTURE_PRESETS, CANONICAL_LAYER_NAMES } from './presets.mjs';
+
+export function dirSegmentsFromGlob(pattern) {
+  return String(pattern)
+    .split('/')
+    .filter((segment) => segment && !segment.includes('*'));
+}
+
+let _layerByDir;
+// Map<dirBasename, string[] layers>. A basename mapping to >1 layer (e.g. `app` — Application
+// orchestration in the 11-layer defaults, but Presentation in the monorepo/Next preset) is
+// genuinely ambiguous; every candidate is surfaced rather than silently picked.
+export function layerByDir() {
+  if (_layerByDir) return _layerByDir;
+  const map = new Map();
+  const add = (segment, layer) => {
+    if (!segment) return;
+    const existing = map.get(segment) ?? [];
+    if (!existing.includes(layer)) existing.push(layer);
+    map.set(segment, existing);
+  };
+  for (const [layer, dirs] of Object.entries(DEFAULT_LAYER_DIRECTORIES)) {
+    for (const dir of dirs) add(dirSegmentsFromGlob(dir).pop(), layer);
+  }
+  // The canonical-named presets reuse the 11 layer names, so their directory synonyms
+  // (services→Application, components/pages→Presentation, data/infrastructure→Persistence…)
+  // map cleanly onto the same taxonomy. feature-sliced uses a different vocabulary
+  // (Widgets/Entities/…) that doesn't reduce to the 11, so it's covered by model-fit, not here.
+  for (const preset of ['hexagonal', 'layered', 'monorepo']) {
+    for (const layer of ARCHITECTURE_PRESETS[preset]([]).layers) {
+      if (!CANONICAL_LAYER_NAMES.has(layer.name)) continue;
+      for (const pattern of layer.patterns ?? []) {
+        add(dirSegmentsFromGlob(pattern).pop(), layer.name);
+      }
+    }
+  }
+  _layerByDir = map;
+  return map;
+}
+
+// Suggest a canonical layer for a directory by its basename. null when Ark doesn't recognize
+// it (the honest "you classify this" case), else { layer, alternatives }.
+export function suggestLayerForDir(name) {
+  const layers = layerByDir().get(name);
+  if (!layers || layers.length === 0) return null;
+  return { layer: layers[0], alternatives: layers.slice(1) };
+}
+
+// Suggest a layer for a directory PATH by finding the deepest segment Ark recognizes, so
+// `src/lib/repositories` proposes PersistenceAdapters even though `lib` itself is unknown.
+export function suggestLayerForPath(relDir) {
+  const segments = relDir.split('/').filter(Boolean);
+  for (let i = segments.length - 1; i >= 0; i -= 1) {
+    const hit = suggestLayerForDir(segments[i]);
+    if (hit) return { ...hit, matchedDir: segments[i] };
+  }
+  return null;
+}
+
+// Which starter model does this set of directory basenames most resemble? Scored purely by
+// how many of the repo's directories each preset's patterns recognize — a hint toward
+// `ark init --preset <name>`. null when nothing lines up.
+export function detectBestFitModel(dirBasenames) {
+  const present = new Set(dirBasenames);
+  const scored = ['hexagonal', 'layered', 'feature-sliced', 'monorepo'].map((name) => {
+    const segments = new Set();
+    for (const layer of ARCHITECTURE_PRESETS[name]([]).layers) {
+      for (const pattern of layer.patterns ?? []) {
+        const seg = dirSegmentsFromGlob(pattern).pop();
+        if (seg) segments.add(seg);
+      }
+    }
+    let hits = 0;
+    for (const dir of present) if (segments.has(dir)) hits += 1;
+    return { name, hits };
+  });
+  scored.sort((a, b) => b.hits - a.hits);
+  return scored[0].hits > 0 ? scored[0] : null;
+}
+
+// Group ungoverned files by their parent directory and attach a proposed layer (or the
+// honest "unrecognized"). The single source the coverage report and init both format.
+export function buildUnclassifiedSuggestions(unclassifiedRelFiles) {
+  const byDir = new Map();
+  for (const rel of unclassifiedRelFiles) {
+    const dir = rel.split('/').slice(0, -1).join('/') || '.';
+    byDir.set(dir, (byDir.get(dir) ?? 0) + 1);
+  }
+  return [...byDir.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([dir, files]) => {
+    const hit = suggestLayerForPath(dir);
+    return hit
+      ? {
+          dir,
+          files,
+          layer: hit.layer,
+          ...(hit.alternatives.length > 0 ? { alternatives: hit.alternatives } : {}),
+        }
+      : { dir, files, unrecognized: true };
+  });
+}
+
+// For `init`: propose a layer for every ungoverned top-level directory, descending one level
+// into unrecognized ones so `lib/repositories`, `lib/db` etc. still get a concrete proposal
+// instead of a blanket "lib is ungoverned".

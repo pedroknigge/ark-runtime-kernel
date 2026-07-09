@@ -1,6 +1,6 @@
 {
   "name": "arkgate",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "ArkGate — architecture co-pilot for AI TypeScript (write gate, CI gate, plan/loop)",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -35,6 +35,7 @@
   "mcpName": "io.github.pedroknigge/arkgate",
   "files": [
     "bin",
+    "bin/lib",
     "dist",
     "docs/agent-guide.md",
     "docs/enthusiast",

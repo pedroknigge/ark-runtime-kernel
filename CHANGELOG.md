@@ -2,6 +2,18 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
+## Unreleased — 2.6.0
+
+### Changed — maintainability hygiene (#11 / #12)
+
+- **`bin/ark-check.mjs` modularized** (~5.8k → ~2.1k lines of orchestration):
+  `bin/lib/agent-gates.mjs`, `html-report.mjs`, `doctor-plan.mjs`, `violations.mjs`,
+  `suggestions.mjs`, `presets.mjs`. Entry owns scan/CLI only.
+- **Layer matching single algorithm:** pure matcher in `bin/ark-layer-match.mjs` (CLI) and
+  `src/domain/layerMatch.ts` (eslint). Tooling may import DomainModel for that pure helper.
+  `tests/unit/static-check/layerMatchParity.test.ts` locks both implementations.
+- Dual-driver ESLint/CI tests retained.
+
 ## 2.5.0 — 2026-07-09
 
 ### Added — ESLint ↔ CI layer parity

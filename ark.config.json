@@ -31,6 +31,6 @@
     { "from": "DomainModel", "to": "Tooling", "allowed": false },
     { "from": "Kernel", "to": "Tooling", "allowed": false },
     { "from": "Tooling", "to": "Kernel", "allowed": false },
-    { "from": "Tooling", "to": "DomainModel", "allowed": false }
+    { "from": "Tooling", "to": "DomainModel", "allowed": true }
   ]
 }

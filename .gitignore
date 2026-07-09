@@ -33,3 +33,6 @@ marketing/
 
 # Local pack artifacts
 *.tgz
+
+# Ark generated reports / local state
+.ark/

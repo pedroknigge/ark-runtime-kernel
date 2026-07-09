@@ -265,7 +265,7 @@ describe('collectRepoShapeSignals — JavaScript / serverless layouts', () => {
     });
     writeFile(path.join(root, 'src', 'app', 'page.tsx'), 'export default function Page() { return null }\n');
     writeFile(
-      path.join(root, 'src', 'lib', 'dcouplr', 'services', 'project.service.ts'),
+      path.join(root, 'src', 'lib', 'services', 'project.service.ts'),
       'export class ProjectService {}\n'
     );
     writeFile(path.join(root, 'src', 'lib', 'supabase', 'client.ts'), 'export const sb = {}\n');

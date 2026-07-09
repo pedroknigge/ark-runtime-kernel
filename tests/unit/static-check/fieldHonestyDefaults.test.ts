@@ -16,9 +16,14 @@ import {
   collectRepoShapeSignals,
   applyFrameworkLayoutOverlays,
 } from '../../../bin/ark-shared.mjs';
+import { planPopulatedCoreRatchet } from '../../../bin/lib/core-ratchet.mjs';
 import { ARCHITECTURE_PRESETS } from '../../../bin/lib/presets.mjs';
 import { layerForFile } from '../../../bin/ark-layer-match.mjs';
-import { githubWorkflow, detectDeployPathQuality } from '../../../bin/lib/agent-gates.mjs';
+import {
+  githubWorkflow,
+  detectDeployPathQuality,
+  ensureTypecheckScript,
+} from '../../../bin/lib/agent-gates.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const ARK_CHECK = path.join(REPO, 'bin/ark-check.mjs');
@@ -79,6 +84,77 @@ describe('resolveOperatingMode honesty', () => {
       presentationShare: 0.3,
     });
     expect(mode).toBe('enforce');
+  });
+});
+
+describe('planPopulatedCoreRatchet', () => {
+  it('sets optional:false only on populated cores; leaves empty cores optional', () => {
+    const config = {
+      layers: [
+        { name: 'DomainModel', patterns: ['src/domain/**'], optional: true },
+        { name: 'ApplicationOrchestration', patterns: ['src/lib/**'], optional: true },
+        { name: 'PersistenceAdapters', patterns: ['src/lib/db/**'], optional: true },
+        { name: 'PresentationAdapters', patterns: ['src/app/**'], optional: true },
+        { name: 'Kernel', patterns: ['src/kernel/**'], optional: true },
+      ],
+    };
+    const plan = planPopulatedCoreRatchet(config, [
+      { name: 'DomainModel', files: 0 },
+      { name: 'ApplicationOrchestration', files: 12 },
+      { name: 'PersistenceAdapters', files: 4 },
+      { name: 'PresentationAdapters', files: 40 },
+      { name: 'Kernel', files: 3 },
+    ]);
+    expect(plan.changed).toBe(true);
+    expect(plan.ratcheted.map((r) => r.layer).sort()).toEqual(
+      ['ApplicationOrchestration', 'PersistenceAdapters', 'PresentationAdapters'].sort()
+    );
+    expect(plan.stillOptionalEmpty).toContain('DomainModel');
+    const byName = Object.fromEntries(plan.config.layers.map((l: { name: string }) => [l.name, l]));
+    expect(byName.DomainModel.optional).toBe(true);
+    expect(byName.ApplicationOrchestration.optional).toBe(false);
+    expect(byName.PersistenceAdapters.optional).toBe(false);
+    expect(byName.PresentationAdapters.optional).toBe(false);
+    // Non-core layers are not ratcheted by this path
+    expect(byName.Kernel.optional).toBe(true);
+  });
+});
+
+describe('ensureTypecheckScript bootstrap', () => {
+  it('adds typecheck when tsconfig exists and script is missing; never overwrites', () => {
+    const root = mkTemp('ark-typecheck-boot-');
+    writeTree(root, {
+      'package.json': JSON.stringify({
+        name: 'app',
+        version: '0.1.0',
+        scripts: { lint: 'eslint .' },
+        dependencies: { next: '16.1.6' },
+      }),
+      'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true }, include: ['src'] }),
+      'src/app/page.tsx': 'export default function P(){return null}\n',
+    });
+
+    const first = ensureTypecheckScript(root, { write: true });
+    expect(first.changed).toBe(true);
+    expect(first.reason).toBe('added');
+    expect(first.script).toBe('tsc --noEmit');
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(pkg.scripts.typecheck).toBe('tsc --noEmit');
+    expect(pkg.scripts.lint).toBe('eslint .');
+
+    const second = ensureTypecheckScript(root, { write: true });
+    expect(second.changed).toBe(false);
+    expect(second.reason).toBe('already');
+  });
+
+  it('does not invent typecheck without tsconfig', () => {
+    const root = mkTemp('ark-typecheck-no-ts-');
+    writeTree(root, {
+      'package.json': JSON.stringify({ name: 'app', scripts: {} }),
+    });
+    const res = ensureTypecheckScript(root, { write: true });
+    expect(res.changed).toBe(false);
+    expect(res.reason).toBe('no-tsconfig');
   });
 });
 
@@ -231,6 +307,120 @@ describe('ark start wrap-up — Next-like host false ENFORCE', () => {
     const doc = JSON.parse(doctor.stdout || '{}');
     expect(doc.doctor.operatingMode).toBe('adapt');
     expect(doc.doctor.operatingMode).not.toBe('enforce');
+  });
+});
+
+describe('ark start typecheck bootstrap', () => {
+  it('adds typecheck script and CI step when tsconfig exists but package.json lacks typecheck', () => {
+    const root = mkTemp('ark-start-typecheck-');
+    writeTree(root, {
+      'package.json': JSON.stringify({
+        name: 'next-no-tc',
+        version: '0.1.0',
+        dependencies: { next: '16.1.6', react: '19.0.0' },
+        scripts: { lint: 'eslint .' },
+      }),
+      'tsconfig.json': JSON.stringify({ compilerOptions: { strict: true }, include: ['src'] }),
+      'src/app/page.tsx': 'export default function P(){return null}\n',
+    });
+
+    const ARK = path.join(REPO, 'bin/ark.mjs');
+    const res = spawnSync(
+      process.execPath,
+      [ARK, 'start', '--root', root, '--yes', '--force', '--tools', 'claude'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
+    );
+    const out = `${res.stdout || ''}${res.stderr || ''}`;
+    expect(out).toMatch(/typecheck/i);
+
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    expect(pkg.scripts.typecheck).toBe('tsc --noEmit');
+    expect(pkg.scripts.lint).toBe('eslint .');
+
+    const workflow = fs.readFileSync(
+      path.join(root, '.github/workflows/ark-check.yml'),
+      'utf8'
+    );
+    expect(workflow).toMatch(/name: Typecheck/);
+    expect(workflow).toMatch(/npm run typecheck/);
+  });
+});
+
+describe('ark-check --ratchet-cores', () => {
+  it('refuses when violations exist; ratchets populated cores when green → doctor ENFORCE', () => {
+    const root = mkTemp('ark-ratchet-');
+    // Clean tree: presentation + persistence + types, no reverse edges
+    writeTree(root, {
+      'package.json': JSON.stringify({
+        name: 'ratchet-host',
+        version: '0.1.0',
+        dependencies: { next: '16.1.6', react: '19.0.0' },
+        scripts: { lint: 'eslint .' },
+      }),
+      'tsconfig.json': JSON.stringify({
+        compilerOptions: { strict: true, moduleResolution: 'bundler', jsx: 'preserve' },
+        include: ['src'],
+      }),
+      'src/app/page.tsx': 'export default function P(){return null}\n',
+      'src/components/A.tsx': 'export const A = 1\n',
+      'src/lib/supabase/client.ts': 'export const c = 1\n',
+      'src/lib/types.ts': 'export type Id = string\n',
+    });
+
+    // Start installs ui-surface + gates (optional cores)
+    const ARK = path.join(REPO, 'bin/ark.mjs');
+    spawnSync(
+      process.execPath,
+      [ARK, 'start', '--root', root, '--yes', '--force', '--tools', 'claude'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
+    );
+
+    const beforeDoc = spawnSync(
+      process.execPath,
+      [ARK_CHECK, '--root', root, '--config', 'ark.config.json', '--doctor', '--json'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }
+    );
+    const before = JSON.parse(beforeDoc.stdout || '{}');
+    expect(before.doctor.operatingMode).toBe('adapt');
+    expect(before.doctor.violations.active).toBe(0);
+    expect((before.doctor.adoption?.coreOptional ?? []).length).toBeGreaterThan(0);
+
+    // Capture before snapshot for evidence paths
+    fs.writeFileSync(
+      path.join(root, 'ratchet-before.json'),
+      JSON.stringify(before.doctor, null, 2)
+    );
+
+    const ratchet = spawnSync(
+      process.execPath,
+      [ARK_CHECK, '--root', root, '--config', 'ark.config.json', '--ratchet-cores', '--json'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }
+    );
+    const ratchetOut = JSON.parse(ratchet.stdout || '{}');
+    expect(ratchetOut.ok).toBe(true);
+    expect(ratchetOut.changed).toBe(true);
+    expect(ratchetOut.ratcheted.length).toBeGreaterThan(0);
+
+    const cfg = JSON.parse(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8'));
+    for (const row of ratchetOut.ratcheted) {
+      const layer = cfg.layers.find((l: { name: string }) => l.name === row.layer);
+      expect(layer.optional).toBe(false);
+    }
+    // Empty Domain (if empty) stays optional
+    const domain = cfg.layers.find((l: { name: string }) => l.name === 'DomainModel');
+    if (domain && (before.doctor.emptyLayers || []).includes('DomainModel')) {
+      expect(domain.optional).not.toBe(false);
+    }
+
+    const afterDoc = spawnSync(
+      process.execPath,
+      [ARK_CHECK, '--root', root, '--config', 'ark.config.json', '--doctor', '--json'],
+      { cwd: root, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }
+    );
+    const after = JSON.parse(afterDoc.stdout || '{}');
+    expect(after.doctor.violations.active).toBe(0);
+    expect(after.doctor.operatingMode).toBe('enforce');
+    expect(after.doctor.adoption?.coreOptional ?? []).toEqual([]);
   });
 });
 

@@ -60,6 +60,7 @@ import {
   runPlan,
   runDoctor,
 } from './lib/doctor-plan.mjs';
+import { runRatchetCores } from './lib/core-ratchet.mjs';
 import {
   baselineKey,
   readBaseline,
@@ -153,6 +154,7 @@ function parseArgs(argv) {
     else if (arg === '--apply-policy-pack') args.applyPolicyPack = argv[++i];
     else if (arg === '--suggest-include') args.suggestInclude = true;
     else if (arg === '--adopt-contract') args.adoptContract = true;
+    else if (arg === '--ratchet-cores') args.ratchetCores = true;
     else if (arg === '--write') args.write = true;
     else if (arg === '--watch') args.watch = true;
     else if (arg === '--beginner') args.beginner = true;
@@ -203,6 +205,7 @@ function usage() {
     '       ark-check --apply-policy-pack <id> [--force]  write ark.config.json from templates/policy-packs/ (uses preset factory)',
     '       ark-check --suggest-include [--json]   propose include roots (TS packages / workspaces)',
     '       ark-check --adopt-contract [--write]   expand include + UI patterns from ungoverned dirs (contract adopt)',
+    '       ark-check --ratchet-cores              when raw graph is green (0 violations; baseline ignored), set optional:false on populated cores only (writes ark.config.json)',
     '       ark-check --watch                      re-run the check when governed files change (debounced)',
     '       ark-check --report [file.html] [--beginner] [--reset-origin] [--no-archive]',
     '           HTML report + snapshots under .ark/reports/ (origin once, latest each run, history JSON)',
@@ -1043,6 +1046,11 @@ async function main() {
       configPath: path.isAbsolute(args.config) ? args.config : path.join(root, args.config),
       configMissing: !fs.existsSync(path.isAbsolute(args.config) ? args.config : path.join(root, args.config)),
     });
+    return;
+  }
+
+  if (args.ratchetCores) {
+    runRatchetCores(root, config, files, rules, violations, args, { displayPathFromRoot });
     return;
   }
 

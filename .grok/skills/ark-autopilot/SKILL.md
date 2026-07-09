@@ -45,6 +45,9 @@ never weaken the gate).
 8. **Manifiesto** — if loose business rules surface (domain logic in UI/core), propose Domain placement + `intentPrefixes` / intents; apply config only via `/ark-contract` discipline (strict check after).
 9. **Final report** — `--report` again; evolution vs origin; honest summary of auto vs judgment vs deferred.
 10. **Strict check** — `ark-check --strict-config` (dead preset globs are advisory; real violations still fail).
+11. **Core ratchet (when green)** — if plan `goal.met` and doctor still **ADAPT** only because
+    populated cores are `optional: true`, run `ark-check --ratchet-cores` then `--doctor`.
+    Never ratchet while active violations remain.
 
 ## Never
 

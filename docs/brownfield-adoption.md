@@ -40,7 +40,7 @@ reason. Fix the contract first (step 3).
   proposes a layer per ungoverned directory. Add the recognized ones; decide the layer for the
   flagged ones. Get `governed` high before trusting any check.
 - **Protect the border around a framework, not its internals.** If the concentrated edge
-  points into a DI/kernel framework (dcouplr, NestJS, a custom kernel), split the target layer
+  points into a DI/kernel framework (NestJS, a custom kernel), split the target layer
   into a **public surface** (the entrypoints app code may import — e.g. `kernel/app/**`,
   `kernel/events.ts`) and **internals** (denied). Overlapping globs resolve most-specific-first,
   so the surface wins regardless of layer order. Where app code reaches an internal entrypoint

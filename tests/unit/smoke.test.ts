@@ -21,6 +21,11 @@ describe('ArkGate bootstrap (smoke)', () => {
     }
   });
 
+  it('points package homepage at the official product site', () => {
+    const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
+    expect(pkg.homepage).toBe('https://www.arkgate.online/');
+  });
+
   it('exports core domain types at runtime (shapes only for now)', () => {
     // We just verify that importing works and types are present structurally.
     // Real implementations come in later iterations.

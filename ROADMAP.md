@@ -108,6 +108,8 @@ Ship one id at a time. Engine honesty before marketing new shapes.
 | **P2** | `done` | **`vertical-slice` preset** | Features / Shared / Lib / App + peerIsolation; `ark init --preset vertical-slice`. |
 | **P3** | `done` | **VS playbook + pack + starter** | Archetype signals, enthusiast pack, optional gallery starter green under strict-config. |
 | **P4** | `done` | **`ddd-bounded-contexts` preset** | contexts/*/domain\|application\|infra + shared kernel; inter-context via peerIsolation. |
+| **S1** | `done` | **Skills know new presets** | architect/place/fix/adopt/autopilot updated for VS + DDD. |
+| **S3** | `done` | **`/ark-think` host skill** | templates/skills/ark-think.md — reasoning only, no package LLM. |
 
 ### Later / only if demand pulls
 

@@ -22,6 +22,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   SharedKernel; same-layer peerIsolation across contexts. Archetype, pack
   `enthusiast-ddd-bounded-contexts`, gallery `examples/ddd-context-starter/`.
   Also ships `enthusiast-ui-surface` pack for the existing ui-surface preset.
+- **Skills (S1/S3):** architect/place/fix/adopt/autopilot know vertical-slice + DDD;
+  new host-only `/ark-think` skill (no package LLM).
 
 ## 2.8.3 — 2026-07-09
 

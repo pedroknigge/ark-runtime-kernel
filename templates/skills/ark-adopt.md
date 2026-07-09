@@ -32,7 +32,11 @@ Ark protects the **boundary around** a framework, not its internals. Nest/DI pub
 ## Steps
 
 1. **Config** — missing → `ark-check --init` (detection). Keep existing unless asked to regenerate.
+   If the tree is `src/features` + `shared`/`lib` **without** FSD `entities`/`widgets`, prefer
+   `vertical-slice` (or pack `enthusiast-vertical-slice`) — do **not** force hexagonal.
+   If `src/contexts` or `src/bounded-contexts` exists, prefer `ddd-bounded-contexts`.
 2. **Check + diagnose** — `summary.concentrated` / dominant edge → fix contract first, don’t freeze.
+   Cross-slice / cross-context `peerIsolation` hits are judgment: extract shared or events.
 3. **Classify ungoverned** — use coverage `suggestions`; add layers/patterns via `/ark-contract`.
 4. **Mine business rules → manifiesto** (model job — this is why the skill exists):
    - Scan for loose domain: validators, pricing/policy functions, `can*`/`calculate*`, magic business constants, publish/intent strings, logic in UI/hooks that belongs in Domain.

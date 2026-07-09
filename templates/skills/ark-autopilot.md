@@ -35,9 +35,11 @@ never weaken the gate).
 
 ## Flow
 
-1. **Setup if needed** — `ark start` if no `ark.config.json`.
+1. **Setup if needed** — `ark start` if no `ark.config.json`. Trust `--recommend` / playbook:
+   `vertical-slice-product` and `ddd-bounded-contexts` are first-class shapes (not hexagonal by default).
 2. **Origin report** — `ark-check --report ark-report.html` (do not `--reset-origin` unless asked).
 3. **Plan + code read** — `--plan --json`; read each step’s source/target; group by edge.
+   Treat `peerIsolation` / cross-slice steps as **judgment** (never mechanical-safe).
 4. **Concentrated edge?** — if one edge dominates, route to `/ark-contract` with a **source-based** diagnosis (not freeze).
 5. **Worktree preferred** — discardable git worktree when possible.
 6. **Mechanical-safe** — only kinds from `/ark-loop` table; one step, validate, rollback.

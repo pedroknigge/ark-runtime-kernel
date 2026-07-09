@@ -12,7 +12,9 @@
  *   - resource  ark://manifest  — the architectural contract (layers + rules, or a project
  *                                 manifest file when --manifest is provided)
  *   - tool      validate_code   — runs Ark's AI code gate on a source snippet; returns
- *                                 { valid, violations } and sets isError when invalid
+ *                                 { valid, violations, autoPatch? } and sets isError when invalid.
+ *                                 autoPatch (W1) is a gate-revalidated rewrite for mechanical-safe
+ *                                 import-type kinds only; discarded if post-patch still invalid.
  *   - tool      ark_recommend   — deterministic application-shape plan (same as
  *                                 ark-check --recommend --json)
  *
@@ -46,6 +48,7 @@ import {
   resolveIncludeRoots,
 } from './ark-shared.mjs';
 import { createImportTargetResolver } from './lib/import-resolve.mjs';
+import { validateWithAutoPatch, resolveImportFileAbs } from './lib/auto-patch.mjs';
 
 const arkCheckBin = fileURLToPath(new URL('./ark-check.mjs', import.meta.url));
 
@@ -191,7 +194,7 @@ function proposedSource(toolName, toolInput) {
  * decision JSON on stdout. Gate plumbing problems (no stdin, malformed JSON, non-file
  * tools, non-source files) never block the agent.
  */
-function runHook(gate, config, args) {
+function runHook(gate, config, args, ts) {
   let payload;
   try {
     payload = JSON.parse(fs.readFileSync(0, 'utf8'));
@@ -213,7 +216,22 @@ function runHook(gate, config, args) {
   if (typeof source !== 'string') return;
 
   const layer = inferLayer(filePath, config, args.root);
-  const result = gate.validate(source, { layer, filePath });
+  const validateOnce = (src) => gate.validate(src, { layer, filePath });
+  // W1: try mechanical-safe import-type autoPatch; re-validate or discard (never silent write).
+  const patched = ts
+    ? validateWithAutoPatch({
+        source,
+        filePath,
+        root: args.root,
+        ts,
+        validate: validateOnce,
+        resolveTargetAbs: resolveImportFileAbs,
+      })
+    : { valid: false, violations: validateOnce(source).violations, autoPatch: null };
+
+  // If autoPatch exists and is valid, the *original* write is still blocked (hosts must apply
+  // the patch explicitly). If original was already valid, exit allow.
+  const result = validateOnce(source);
   if (result.valid) return;
 
   // Ratchet semantics (same philosophy as ark-check --baseline): an edit is blocked only
@@ -246,16 +264,30 @@ function runHook(gate, config, args) {
   const suggestions = [
     ...new Set(newViolations.map((violation) => violation.suggestion).filter(Boolean)),
   ];
+  const autoPatch = patched.autoPatch;
   const message = [
     `Ark architecture gate blocked this write to ${rel}${layer ? ` (layer: ${layer})` : ''}:`,
     ...lines,
     ...(suggestions.length > 0 ? ['Fix:', ...suggestions.map((s) => `  ${s}`)] : []),
+    ...(autoPatch
+      ? [
+          `autoPatch available (${autoPatch.remediationKind}, confidence ${autoPatch.confidence}): ` +
+            'apply the patched source from the JSON payload instead of re-drafting.',
+        ]
+      : []),
     'Fix the violations and retry. The architecture contract is available as the ark://manifest MCP resource.',
   ].join('\n');
   process.stderr.write(message + '\n');
   // Grok Build honors { decision: "deny" } on stdout (exit 2 alone is also deny).
+  // Additive autoPatch field (W1) — hosts may re-inject; never silent write.
   if (grokStyle) {
-    process.stdout.write(JSON.stringify({ decision: 'deny', reason: message }) + '\n');
+    process.stdout.write(
+      JSON.stringify({
+        decision: 'deny',
+        reason: message,
+        ...(autoPatch ? { autoPatch } : {}),
+      }) + '\n'
+    );
   }
   process.exitCode = 2;
 }
@@ -444,7 +476,7 @@ async function main() {
   });
 
   if (args.hook) {
-    runHook(gate, config, args);
+    runHook(gate, config, args, ts);
     return;
   }
 
@@ -463,7 +495,9 @@ async function main() {
         "Validate a source snippet about to be written against Ark's architecture " +
         '(forbidden infra imports, unknown intents, and layer-reference violations). ' +
         'Bind to PreToolUse on Write/Edit to block architecturally-invalid generated code. ' +
-        'Returns { valid, violations }; isError is true when the code is invalid.',
+        'Returns { valid, violations, autoPatch? }. autoPatch (when present) is a ' +
+        'mechanical-safe rewrite of the source (import type conversion) that re-validates green; ' +
+        'hosts may apply it instead of re-drafting. isError is true when valid is false.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -626,13 +660,38 @@ async function main() {
     if (typeof source !== 'string') {
       return { content: [{ type: 'text', text: 'Missing required "source" argument.' }], isError: true };
     }
-    const layer = params.arguments.layer ?? inferLayer(params.arguments.filePath, config, args.root);
-    const result = gate.validate(source, {
-      layer,
-      filePath: params.arguments.filePath,
+    const filePath = params.arguments.filePath;
+    const layer = params.arguments.layer ?? inferLayer(filePath, config, args.root);
+    const validateOnce = (src) =>
+      gate.validate(src, {
+        layer,
+        filePath,
+      });
+    // W1: attempt mechanical-safe single-file autoPatch (import type), re-validate or discard.
+    const result = validateWithAutoPatch({
+      source,
+      filePath,
+      root: args.root,
+      ts,
+      validate: validateOnce,
+      resolveTargetAbs: resolveImportFileAbs,
     });
     return {
-      content: [{ type: 'text', text: JSON.stringify({ ...result, layer }, null, 2) }],
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(
+            {
+              valid: result.valid,
+              violations: result.violations,
+              ...(result.autoPatch ? { autoPatch: result.autoPatch } : {}),
+              layer,
+            },
+            null,
+            2
+          ),
+        },
+      ],
       isError: !result.valid,
     };
   }

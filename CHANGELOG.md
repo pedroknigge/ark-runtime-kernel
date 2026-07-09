@@ -4,6 +4,20 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Added
+
+- **W1 write-boundary autoPatch:** `validate_code` and PreToolUse `--hook` may return
+  additive `autoPatch: { source, remediationKind, confidence, valid }` for mechanical-safe
+  **import type** rewrites (`import-type-from-pure-type-module`, `import-type-of-type-exports`).
+  Post-patch revalidation must be green or the patch is discarded (never silent write).
+  Implementation: `bin/lib/auto-patch.mjs`.
+
+### Changed
+
+- **Write gate type-only edges:** `import type` / `export type` no longer hard-block
+  LAYER_IMPORT / infra heuristics on the write path (erased at runtime). Value imports
+  and peerIsolation still deny. ark-check plan continues to surface type placement debt.
+
 ## 2.9.2 — 2026-07-09
 
 Skill surface hardening: dual-engine, explore, STOP handoffs, AGENTS routing, subagent fan-out.

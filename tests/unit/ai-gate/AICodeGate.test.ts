@@ -24,7 +24,7 @@ describe('AI Code Gate (basic)', () => {
     ).toBe(true);
   });
 
-  it('flags type imports, re-exports, dynamic imports, and require calls', () => {
+  it('flags value re-exports, dynamic imports, and require — not import type (W1)', () => {
     const gate = createAICodeGate();
     const res = gate.validate(
       [
@@ -36,9 +36,13 @@ describe('AI Code Gate (basic)', () => {
       { filePath: 'src/domain/order.ts' }
     );
 
+    // `import type` is erased at runtime — write path skips infra heuristic (W1 autoPatch).
     const forbidden = res.violations.filter((v) => v.ruleId === 'FORBIDDEN_IMPORT');
-    expect(forbidden).toHaveLength(4);
+    expect(forbidden).toHaveLength(3);
     expect(forbidden.every((v) => v.filePath === 'src/domain/order.ts')).toBe(true);
+    expect(res.violations.some((v) => String(v.message || '').includes('import type'))).toBe(
+      false
+    );
   });
 
   it('passes clean code', () => {

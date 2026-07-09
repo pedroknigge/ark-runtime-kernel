@@ -142,6 +142,69 @@ describe('ark-mcp server (write-path gate)', () => {
     expect(JSON.parse(res.result.content[0].text).valid).toBe(true);
   });
 
+  it('W1: validate_code returns autoPatch for import-type mechanical-safe rewrite', async () => {
+    // Domain must not import Persistence; pure-type target → convert to import type.
+    const autoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-mcp-autopatch-'));
+    fs.writeFileSync(
+      path.join(autoRoot, 'ark.config.json'),
+      JSON.stringify({
+        include: ['src'],
+        layers: [
+          {
+            name: 'DomainModel',
+            patterns: ['src/domain/**'],
+            intentPrefixes: ['Domain.'],
+          },
+          {
+            name: 'PersistenceAdapters',
+            patterns: ['src/infra/**'],
+            intentPrefixes: ['Adapter.Persistence.'],
+          },
+        ],
+        rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
+      })
+    );
+    fs.mkdirSync(path.join(autoRoot, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(autoRoot, 'src/infra'), { recursive: true });
+    fs.writeFileSync(
+      path.join(autoRoot, 'src/infra/types-only.ts'),
+      'export type Row = { id: string };\nexport interface Item { n: number }\n'
+    );
+    const c = createClient(autoRoot);
+    try {
+      await c.request('initialize', { protocolVersion: '2024-11-05' });
+      const res = await c.request('tools/call', {
+        name: 'validate_code',
+        arguments: {
+          source: "import { Row } from '../infra/types-only';\nexport function id(r: Row): string { return r.id; }\n",
+          filePath: 'src/domain/use.ts',
+        },
+      });
+      expect(res.result.isError).toBe(true);
+      const payload = JSON.parse(res.result.content[0].text);
+      expect(payload.valid).toBe(false);
+      expect(payload.autoPatch).toBeTruthy();
+      expect(payload.autoPatch.valid).toBe(true);
+      expect(payload.autoPatch.remediationKind).toMatch(
+        /import-type-from-pure-type-module|import-type-of-type-exports/
+      );
+      expect(payload.autoPatch.source).toMatch(/import\s+type\s*\{/);
+      // Post-patch must re-validate green when resubmitted
+      const res2 = await c.request('tools/call', {
+        name: 'validate_code',
+        arguments: {
+          source: payload.autoPatch.source,
+          filePath: 'src/domain/use.ts',
+        },
+      });
+      expect(res2.result.isError).toBe(false);
+      expect(JSON.parse(res2.result.content[0].text).valid).toBe(true);
+    } finally {
+      c.close();
+      fs.rmSync(autoRoot, { recursive: true, force: true });
+    }
+  });
+
   it('uses the AST-backed gate to flag Ark publish calls without source metadata', async () => {
     const res = await client.request('tools/call', {
       name: 'validate_code',

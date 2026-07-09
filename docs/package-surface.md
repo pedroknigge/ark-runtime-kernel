@@ -3,6 +3,9 @@
 **Product wedge:** write gate · CI gate · co-pilot (plan / loop / skills).  
 **Not the wedge:** the optional in-process runtime kernel.
 
+**Public product site:** [arkgate.online](https://www.arkgate.online/) (promise + only flow).  
+In-repo `docs/` remains the package/agent reference. Source: GitHub; distribution: npm.
+
 This document is the consumer contract for **what is stable** vs **what is opt-in**.
 
 ---

@@ -7,6 +7,7 @@
 Your AI writes most of the code. ArkGate keeps that code inside an architecture you can trust —
 and makes sure a “green” check means something real.
 
+[![Website](https://img.shields.io/badge/website-arkgate.online-0a0a0a)](https://www.arkgate.online/)
 [![CI](https://github.com/pedroknigge/arkgate/actions/workflows/ci.yml/badge.svg)](https://github.com/pedroknigge/arkgate/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/arkgate?color=cb3837&label=npm)](https://www.npmjs.com/package/arkgate)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -267,10 +268,12 @@ npm run typecheck
 npm run check:architecture   # Ark gates itself
 ```
 
+**Website:** [arkgate.online](https://www.arkgate.online/)  
 **npm:** [`arkgate`](https://www.npmjs.com/package/arkgate) · formerly `ark-runtime-kernel`  
 **Product:** **ArkGate** — architecture co-pilot / gate for AI TypeScript (not a runtime kernel).  
 CLI: `arkgate` · `arkgate-check` · `arkgate-mcp` (aliases `ark` / `ark-check` / `ark-mcp` still work for one major).  
-MCP registry: `io.github.pedroknigge/arkgate`.
+MCP registry: `io.github.pedroknigge/arkgate`.  
+**Source:** [github.com/pedroknigge/arkgate](https://github.com/pedroknigge/arkgate)
 
 Node ≥ 18 · **MIT**.
 

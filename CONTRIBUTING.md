@@ -2,6 +2,8 @@
 
 Thanks for your interest! ArkGate is young and contributions of every size are welcome — issues describing real-world adoption friction are as valuable as PRs.
 
+**Product site:** [arkgate.online](https://www.arkgate.online/) · **Source:** this repository.
+
 ## Setup
 
 ```bash

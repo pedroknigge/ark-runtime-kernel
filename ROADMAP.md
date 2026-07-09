@@ -7,6 +7,7 @@ cleanup without lying about coverage.
 **What this is not:** a web framework, ORM, job runner, or “runtime kernel” product. An optional
 runtime API may exist; it is not the wedge.
 
+**Website:** [arkgate.online](https://www.arkgate.online/)  
 **npm:** [`arkgate`](https://www.npmjs.com/package/arkgate) (product **ArkGate**; formerly `ark-runtime-kernel`).  
 **Product shape:** write gate (`arkgate-mcp`) · CI gate (`arkgate-check`) · plan / goal / loop · agent skills.
 
@@ -89,7 +90,7 @@ Start only when R1–R7 are done or explicitly skipped with a written reason.
 
 | # | Status | Item | Definition of Done |
 |---|--------|------|-------------------|
-| **R10** | `todo` | **Docs site** | Deployed site from existing `docs/` (enthusiast + agent-guide + demos). Canonical English. |
+| **R10** | `done` | **Product site** | Public product site live at [arkgate.online](https://www.arkgate.online/) (flow + promise). In-repo `docs/` remains the package/agent canonical reference; optional full Diataxis site is demand-driven. |
 | **R11** | `todo` | **Team baseline burn-down UX** | Report/export shows baseline debt trend; package-scoped debt optional. |
 | **R12** | `todo` | **Framework policy packs** | Only if filename overlays prove insufficient in field; otherwise skip. |
 | **R13** | `todo` | **TS 7.1+ programmatic API** | When Microsoft ships stable API: extend `usableTypescript`, keep matrix green. |
@@ -201,6 +202,7 @@ Next: Track D growth items (R10+) when demand pulls — R1–R9 foundation compl
 | **Config** | `ark.config.json` (unchanged for now) |
 | **Skills** | `/ark-*` |
 | **Predecessor** | `ark-runtime-kernel` (npm **deprecated**) |
+| **Website** | [arkgate.online](https://www.arkgate.online/) |
 | **GitHub** | [pedroknigge/arkgate](https://github.com/pedroknigge/arkgate) |
 
 Same codebase; not a greenfield rewrite.
@@ -220,6 +222,7 @@ Same codebase; not a greenfield rewrite.
 
 ## Contributing
 
+Product site: [arkgate.online](https://www.arkgate.online/).  
 Issues and PRs: [github.com/pedroknigge/arkgate](https://github.com/pedroknigge/arkgate).
 
 For onboarding misfires, include archetype id and `ark-check --recommend --json`.

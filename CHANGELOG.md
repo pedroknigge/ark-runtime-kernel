@@ -4,6 +4,12 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Changed
+
+- **Official website:** product homepage is [arkgate.online](https://www.arkgate.online/)
+  (`package.json` `homepage`, README badges/footer, ROADMAP identity). npm package page
+  and GitHub remain source + distribution links.
+
 ## 2.8.2 — 2026-07-09
 
 Field-honesty patch (Next/UI host probe): no Nest false positives, no false ENFORCE on

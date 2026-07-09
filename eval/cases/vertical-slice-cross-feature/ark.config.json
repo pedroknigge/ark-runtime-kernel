@@ -1,0 +1,25 @@
+{
+  "include": ["src"],
+  "layers": [
+    {
+      "name": "Features",
+      "patterns": ["src/features/**"],
+      "optional": true
+    },
+    {
+      "name": "Shared",
+      "patterns": ["src/shared/**"],
+      "optional": true
+    }
+  ],
+  "rules": [
+    {
+      "from": "Features",
+      "to": "Features",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": ["features"]
+    },
+    { "from": "Shared", "to": "Features", "allowed": false }
+  ]
+}

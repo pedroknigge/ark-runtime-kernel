@@ -110,6 +110,7 @@ Ship one id at a time. Engine honesty before marketing new shapes.
 | **P4** | `done` | **`ddd-bounded-contexts` preset** | contexts/*/domain\|application\|infra + shared kernel; inter-context via peerIsolation. |
 | **S1** | `done` | **Skills know new presets** | architect/place/fix/adopt/autopilot updated for VS + DDD. |
 | **S3** | `done` | **`/ark-think` host skill** | templates/skills/ark-think.md — reasoning only, no package LLM. |
+| **S5** | `done` | **Eval corpus peerIsolation** | `vertical-slice-cross-feature` case + `cross-slice-boundary` fixClass. |
 
 ### Later / only if demand pulls
 

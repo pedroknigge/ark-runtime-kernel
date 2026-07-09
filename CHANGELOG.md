@@ -24,6 +24,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   Also ships `enthusiast-ui-surface` pack for the existing ui-surface preset.
 - **Skills (S1/S3):** architect/place/fix/adopt/autopilot know vertical-slice + DDD;
   new host-only `/ark-think` skill (no package LLM).
+- **Eval corpus (S5):** `eval/cases/vertical-slice-cross-feature` labeled peerIsolation case
+  (`cross-slice-boundary` fixClass, judgment).
 
 ## 2.8.3 — 2026-07-09
 

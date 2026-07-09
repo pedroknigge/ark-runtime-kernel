@@ -34,6 +34,7 @@ export const MECHANICAL_SAFE_KINDS: readonly RemediationKind[] = [
 export const KNOWN_FIX_CLASSES = [
   'file-move',
   'port-inversion',
+  'cross-slice-boundary',
   'inject-port',
   'registered-intent',
   'add-source-metadata',

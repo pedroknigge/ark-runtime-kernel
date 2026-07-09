@@ -1027,10 +1027,13 @@ export function collectRepoShapeSignals(root) {
 
   const topNames = new Set(srcDirs.flatMap((d) => listTopLevelDirNames(root, d)));
   // Framework / filename signals — strong enough that a tiny Nest starter is not a "prototype".
+  // Nest detection: require real Nest surface (@nestjs/* or controller/module/gateway/resolver).
+  // Do NOT treat bare `*.service.ts` / `*.guard.ts` as Nest — many Next/Node apps use those
+  // names without Nest (false nestjs overlay + wrong doctor toolHints).
   const nestFramework =
     Object.keys(deps).some((name) => name.startsWith('@nestjs/')) ||
     sourceFiles.some((file) =>
-      /\.(controller|module|service|guard|interceptor|pipe)\.ts$/i.test(file)
+      /\.(controller|module|gateway|resolver)\.ts$/i.test(file)
     );
   const nextFramework =
     Boolean(deps.next) ||

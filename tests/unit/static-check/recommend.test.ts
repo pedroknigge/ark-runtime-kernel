@@ -255,4 +255,24 @@ describe('collectRepoShapeSignals — JavaScript / serverless layouts', () => {
     expect(rec.archetype).toBe('crud-product');
     expect(rec.firstCommand).toContain('init --archetype crud-product');
   });
+
+  it('does not flag Nest from bare *.service.ts (Next/Node naming false positive)', () => {
+    const root = mkTempDir('ark-rec-not-nest-');
+    writeJson(path.join(root, 'package.json'), {
+      name: 'nextish',
+      version: '0.1.0',
+      dependencies: { next: '16.1.6', react: '19.0.0' },
+    });
+    writeFile(path.join(root, 'src', 'app', 'page.tsx'), 'export default function Page() { return null }\n');
+    writeFile(
+      path.join(root, 'src', 'lib', 'dcouplr', 'services', 'project.service.ts'),
+      'export class ProjectService {}\n'
+    );
+    writeFile(path.join(root, 'src', 'lib', 'supabase', 'client.ts'), 'export const sb = {}\n');
+
+    const signals = collectRepoShapeSignals(root);
+    expect(signals.nextFramework).toBe(true);
+    expect(signals.nestFramework).toBe(false);
+    expect(signals.toolHints ?? []).not.toContain('@nestjs/*');
+  });
 });

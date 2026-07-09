@@ -2209,12 +2209,12 @@ describe('framework layout overlays (Nest / Next)', () => {
     expect(appFiles).toBeGreaterThanOrEqual(1);
   });
 
-  it('deer-flow-style monorepo: frontend/src/core + types.ts is Application not Domain', () => {
+  it('frontend monorepo: frontend/src/core + types.ts is Application not Domain', () => {
     // Real host shape: root package is arkgate-only (no next); Next lives under frontend/.
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-df-mono-'));
     fs.writeFileSync(
       path.join(root, 'package.json'),
-      JSON.stringify({ name: 'deer-flow-like', private: true, dependencies: {} })
+      JSON.stringify({ name: 'frontend-monorepo-like', private: true, dependencies: {} })
     );
     fs.mkdirSync(path.join(root, 'frontend/src/app'), { recursive: true });
     fs.mkdirSync(path.join(root, 'frontend/src/core/threads'), { recursive: true });

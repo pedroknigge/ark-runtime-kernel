@@ -14,6 +14,11 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   when `tsconfig.json`/`jsconfig.json` exists and no typecheck-like script is present; generated
   CI includes the typecheck step. Existing scripts are never overwritten.
 
+### Changed
+
+- **Repo hygiene:** scrub named field-probe host identities from docs, comments, tests, and
+  historical changelog wording; fixtures stay framework-generic (Nest/Next only).
+
 ## 2.8.2 — 2026-07-09
 
 Field-honesty patch (Next/UI host probe): no Nest false positives, no false ENFORCE on
@@ -122,7 +127,7 @@ shape breaks** for the gate/co-pilot path.
 
 ## 2.6.1 — 2026-07-09
 
-Field-test release: Next/monorepo honesty (deer-flow-style hosts), simplified **one-flow** UX for
+Field-test release: Next/monorepo honesty (frontend monorepo hosts), simplified **one-flow** UX for
 humans and autonomous agents, and skills that require real source remediation—not CLI paraphrase.
 
 ### Fixed — false greens & strict CI noise (Next / monorepo)
@@ -170,7 +175,7 @@ Templates under `templates/skills/` (and project `.grok/skills` copies) for at l
 
 ### Tests
 
-- Fixture-style unit tests drive real `bin/ark-check.mjs`: Next core governance; deer-flow-like
+- Fixture-style unit tests drive real `bin/ark-check.mjs`: Next core governance; frontend monorepo-like
   monorepo (`frontend` + `core/**/types.ts` not Domain); strict-config with dead globs;
   empty baseline removal.
 

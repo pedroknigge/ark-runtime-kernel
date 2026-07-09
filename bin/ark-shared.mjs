@@ -1108,7 +1108,7 @@ export function collectRepoShapeSignals(root) {
   const pkg = readPackageJson(root);
   const workspaceDirs = detectWorkspaces(root);
   const workspaces = workspaceDirs.length > 0;
-  // Include frontend/web/client — common Next monorepo app folders (deer-flow-style).
+  // Include frontend/web/client — common Next monorepo app folders.
   const candidateScanDirs = [
     'src',
     'lib',

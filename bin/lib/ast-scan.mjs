@@ -209,8 +209,9 @@ export function expressionMayHaveSideEffects(ts, expr) {
 
 /**
  * True when evaluating this module may run non-trivial top-level work.
- * Covers: expression statements, bare side-effect imports, control-flow, and
- * value-export initializers that call/new/await (e.g. `export const db = connect()`).
+ * Covers: expression statements, bare side-effect imports, control-flow,
+ * any top-level var initializer that call/new/await (exported or not),
+ * export-default impure expr, and class static field calls (export-agnostic).
  * Converting `import { Type }` → `import type` would skip those effects — not auto-safe.
  */
 export function sourceFileHasTopLevelSideEffects(ts, sourceFile) {
@@ -231,8 +232,10 @@ export function sourceFileHasTopLevelSideEffects(ts, sourceFile) {
     ) {
       return true;
     }
-    // export const/let/var x = <maybe impure>
-    if (ts.isVariableStatement(stmt) && hasExportModifier(ts, stmt)) {
+    // Top-level const/let/var x = <maybe impure> — including non-exported.
+    // `const db = connect(); export type Row = …` still runs connect on module load;
+    // converting `import { Row }` → `import type` would skip that work (R6 honesty).
+    if (ts.isVariableStatement(stmt)) {
       for (const decl of stmt.declarationList.declarations) {
         if (decl.initializer && expressionMayHaveSideEffects(ts, decl.initializer)) return true;
       }
@@ -241,8 +244,9 @@ export function sourceFileHasTopLevelSideEffects(ts, sourceFile) {
     if (ts.isExportAssignment(stmt) && !stmt.isExportEquals) {
       if (stmt.expression && expressionMayHaveSideEffects(ts, stmt.expression)) return true;
     }
-    // export class with static field initializers that call
-    if (ts.isClassDeclaration(stmt) && hasExportModifier(ts, stmt)) {
+    // Class with static field initializers that call — class body evaluates at load
+    // whether or not the class is exported.
+    if (ts.isClassDeclaration(stmt)) {
       for (const member of stmt.members ?? []) {
         if (
           ts.isPropertyDeclaration(member) &&

@@ -1922,6 +1922,15 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
       path.join(root, 'src/ui/init-effect-target.ts'),
       "import { Row } from '../data/with-init-effect';\nexport function f(r: Row) {\n  return r.id;\n}\n"
     );
+    // judgment: non-exported impure initializer still runs on module load
+    fs.writeFileSync(
+      path.join(root, 'src/data/with-local-init-effect.ts'),
+      "const boot = console.log('boot');\nexport type LocalRow = { id: string };\nexport const k = 1;\n"
+    );
+    fs.writeFileSync(
+      path.join(root, 'src/ui/local-init-effect-target.ts'),
+      "import { LocalRow } from '../data/with-local-init-effect';\nexport function g(r: LocalRow) {\n  return r.id;\n}\n"
+    );
     // judgment: require() of pure-type module (runtime load — never auto)
     fs.writeFileSync(
       path.join(root, 'src/ui/require-type.ts'),
@@ -1978,6 +1987,7 @@ describe('ark-check --plan (co-pilot Phase F — work classifier)', () => {
     expect(judgmentFiles).toContain('src/ui/dual-space-value.ts');
     expect(judgmentFiles).toContain('src/ui/side-effect-target.ts');
     expect(judgmentFiles).toContain('src/ui/init-effect-target.ts');
+    expect(judgmentFiles).toContain('src/ui/local-init-effect-target.ts');
     expect(judgmentFiles).toContain('src/ui/require-type.ts');
     expect(judgmentFiles).toContain('src/ui/dynamic-type.ts');
     expect(judgmentFiles).toContain('src/domain/global.ts');

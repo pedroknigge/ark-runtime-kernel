@@ -21,10 +21,13 @@ shape breaks** for the gate/co-pilot path.
 
 ### Changed
 
-- Scan cache schema **v5** (typeOnlyExportNames, namedBindings, hasTopLevelSideEffects).
+- Scan cache schema **v6** (typeOnlyExportNames, namedBindings, hasTopLevelSideEffects;
+  invalidates v5 after non-export side-effect honesty fix).
 - Classifier: single early judgment for `require` / `dynamic-import` on layer edges.
 - R6 honesty: impure value-export initializers (`export const db = connect()`) count as
   top-level side effects — named type imports of those modules stay **judgment**.
+- R6 honesty: non-exported impure top-level initializers (`const boot = setup()`) and
+  non-exported class static field calls also count as side effects (same skip-on-import-type risk).
 - Codex home: single `upsertCodexMcpTable` path for primary and secondary MCP tables.
 
 ## 2.7.0 — 2026-07-09

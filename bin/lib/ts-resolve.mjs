@@ -124,13 +124,13 @@ export function scanCacheKey(root, args) {
       ? args.manifest
       : path.join(root, args.manifest)
     : undefined;
-  // Bump this schema tag whenever the cached scan shape changes, so a warm cache from an
-  // older Ark can't feed stale entries to new logic. v2: typeOnly on edges. v3: per-file
-  // exportsOnlyTypes (target-module type-only export detection for plan classifier).
-  // v4: typeOnlyExportNames + namedBindings. v5: hasTopLevelSideEffects for R6 honesty.
+  // Bump this schema tag whenever the cached scan shape or detection semantics change, so a
+  // warm cache from an older Ark can't feed stale entries to new logic. v2: typeOnly on edges.
+  // v3: per-file exportsOnlyTypes. v4: typeOnlyExportNames + namedBindings.
+  // v5: hasTopLevelSideEffects. v6: non-exported impure inits + non-export class statics.
   return crypto
     .createHash('sha1')
-    .update(`ark-check-cache-v5\0${read(configPath)}\0${manifestPath ? read(manifestPath) : ''}`)
+    .update(`ark-check-cache-v6\0${read(configPath)}\0${manifestPath ? read(manifestPath) : ''}`)
     .digest('hex');
 }
 

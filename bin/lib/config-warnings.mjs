@@ -10,6 +10,7 @@ import {
   patternSpecificity,
   resolveIntentLayer,
 } from '../ark-shared.mjs';
+import { findDeniedEdgeRule } from '../ark-layer-match.mjs';
 import { normalize } from './scan-files.mjs';
 
 export function intentLayersFromManifest(manifest) {
@@ -36,8 +37,16 @@ export function layerForIntent(intent, layers, manifestIntentLayers) {
   return resolveIntentLayer(intent, source);
 }
 
-export function isBlocked(rules, from, to) {
-  return rules.find((rule) => !rule.allowed && rule.from === from && rule.to === to);
+/**
+ * First denying edge rule for from→to, or undefined.
+ * Path-aware when options.fromPath / options.toPath are set (peerIsolation).
+ * @param {object[]} rules
+ * @param {string} from
+ * @param {string} to
+ * @param {{ fromPath?: string, toPath?: string, layers?: object[] }} [options]
+ */
+export function isBlocked(rules, from, to, options) {
+  return findDeniedEdgeRule(rules, from, to, options);
 }
 
 export function configWarning(ruleId, message, extra = {}) {

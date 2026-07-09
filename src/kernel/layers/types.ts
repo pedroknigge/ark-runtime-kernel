@@ -23,6 +23,13 @@ export interface ArchitectureRule {
   to: string;
   allowed: boolean;
   message?: string;
+  /**
+   * Same-layer only: deny imports across different slices (e.g. features/a → features/b).
+   * Requires path resolution at check time (write-gate / CI).
+   */
+  peerIsolation?: boolean;
+  /** Parent folder names that own the slice id as the next path segment. */
+  sliceFolders?: string[];
 }
 
 export interface ArchitectureProfile {

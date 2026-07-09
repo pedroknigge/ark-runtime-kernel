@@ -12,6 +12,7 @@ You fix violations Ark reports. Prefer structural fixes over silencing the gate.
 
 - **Greenfield:** `/ark-architect` or `ark-check --recommend` / `ark start`.
 - **Brownfield:** `/ark-adopt` — match contract to reality; do not force a starter preset.
+- **peerIsolation / cross-slice:** always **judgment** — extract to shared, events/ports, or redesign ownership. Never auto-apply cross-feature or cross-context moves.
 - **Default path:** `ark start` → `/ark-autopilot` → `ark-check --doctor`.
 
 ## Anti-wrapper rule (mandatory)

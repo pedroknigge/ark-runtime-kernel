@@ -1,0 +1,18 @@
+{
+  "id": "enthusiast-vertical-slice",
+  "preset": "vertical-slice",
+  "variant": "enthusiast",
+  "label": "Vertical slice — enthusiast",
+  "summary": "Organize by feature slices under src/features. Shared and lib are the only escape hatches; sibling features must not import each other.",
+  "phases": {
+    "1": ["Features", "Shared"],
+    "2": ["Lib", "App"],
+    "3": []
+  },
+  "layerDescriptions": {
+    "Features": "One folder per feature/use-case — API, UI, hooks, types together. No imports from sibling features.",
+    "Shared": "Reusable primitives (UI kit, utils, types) with zero feature knowledge.",
+    "Lib": "Infrastructure clients (db, HTTP, env) shared across features.",
+    "App": "App shell, routing, and composition root."
+  }
+}

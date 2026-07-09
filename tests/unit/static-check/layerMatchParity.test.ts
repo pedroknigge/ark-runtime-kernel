@@ -10,6 +10,9 @@ import {
   patternSpecificity as specTs,
   layerForRelativePath as layerTs,
   isEdgeDenied as edgeTs,
+  findDeniedEdgeRule as findTs,
+  sliceIdForPath as sliceTs,
+  inferSliceFoldersFromPatterns as inferTs,
   scanExcludePatterns as scanTs,
   isScanExcludedRelative as exclTs,
   DEFAULT_GENERATED_FILE_GLOBS as genTs,
@@ -67,6 +70,35 @@ describe('layer-match parity (domain TS ↔ generated bin ESM)', async () => {
       bin.isEdgeDenied(rules, 'ApplicationOrchestration', 'DomainModel')
     );
     expect(edgeTs(rules, 'DomainModel', 'DomainModel')).toBe(false);
+  });
+
+  it('peerIsolation path-aware edges agree', () => {
+    const rules = [
+      { from: 'Features', to: 'Features', allowed: false, peerIsolation: true },
+    ];
+    const featLayers = [{ name: 'Features', patterns: ['src/features/**'] }];
+    const opts = {
+      fromPath: 'src/features/auth/a.ts',
+      toPath: 'src/features/payments/b.ts',
+      layers: featLayers,
+    };
+    expect(edgeTs(rules, 'Features', 'Features', opts)).toBe(
+      bin.isEdgeDenied(rules, 'Features', 'Features', opts)
+    );
+    expect(edgeTs(rules, 'Features', 'Features', opts)).toBe(true);
+    const same = {
+      fromPath: 'src/features/auth/a.ts',
+      toPath: 'src/features/auth/b.ts',
+      layers: featLayers,
+    };
+    expect(edgeTs(rules, 'Features', 'Features', same)).toBe(false);
+    expect(bin.isEdgeDenied(rules, 'Features', 'Features', same)).toBe(false);
+    expect(sliceTs('src/features/auth/x.ts', ['features'])).toBe(
+      bin.sliceIdForPath('src/features/auth/x.ts', ['features'])
+    );
+    expect(inferTs(['src/features/**'])).toEqual(bin.inferSliceFoldersFromPatterns(['src/features/**']));
+    expect(findTs(rules, 'Features', 'Features', opts)?.peerIsolation).toBe(true);
+    expect(bin.findDeniedEdgeRule(rules, 'Features', 'Features', opts)?.peerIsolation).toBe(true);
   });
 
   it('layerForFile (bin) matches relative classification', () => {

@@ -164,6 +164,33 @@ function createImportLayerResolver(ts, root, config) {
   };
 }
 
+/** Repo-relative path for peerIsolation slice keys (file path or import specifier). */
+function createImportRelativePathResolver(ts, root) {
+  const tsAliases = readTsconfigAliases(ts, root);
+  return (specifierOrFilePath, fromFilePath) => {
+    if (!specifierOrFilePath || typeof specifierOrFilePath !== 'string') return undefined;
+    // Absolute or root-relative source file path (the file being written).
+    if (
+      path.isAbsolute(specifierOrFilePath) ||
+      (!specifierOrFilePath.includes(':') &&
+        !specifierOrFilePath.startsWith('.') &&
+        !specifierOrFilePath.startsWith('@') &&
+        fs.existsSync(
+          path.isAbsolute(specifierOrFilePath)
+            ? specifierOrFilePath
+            : path.join(root, specifierOrFilePath)
+        ))
+    ) {
+      const abs = path.isAbsolute(specifierOrFilePath)
+        ? specifierOrFilePath
+        : path.resolve(root, specifierOrFilePath);
+      const rel = path.relative(root, abs).split(path.sep).join('/');
+      return rel.startsWith('..') ? undefined : rel;
+    }
+    return resolveSpecifierToRel(specifierOrFilePath, fromFilePath, root, tsAliases);
+  };
+}
+
 async function loadArk() {
   const url = new URL('../dist/index.js', import.meta.url);
   if (!fs.existsSync(url)) {
@@ -504,6 +531,11 @@ async function main() {
     // Contract-first: a resolvable import edge is judged by the config's layer rules, not the
     // infra path-heuristic — so the write gate agrees with ark-check (ark.config.json wins).
     resolveImportLayer: createImportLayerResolver(ts, args.root, config),
+    resolveImportRelativePath: createImportRelativePathResolver(ts, args.root),
+    layersForSliceInfer: configLayers.map((layer) => ({
+      name: layer.name,
+      patterns: layer.patterns,
+    })),
   });
 
   if (args.hook) {

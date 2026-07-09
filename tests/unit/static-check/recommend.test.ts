@@ -24,6 +24,8 @@ const ARCHETYPE_IDS = new Set([
   'integration-bridge',
   'multi-app-workspace',
   'prototype-spike',
+  'vertical-slice-product',
+  'ddd-bounded-contexts',
 ]);
 
 type RecommendJson = {
@@ -143,9 +145,9 @@ const FIXTURE_SHAPES: FixtureShape[] = [
 ];
 
 describe('architecture-playbook.json', () => {
-  it('defines exactly 10 tool-agnostic archetypes', () => {
+  it('defines exactly 12 tool-agnostic archetypes', () => {
     const playbook = loadArchitecturePlaybook(PLAYBOOK_PATH);
-    expect(Object.keys(playbook.archetypes)).toHaveLength(10);
+    expect(Object.keys(playbook.archetypes)).toHaveLength(12);
     for (const id of ARCHETYPE_IDS) {
       expect(playbook.archetypes[id]?.preset).toBeTruthy();
       expect(playbook.archetypes[id]?.phases?.['1']?.length).toBeGreaterThan(0);

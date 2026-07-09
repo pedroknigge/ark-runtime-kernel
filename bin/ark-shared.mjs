@@ -446,6 +446,9 @@ export {
   layerForFile,
   layerForRelativePath,
   isEdgeDenied,
+  findDeniedEdgeRule,
+  sliceIdForPath,
+  inferSliceFoldersFromPatterns,
   DEFAULT_GENERATED_FILE_GLOBS,
   scanExcludePatterns,
   isScanExcludedRelative,
@@ -666,6 +669,8 @@ export const ARCHETYPE_IDS = [
   'integration-bridge',
   'multi-app-workspace',
   'prototype-spike',
+  'vertical-slice-product',
+  'ddd-bounded-contexts',
 ];
 
 const UI_DIR_NAMES = new Set([
@@ -1142,6 +1147,18 @@ export function collectRepoShapeSignals(root) {
     ['app', 'pages', 'features', 'entities', 'shared'].some((name) =>
       fs.existsSync(path.join(root, 'src', name))
     );
+  // Vertical slice: features/* co-located slices + shared/lib escape, without full FSD ladder
+  // (entities/widgets). Distinct from featureSlicedLayout which matches any FSD folder.
+  const verticalSliceLayout =
+    fs.existsSync(path.join(root, 'src', 'features')) &&
+    (fs.existsSync(path.join(root, 'src', 'shared')) ||
+      fs.existsSync(path.join(root, 'src', 'lib'))) &&
+    !fs.existsSync(path.join(root, 'src', 'entities')) &&
+    !fs.existsSync(path.join(root, 'src', 'widgets'));
+  // DDD multi-context tree (contexts/*/domain|application|infrastructure).
+  const dddBoundedContextsLayout =
+    fs.existsSync(path.join(root, 'src', 'contexts')) ||
+    fs.existsSync(path.join(root, 'src', 'bounded-contexts'));
 
   const hasBin = Boolean(pkg?.bin);
   const hasExports = Boolean(pkg?.exports);
@@ -1203,6 +1220,8 @@ export function collectRepoShapeSignals(root) {
     domainHeavy,
     uiOnly,
     featureSlicedLayout,
+    verticalSliceLayout,
+    dddBoundedContextsLayout,
     fullStackProduct,
     persistenceFromDeps,
     nestFramework,
@@ -1229,6 +1248,10 @@ const SIGNAL_WHY = {
   library: () => 'publishable package shape (exports/main, no CLI bin)',
   libraryOnly: () => 'library package without a CLI entry',
   featureSlicedLayout: () => 'feature-sliced directory layout under src/',
+  verticalSliceLayout: () =>
+    'vertical-slice layout (src/features + shared/lib, without FSD entities/widgets)',
+  dddBoundedContextsLayout: () =>
+    'DDD bounded contexts under src/contexts or src/bounded-contexts',
   domain: () => 'domain directory present',
   application: () => 'application or services directory present',
   domainHeavy: () => 'both domain and application directories present',
@@ -1591,6 +1614,8 @@ const GALLERY_STARTER_BY_ARCHETYPE = {
   'api-backend': 'examples/api-backend-starter/',
   'worker-pipeline': 'examples/worker-pipeline-starter/',
   'multi-app-workspace': 'examples/multi-app-workspace-starter/',
+  'vertical-slice-product': 'examples/vertical-slice-starter/',
+  'ddd-bounded-contexts': 'examples/ddd-context-starter/',
 };
 
 /** Machine-readable adoption record for optional commit (Phase E). */
@@ -1600,7 +1625,10 @@ export function buildAdoptionPlanDocument(recommendation) {
     preset === 'hexagonal' ||
     preset === 'layered' ||
     preset === 'feature-sliced' ||
-    preset === 'monorepo'
+    preset === 'monorepo' ||
+    preset === 'vertical-slice' ||
+    preset === 'ddd-bounded-contexts' ||
+    preset === 'ui-surface'
       ? `enthusiast-${preset}`
       : null;
 

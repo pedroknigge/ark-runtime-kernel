@@ -13,11 +13,12 @@ Before generating project structure, agents should read the **tool-agnostic appl
 shape** that fits the repository — not a vendor stack label. Ark ships a versioned playbook
 at `templates/architecture-playbook.json` (also in the npm package under `templates/`).
 
-Each of the ten archetypes (`crud-product`, `api-backend`, `frontend-surface`,
+Each of the twelve archetypes (`crud-product`, `api-backend`, `frontend-surface`,
 `library-sdk`, `cli-utility`, `worker-pipeline`, `event-coordinator`,
-`integration-bridge`, `multi-app-workspace`, `prototype-spike`) maps to:
+`integration-bridge`, `multi-app-workspace`, `prototype-spike`,
+`vertical-slice-product`, `ddd-bounded-contexts`) maps to:
 
-- a named Ark preset (`hexagonal`, `layered`, `feature-sliced`, or `monorepo`),
+- a named Ark preset (`hexagonal`, `layered`, `feature-sliced`, `monorepo`, `ui-surface`, `vertical-slice`, or `ddd-bounded-contexts`),
 - phased 11-layer adoption (phase 1–3),
 - plain-language analogy and anti-patterns,
 - optional book references for depth only.
@@ -99,7 +100,7 @@ Polyglot repos: Ark only governs TypeScript/JS. Point include at package roots t
 
 ### Presets
 
-- `hexagonal` / `layered` / `feature-sliced` / `monorepo` / **`ui-surface`** (UI/Vite/Remotion-style hooks+lib+routes+components)
+- `hexagonal` / `layered` / `feature-sliced` / `monorepo` / **`ui-surface`** (UI/Vite/Remotion-style) / **`vertical-slice`** (features/* + peerIsolation) / **`ddd-bounded-contexts`** (contexts/*/domain|application|infra + shared kernel)
 
 ### Cycle policy
 
@@ -340,6 +341,32 @@ Use `ark-check` in CI for repository-level checks that need real file paths:
 ```bash
 npx ark-check --root . --config ark.config.json
 ```
+
+### Peer isolation (cross-slice bans)
+
+Classic rules deny **layer A → layer B**. Same-layer imports were always allowed.
+For vertical-slice and bounded-context layouts you often need: *auth may not import payments*
+even though both are under `Features`.
+
+Opt-in on a same-layer deny rule:
+
+```json
+{
+  "from": "Features",
+  "to": "Features",
+  "allowed": false,
+  "peerIsolation": true
+}
+```
+
+- **Denied:** `src/features/auth/**` → `src/features/payments/**` (different slice id).
+- **Allowed:** imports within the same slice; imports to other layers (e.g. `Shared`) unless a separate rule denies them.
+- **`sliceFolders`:** optional list of path segments that own the slice name as the next
+  segment (default: inferred from the layer’s globs, e.g. `src/features/**` → `features`).
+- **Fail-open:** if either path has no slice segment, the edge is not blocked as peerIsolation
+  (avoids monorepo false positives). Without paths (legacy callers), same-layer stays allowed.
+- Enforced by `ark-check`, `arkgate/eslint`, and `ark-mcp` write-gate when paths resolve.
+- Fixes are **judgment** (not mechanical-safe): extract to shared, or coordinate via events/ports.
 
 Agents can generate a config from the project's actual directory layout instead of inventing layer mappings:
 

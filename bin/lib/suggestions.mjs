@@ -3,7 +3,11 @@
  */
 import path from 'node:path';
 import { DEFAULT_LAYER_DIRECTORIES } from '../ark-shared.mjs';
-import { ARCHITECTURE_PRESETS, CANONICAL_LAYER_NAMES } from './presets.mjs';
+import {
+  ARCHITECTURE_PRESETS,
+  ARCHITECTURE_PRESET_NAMES,
+  CANONICAL_LAYER_NAMES,
+} from './presets.mjs';
 
 export function dirSegmentsFromGlob(pattern) {
   return String(pattern)
@@ -31,7 +35,8 @@ export function layerByDir() {
   // (services→Application, components/pages→Presentation, data/infrastructure→Persistence…)
   // map cleanly onto the same taxonomy. feature-sliced uses a different vocabulary
   // (Widgets/Entities/…) that doesn't reduce to the 11, so it's covered by model-fit, not here.
-  for (const preset of ['hexagonal', 'layered', 'monorepo']) {
+  for (const preset of ARCHITECTURE_PRESET_NAMES) {
+    // feature-sliced uses a different vocabulary (App/Pages/…) — still harvest dirs.
     for (const layer of ARCHITECTURE_PRESETS[preset]([]).layers) {
       if (!CANONICAL_LAYER_NAMES.has(layer.name)) continue;
       for (const pattern of layer.patterns ?? []) {
@@ -67,7 +72,7 @@ export function suggestLayerForPath(relDir) {
 // `ark init --preset <name>`. null when nothing lines up.
 export function detectBestFitModel(dirBasenames) {
   const present = new Set(dirBasenames);
-  const scored = ['hexagonal', 'layered', 'feature-sliced', 'monorepo'].map((name) => {
+  const scored = ARCHITECTURE_PRESET_NAMES.map((name) => {
     const segments = new Set();
     for (const layer of ARCHITECTURE_PRESETS[name]([]).layers) {
       for (const pattern of layer.patterns ?? []) {

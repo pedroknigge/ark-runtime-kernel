@@ -4,6 +4,25 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Added
+
+- **`peerIsolation` edge rules (P0):** same-layer deny rules may set
+  `"peerIsolation": true` so only **cross-slice** imports are blocked
+  (e.g. `features/auth` ↛ `features/payments`) while same-slice imports stay allowed.
+  Optional `sliceFolders` (else inferred from layer globs). Wired in `ark-check`, ESLint,
+  write-gate (`ark-mcp`), remediation (`cross-slice-boundary`, always judgment).
+  Opt-in — existing configs unchanged.
+- **`vertical-slice` preset (P2):** Features / Shared / Lib / App with peerIsolation on
+  Features. `ark init --preset vertical-slice`. CLI help and fit scoring include all
+  public presets (`ui-surface` documented).
+- **P3 vertical-slice adoption surface:** playbook archetype `vertical-slice-product`,
+  signal `verticalSliceLayout`, policy pack `enthusiast-vertical-slice`, gallery
+  `examples/vertical-slice-starter/` (strict-config green).
+- **P4 `ddd-bounded-contexts` preset:** contexts/*/domain|application|presentation|infra +
+  SharedKernel; same-layer peerIsolation across contexts. Archetype, pack
+  `enthusiast-ddd-bounded-contexts`, gallery `examples/ddd-context-starter/`.
+  Also ships `enthusiast-ui-surface` pack for the existing ui-surface preset.
+
 ## 2.8.3 — 2026-07-09
 
 Field residuals + official site: core ratchet to honest ENFORCE, typecheck bootstrap,

@@ -39,6 +39,14 @@ export const KNOWN_FIX_CLASSES = [
 export function classifyRemediation(violation) {
     const ruleId = violation?.ruleId;
     if (ruleId === 'LAYER_IMPORT_VIOLATION') {
+        // Cross-slice peer isolation is always judgment (extract shared / events — not mechanical).
+        if (violation?.peerIsolation) {
+            return {
+                class: 'judgment',
+                confidence: 0.9,
+                rationale: 'peerIsolation blocks cross-slice imports: extract to shared, use events/ports, or redesign ownership — not a mechanical auto-fix.',
+            };
+        }
         // Single invariant: runtime module loads are never mechanical-safe.
         const edgeKind = violation?.edgeKind;
         if (edgeKind === 'require' || edgeKind === 'dynamic-import') {
@@ -130,6 +138,12 @@ export function enrichViolationWithFixClass(violation) {
                     : violation.targetTypeOnlyExports
                         ? 'The imported module only exports types — use `import type` and place the type in a layer both sides may share.'
                         : 'This is a type-only import — move the type to a layer both sides may share, or relocate the file to match its role.';
+            }
+            else if (violation.peerIsolation) {
+                enriched.fixClass = 'cross-slice-boundary';
+                enriched.effort = 'medium';
+                enriched.enthusiastHint =
+                    'Cross-slice import blocked (peerIsolation). Do not import another feature/context directly — extract shared code to a shared layer, or coordinate via events/ports. Moving code across slices is a judgment call, not a mechanical auto-fix.';
             }
             else {
                 enriched.fixClass = 'port-inversion';

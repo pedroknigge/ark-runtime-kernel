@@ -377,7 +377,196 @@ export const ARCHITECTURE_PRESETS = {
       },
       root
     ),
+
+  /**
+   * Vertical Slice: feature folders own UI+logic+api; no cross-feature imports
+   * (peerIsolation). Shared primitives and pure lib/infra are the only escape hatches.
+   */
+  'vertical-slice': (_workspaces, root) =>
+    presetWithOverlays(
+      {
+        include: ['src'],
+        layers: [
+          {
+            name: 'Features',
+            description:
+              'Feature / use-case slices (co-located API, UI, hooks, types). No import across sibling slices.',
+            patterns: ['src/features/**', 'src/modules/**'],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'Shared',
+            description: 'Reusable UI primitives, utils, and types with no feature knowledge.',
+            patterns: ['src/shared/**'],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'Lib',
+            description: 'Infrastructure clients (db, HTTP, env) shared across features.',
+            patterns: ['src/lib/**', 'src/infra/**', 'src/infrastructure/**'],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'App',
+            description: 'App shell, routing, providers, composition root.',
+            patterns: ['src/app/**', 'app/**', 'src/pages/**', 'pages/**'],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+        ],
+        rules: [
+          {
+            from: 'Features',
+            to: 'Features',
+            allowed: false,
+            peerIsolation: true,
+            sliceFolders: ['features', 'modules'],
+            message:
+              'Features must not import other feature slices. Extract shared code to Shared/Lib or coordinate via events.',
+          },
+          { from: 'Shared', to: 'Features', allowed: false },
+          { from: 'Shared', to: 'App', allowed: false },
+          { from: 'Lib', to: 'Features', allowed: false },
+          { from: 'Lib', to: 'Shared', allowed: false },
+          { from: 'Lib', to: 'App', allowed: false },
+          // App may compose Features + Shared + Lib (no explicit deny).
+          // Features may import Shared + Lib (no deny).
+        ],
+      },
+      root
+    ),
+
+  /**
+   * DDD bounded contexts: per-context domain/application/infra/presentation + shared kernel.
+   * Same-layer peerIsolation on context folders prevents context A from importing context B.
+   * Cross-layer cross-context edges still follow the hexagonal matrix (document limitation).
+   */
+  'ddd-bounded-contexts': (_workspaces, root) =>
+    presetWithOverlays(
+      {
+        include: ['src'],
+        layers: [
+          {
+            name: 'DomainModel',
+            description:
+              'Per-context pure domain (entities, VOs, domain events). No I/O, no framework.',
+            patterns: [
+              'src/contexts/**/domain/**',
+              'src/bounded-contexts/**/domain/**',
+              'src/**/domain/**',
+            ],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            forbiddenGlobals: DEFAULT_DOMAIN_FORBIDDEN_GLOBALS,
+            optional: true,
+          },
+          {
+            name: 'ApplicationOrchestration',
+            description: 'Per-context use cases / application services.',
+            patterns: [
+              'src/contexts/**/application/**',
+              'src/bounded-contexts/**/application/**',
+              'src/**/application/**',
+            ],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'PresentationAdapters',
+            description: 'Per-context controllers, HTTP, UI adapters.',
+            patterns: [
+              'src/contexts/**/presentation/**',
+              'src/contexts/**/controllers/**',
+              'src/bounded-contexts/**/presentation/**',
+              'src/**/presentation/**',
+              'src/**/controllers/**',
+              'src/**/http/**',
+            ],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'PersistenceAdapters',
+            description: 'Per-context infrastructure: repositories, DB, external APIs.',
+            patterns: [
+              'src/contexts/**/infrastructure/**',
+              'src/contexts/**/adapters/**',
+              'src/bounded-contexts/**/infrastructure/**',
+              'src/**/infrastructure/**',
+              'src/**/adapters/**',
+              'src/**/persistence/**',
+              'src/**/repositories/**',
+            ],
+            exclude: FRAMEWORK_INTERNAL_EXCLUDE,
+            optional: true,
+          },
+          {
+            name: 'SharedKernel',
+            description: 'Truly shared kernel types and primitives across contexts.',
+            // Do NOT apply FRAMEWORK_INTERNAL_EXCLUDE (`**/kernel/**`) — it would carve out
+            // `src/shared/kernel/**` itself. Only skip the product's own framework `src/kernel/**`.
+            patterns: ['src/shared/kernel/**', 'src/shared/**'],
+            exclude: ['src/kernel/**'],
+            optional: true,
+          },
+        ],
+        rules: [
+          { from: 'DomainModel', to: 'ApplicationOrchestration', allowed: false },
+          { from: 'DomainModel', to: 'PersistenceAdapters', allowed: false },
+          { from: 'DomainModel', to: 'PresentationAdapters', allowed: false },
+          { from: 'ApplicationOrchestration', to: 'PersistenceAdapters', allowed: false },
+          { from: 'ApplicationOrchestration', to: 'PresentationAdapters', allowed: false },
+          { from: 'PresentationAdapters', to: 'PersistenceAdapters', allowed: false },
+          { from: 'PresentationAdapters', to: 'DomainModel', allowed: false },
+          { from: 'PersistenceAdapters', to: 'ApplicationOrchestration', allowed: false },
+          { from: 'PersistenceAdapters', to: 'PresentationAdapters', allowed: false },
+          { from: 'SharedKernel', to: 'DomainModel', allowed: false },
+          { from: 'SharedKernel', to: 'ApplicationOrchestration', allowed: false },
+          { from: 'SharedKernel', to: 'PresentationAdapters', allowed: false },
+          { from: 'SharedKernel', to: 'PersistenceAdapters', allowed: false },
+          // Inter-context: same technical layer must not cross context folders.
+          {
+            from: 'DomainModel',
+            to: 'DomainModel',
+            allowed: false,
+            peerIsolation: true,
+            sliceFolders: ['contexts', 'bounded-contexts'],
+            message:
+              'Bounded contexts must not import each other at the domain layer. Use shared kernel or integration events.',
+          },
+          {
+            from: 'ApplicationOrchestration',
+            to: 'ApplicationOrchestration',
+            allowed: false,
+            peerIsolation: true,
+            sliceFolders: ['contexts', 'bounded-contexts'],
+            message:
+              'Bounded contexts must not import each other at the application layer. Prefer events or an anti-corruption layer.',
+          },
+          {
+            from: 'PresentationAdapters',
+            to: 'PresentationAdapters',
+            allowed: false,
+            peerIsolation: true,
+            sliceFolders: ['contexts', 'bounded-contexts'],
+          },
+          {
+            from: 'PersistenceAdapters',
+            to: 'PersistenceAdapters',
+            allowed: false,
+            peerIsolation: true,
+            sliceFolders: ['contexts', 'bounded-contexts'],
+          },
+        ],
+      },
+      root
+    ),
 };
+
+/** Stable public preset keys (CLI help, score fit, docs). Order is display order. */
+export const ARCHITECTURE_PRESET_NAMES = Object.keys(ARCHITECTURE_PRESETS);
 
 // ── Layer suggestion engine ──────────────────────────────────────────────────
 // Everything here is HARVESTED from Ark's own canonical sources — the 11-layer defaults

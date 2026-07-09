@@ -1,0 +1,193 @@
+{
+  "include": [
+    "src"
+  ],
+  "layers": [
+    {
+      "name": "DomainModel",
+      "description": "Per-context pure domain (entities, VOs, domain events). No I/O, no framework.",
+      "patterns": [
+        "src/contexts/**/domain/**",
+        "src/bounded-contexts/**/domain/**",
+        "src/**/domain/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "forbiddenGlobals": [
+        "fetch",
+        "process",
+        "Date.now",
+        "Math.random"
+      ],
+      "optional": true
+    },
+    {
+      "name": "ApplicationOrchestration",
+      "description": "Per-context use cases / application services.",
+      "patterns": [
+        "src/contexts/**/application/**",
+        "src/bounded-contexts/**/application/**",
+        "src/**/application/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "PresentationAdapters",
+      "description": "Per-context controllers, HTTP, UI adapters.",
+      "patterns": [
+        "src/contexts/**/presentation/**",
+        "src/contexts/**/controllers/**",
+        "src/bounded-contexts/**/presentation/**",
+        "src/**/presentation/**",
+        "src/**/controllers/**",
+        "src/**/http/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "PersistenceAdapters",
+      "description": "Per-context infrastructure: repositories, DB, external APIs.",
+      "patterns": [
+        "src/contexts/**/infrastructure/**",
+        "src/contexts/**/adapters/**",
+        "src/bounded-contexts/**/infrastructure/**",
+        "src/**/infrastructure/**",
+        "src/**/adapters/**",
+        "src/**/persistence/**",
+        "src/**/repositories/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "SharedKernel",
+      "description": "Truly shared kernel types and primitives across contexts.",
+      "patterns": [
+        "src/shared/kernel/**",
+        "src/shared/**"
+      ],
+      "exclude": [
+        "src/kernel/**"
+      ],
+      "optional": true
+    }
+  ],
+  "rules": [
+    {
+      "from": "DomainModel",
+      "to": "ApplicationOrchestration",
+      "allowed": false
+    },
+    {
+      "from": "DomainModel",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "DomainModel",
+      "to": "PresentationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "ApplicationOrchestration",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "ApplicationOrchestration",
+      "to": "PresentationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "PresentationAdapters",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "PresentationAdapters",
+      "to": "DomainModel",
+      "allowed": false
+    },
+    {
+      "from": "PersistenceAdapters",
+      "to": "ApplicationOrchestration",
+      "allowed": false
+    },
+    {
+      "from": "PersistenceAdapters",
+      "to": "PresentationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "SharedKernel",
+      "to": "DomainModel",
+      "allowed": false
+    },
+    {
+      "from": "SharedKernel",
+      "to": "ApplicationOrchestration",
+      "allowed": false
+    },
+    {
+      "from": "SharedKernel",
+      "to": "PresentationAdapters",
+      "allowed": false
+    },
+    {
+      "from": "SharedKernel",
+      "to": "PersistenceAdapters",
+      "allowed": false
+    },
+    {
+      "from": "DomainModel",
+      "to": "DomainModel",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": [
+        "contexts",
+        "bounded-contexts"
+      ],
+      "message": "Bounded contexts must not import each other at the domain layer. Use shared kernel or integration events."
+    },
+    {
+      "from": "ApplicationOrchestration",
+      "to": "ApplicationOrchestration",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": [
+        "contexts",
+        "bounded-contexts"
+      ],
+      "message": "Bounded contexts must not import each other at the application layer. Prefer events or an anti-corruption layer."
+    },
+    {
+      "from": "PresentationAdapters",
+      "to": "PresentationAdapters",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": [
+        "contexts",
+        "bounded-contexts"
+      ]
+    },
+    {
+      "from": "PersistenceAdapters",
+      "to": "PersistenceAdapters",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": [
+        "contexts",
+        "bounded-contexts"
+      ]
+    }
+  ]
+}

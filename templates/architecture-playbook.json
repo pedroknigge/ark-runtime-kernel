@@ -334,6 +334,69 @@
         "workflows": 4,
         "jobs": 3
       }
+    },
+    "vertical-slice-product": {
+      "label": "Feature-first product (vertical slices)",
+      "preset": "vertical-slice",
+      "phases": {
+        "1": ["Features", "Shared"],
+        "2": ["Lib", "App"],
+        "3": []
+      },
+      "analogy": "A food truck menu: each dish (feature) is cooked end-to-end; shared utensils stay in the common drawer — never borrow another dish's mise en place.",
+      "antiPatterns": [
+        "Importing code from features/A into features/B",
+        "Dumping business rules into shared/ just to avoid a cross-slice import"
+      ],
+      "books": [
+        {
+          "title": "Vertical Slice Architecture",
+          "author": "Jimmy Bogard (community)",
+          "for": "organizing by use-case instead of technical layer only"
+        }
+      ],
+      "detectionSignals": {
+        "verticalSliceLayout": 10,
+        "ui": 2,
+        "fullStackProduct": 2
+      },
+      "negativeSignals": {
+        "dddBoundedContextsLayout": 6,
+        "domainHeavy": 4,
+        "workspaces": 3,
+        "cli": 4
+      }
+    },
+    "ddd-bounded-contexts": {
+      "label": "Multiple business domains (bounded contexts)",
+      "preset": "ddd-bounded-contexts",
+      "phases": {
+        "1": ["DomainModel", "ApplicationOrchestration", "SharedKernel"],
+        "2": ["PersistenceAdapters", "PresentationAdapters"],
+        "3": []
+      },
+      "analogy": "Separate city districts: each has its own shops and rules; only the shared square (kernel) and mail (events) connect them — never dig tunnels between private basements.",
+      "antiPatterns": [
+        "One context importing another context's domain model",
+        "A god shared/ folder that re-exports every context"
+      ],
+      "books": [
+        {
+          "title": "Implementing Domain-Driven Design",
+          "author": "Vernon",
+          "for": "bounded contexts, shared kernel, and integration patterns"
+        }
+      ],
+      "detectionSignals": {
+        "dddBoundedContextsLayout": 12,
+        "domain": 3,
+        "domainHeavy": 2
+      },
+      "negativeSignals": {
+        "verticalSliceLayout": 4,
+        "tinyTree": 3,
+        "uiOnly": 4
+      }
     }
   }
 }

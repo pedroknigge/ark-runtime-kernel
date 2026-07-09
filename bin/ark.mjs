@@ -55,7 +55,7 @@ function parseArgs(argv) {
 function usage() {
   return `Usage:
   ark start   [--root <project>] [--yes]
-  ark init    [--root <project>] [--preset hexagonal|layered|feature-sliced|monorepo]
+  ark init    [--root <project>] [--preset hexagonal|layered|feature-sliced|monorepo|ui-surface|vertical-slice|ddd-bounded-contexts]
               [--archetype <playbook-id>] [--tools <list>] [--yes] [--force] [--no-strict]
   ark upgrade [--root <project>] [--no-install] [--no-strict]
 
@@ -76,7 +76,8 @@ Options:
   --preset     Start from a named architecture preset instead of detection.
   --archetype  Application shape from templates/architecture-playbook.json (maps to the matching preset).
                Valid ids: crud-product, api-backend, frontend-surface, library-sdk, cli-utility,
-               worker-pipeline, event-coordinator, integration-bridge, multi-app-workspace, prototype-spike.
+               worker-pipeline, event-coordinator, integration-bridge, multi-app-workspace, prototype-spike,
+               vertical-slice-product, ddd-bounded-contexts.
   --tools      Comma-separated agents to gate (claude,cursor,codex,windsurf,cline,copilot,kiro,roo,continue,gemini).
                Omit to auto-detect from each tool's config dir, falling back to claude+cursor+codex.
 

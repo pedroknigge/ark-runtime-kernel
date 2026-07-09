@@ -14,7 +14,43 @@ export type LayerConfig = {
   forbiddenGlobals?: string[];
 };
 
-export type EdgeRule = { from: string; to: string; allowed?: boolean };
+/**
+ * Layer-to-layer dependency rule from ark.config.json.
+ *
+ * - Classic: `{ from, to, allowed: false }` denies any import from `from` → `to`.
+ * - Same-layer was historically always allowed (from===to short-circuit).
+ * - Opt-in `peerIsolation: true` on a same-layer deny rule blocks only
+ *   **cross-slice** edges (e.g. features/auth → features/payments) while allowing
+ *   same-slice imports. Requires fromPath/toPath at check time.
+ */
+export type EdgeRule = {
+  from: string;
+  to: string;
+  allowed?: boolean;
+  /**
+   * When true with `allowed: false` and from===to: deny only when importer and
+   * importee sit under different slice folders (see sliceFolders / pattern infer).
+   */
+  peerIsolation?: boolean;
+  /**
+   * Path segment names that own the slice id as the *next* segment
+   * (e.g. `["features"]` → `src/features/auth/...` has slice `auth`).
+   * When omitted, inferred from the layer's glob patterns (segment before `**`/`*`).
+   */
+  sliceFolders?: string[];
+  /** Optional override message for scanners / write-gate. */
+  message?: string;
+};
+
+/** Options for path-aware edge checks (peer isolation). */
+export type EdgeCheckOptions = {
+  /** Repo-relative path of the importing file. */
+  fromPath?: string;
+  /** Repo-relative path of the imported module. */
+  toPath?: string;
+  /** Layer configs — used to infer sliceFolders when the rule omits them. */
+  layers?: LayerConfig[];
+};
 
 const regexpCache = new Map<string, RegExp>();
 
@@ -142,14 +178,114 @@ export function layerForRelativePath(
   return bestName;
 }
 
+/**
+ * Extract the slice id under a known folder name.
+ * `src/features/auth/api.ts` + folders `["features"]` → `"auth"`.
+ */
+export function sliceIdForPath(
+  relPath: string,
+  sliceFolders: string[] | undefined
+): string | undefined {
+  if (!sliceFolders?.length) return undefined;
+  const parts = String(relPath)
+    .split(/[/\\]/)
+    .filter(Boolean);
+  const folders = new Set(sliceFolders.map((s) => String(s).toLowerCase()));
+  for (let i = 0; i < parts.length - 1; i += 1) {
+    if (folders.has(parts[i].toLowerCase())) {
+      return parts[i + 1];
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Infer slice parent folders from layer globs: the path segment immediately
+ * before a `*` or `**` wildcard (e.g. `src/features/**` → `features`).
+ */
+export function inferSliceFoldersFromPatterns(
+  patterns: string[] | undefined
+): string[] {
+  const out = new Set<string>();
+  for (const pattern of patterns ?? []) {
+    const glob = normalizeGlobSeparators(String(pattern));
+    const parts = glob.split('/').filter(Boolean);
+    for (let i = 0; i < parts.length; i += 1) {
+      const part = parts[i];
+      if ((part === '**' || part === '*') && i > 0) {
+        const prev = parts[i - 1];
+        if (prev && !prev.includes('*') && !prev.includes('{') && !prev.includes('}')) {
+          out.add(prev);
+        }
+      }
+    }
+  }
+  return [...out];
+}
+
+function resolveSliceFolders(
+  rule: EdgeRule,
+  layerName: string,
+  layers: LayerConfig[] | undefined
+): string[] {
+  if (Array.isArray(rule.sliceFolders) && rule.sliceFolders.length > 0) {
+    return rule.sliceFolders.filter((s) => typeof s === 'string' && s.length > 0);
+  }
+  const layer = (layers ?? []).find((l) => l.name === layerName);
+  return inferSliceFoldersFromPatterns(layer?.patterns);
+}
+
+/**
+ * Find the first denying rule for a layer edge. Same-layer edges are allowed
+ * unless a matching rule has `allowed: false` (and for `peerIsolation`, only
+ * when fromPath/toPath resolve to different slices).
+ */
+export function findDeniedEdgeRule(
+  rules: EdgeRule[] | undefined,
+  from: string,
+  to: string,
+  options?: EdgeCheckOptions
+): EdgeRule | undefined {
+  for (const rule of rules ?? []) {
+    if (rule.from !== from || rule.to !== to) continue;
+    if (rule.allowed !== false) continue;
+
+    if (from !== to) {
+      return rule;
+    }
+
+    // Same-layer deny
+    if (!rule.peerIsolation) {
+      // Explicit same-layer ban without peer isolation — deny all same-layer edges.
+      return rule;
+    }
+
+    const fromPath = options?.fromPath;
+    const toPath = options?.toPath;
+    if (!fromPath || !toPath) {
+      // Without paths we cannot classify slices — keep historical allow for same-layer.
+      continue;
+    }
+
+    const folders = resolveSliceFolders(rule, from, options?.layers);
+    if (folders.length === 0) continue;
+
+    const fromSlice = sliceIdForPath(fromPath, folders);
+    const toSlice = sliceIdForPath(toPath, folders);
+    // Fail-open when either side is not under a slice folder (avoids monorepo false positives).
+    if (!fromSlice || !toSlice) continue;
+    if (fromSlice !== toSlice) return rule;
+  }
+  return undefined;
+}
+
 export function isEdgeDenied(
   rules: EdgeRule[] | undefined,
   from: string,
-  to: string
+  to: string,
+  options?: EdgeCheckOptions
 ): boolean {
-  if (from === to) return false;
-  const hit = (rules ?? []).find((r) => r.from === from && r.to === to);
-  return hit?.allowed === false;
+  return findDeniedEdgeRule(rules, from, to, options) !== undefined;
 }
 
 /** Codegen globs skipped by default scan (emitted into the CLI derived matcher). */

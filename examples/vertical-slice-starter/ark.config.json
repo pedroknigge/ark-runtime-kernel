@@ -1,0 +1,95 @@
+{
+  "include": [
+    "src"
+  ],
+  "layers": [
+    {
+      "name": "Features",
+      "description": "Feature / use-case slices (co-located API, UI, hooks, types). No import across sibling slices.",
+      "patterns": [
+        "src/features/**",
+        "src/modules/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "Shared",
+      "description": "Reusable UI primitives, utils, and types with no feature knowledge.",
+      "patterns": [
+        "src/shared/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "Lib",
+      "description": "Infrastructure clients (db, HTTP, env) shared across features.",
+      "patterns": [
+        "src/lib/**",
+        "src/infra/**",
+        "src/infrastructure/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    },
+    {
+      "name": "App",
+      "description": "App shell, routing, providers, composition root.",
+      "patterns": [
+        "src/app/**",
+        "app/**",
+        "src/pages/**",
+        "pages/**"
+      ],
+      "exclude": [
+        "**/kernel/**"
+      ],
+      "optional": true
+    }
+  ],
+  "rules": [
+    {
+      "from": "Features",
+      "to": "Features",
+      "allowed": false,
+      "peerIsolation": true,
+      "sliceFolders": [
+        "features",
+        "modules"
+      ],
+      "message": "Features must not import other feature slices. Extract shared code to Shared/Lib or coordinate via events."
+    },
+    {
+      "from": "Shared",
+      "to": "Features",
+      "allowed": false
+    },
+    {
+      "from": "Shared",
+      "to": "App",
+      "allowed": false
+    },
+    {
+      "from": "Lib",
+      "to": "Features",
+      "allowed": false
+    },
+    {
+      "from": "Lib",
+      "to": "Shared",
+      "allowed": false
+    },
+    {
+      "from": "Lib",
+      "to": "App",
+      "allowed": false
+    }
+  ]
+}

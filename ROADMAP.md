@@ -97,6 +97,18 @@ Start only when R1–R7 are done or explicitly skipped with a written reason.
 | **R14** | `todo` | **Optional locale packs** | English remains canonical; extra locales optional. |
 | **R15** | `todo` | **Secondary package for runtime** | Only if R2 subpath is not enough for consumers who want zero kernel in tree. |
 
+### Track P — Architecture presets & pattern depth (from field research)
+
+Ship one id at a time. Engine honesty before marketing new shapes.
+
+| # | Status | Item | Definition of Done |
+|---|--------|------|-------------------|
+| **P0** | `done` | **Peer / slice isolation rule** | Opt-in `peerIsolation` on same-layer deny rules; CI + ESLint + write-gate; unit + fixture tests; remediation judgment-only. |
+| **P1** | `done` | **Preset registry hygiene** | Document all public preset keys (`ui-surface` included); CLI help + scorePresetFit stay in sync with `ARCHITECTURE_PRESETS`. |
+| **P2** | `done` | **`vertical-slice` preset** | Features / Shared / Lib / App + peerIsolation; `ark init --preset vertical-slice`. |
+| **P3** | `done` | **VS playbook + pack + starter** | Archetype signals, enthusiast pack, optional gallery starter green under strict-config. |
+| **P4** | `done` | **`ddd-bounded-contexts` preset** | contexts/*/domain\|application\|infra + shared kernel; inter-context via peerIsolation. |
+
 ### Later / only if demand pulls
 
 - Incremental checks + ownership-aware contracts for huge monorepos  

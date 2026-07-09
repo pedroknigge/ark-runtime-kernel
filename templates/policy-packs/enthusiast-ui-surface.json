@@ -1,0 +1,18 @@
+{
+  "id": "enthusiast-ui-surface",
+  "preset": "ui-surface",
+  "variant": "enthusiast",
+  "label": "UI surface — enthusiast",
+  "summary": "Presentation-heavy trees (hooks, components, routes) with optional domain and data clients. Good for Vite/Next UI packages.",
+  "phases": {
+    "1": ["PresentationAdapters", "ApplicationOrchestration"],
+    "2": ["DomainModel", "PersistenceAdapters"],
+    "3": []
+  },
+  "layerDescriptions": {
+    "PresentationAdapters": "UI, routes, hooks, and components.",
+    "ApplicationOrchestration": "Server actions and feature orchestration when present.",
+    "DomainModel": "Shared types and pure view-models.",
+    "PersistenceAdapters": "Client data access and external API adapters."
+  }
+}

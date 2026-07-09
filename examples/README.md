@@ -13,6 +13,8 @@ passing `arkgate-check` / `ark-check --strict-config`. For deep teaching exercis
 | [api-backend-starter](api-backend-starter/) | `api-backend` | API server without UI in this repo |
 | [worker-pipeline-starter](worker-pipeline-starter/) | `worker-pipeline` | Background jobs, cron, queue workers |
 | [multi-app-workspace-starter](multi-app-workspace-starter/) | `multi-app-workspace` | Several apps and shared packages in one repo |
+| [vertical-slice-starter](vertical-slice-starter/) | `vertical-slice-product` | Feature-first slices (`features/*` + shared; peerIsolation) |
+| [ddd-context-starter](ddd-context-starter/) | `ddd-bounded-contexts` | Multiple bounded contexts + shared kernel |
 
 Pick the closest shape, copy the directory, then run:
 

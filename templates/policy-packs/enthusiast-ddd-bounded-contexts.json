@@ -1,0 +1,19 @@
+{
+  "id": "enthusiast-ddd-bounded-contexts",
+  "preset": "ddd-bounded-contexts",
+  "variant": "enthusiast",
+  "label": "DDD bounded contexts — enthusiast",
+  "summary": "One folder per bounded context with domain / application / infrastructure / presentation. Shared kernel only for truly shared types; contexts do not import each other.",
+  "phases": {
+    "1": ["DomainModel", "ApplicationOrchestration", "SharedKernel"],
+    "2": ["PersistenceAdapters", "PresentationAdapters"],
+    "3": []
+  },
+  "layerDescriptions": {
+    "DomainModel": "Per-context pure business rules and entities. No I/O.",
+    "ApplicationOrchestration": "Per-context use cases that call domain through ports.",
+    "PresentationAdapters": "Controllers, HTTP, or UI entrypoints for a context.",
+    "PersistenceAdapters": "Repository and external I/O implementations for a context.",
+    "SharedKernel": "Cross-context primitives only — keep this thin."
+  }
+}

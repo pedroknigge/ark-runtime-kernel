@@ -237,10 +237,16 @@ export function runArchitectureScan({ root, config, manifest, rules, files, ts, 
           importGraph.get(relFile).add(relTarget);
         }
       }
-      const rule = targetLayer ? isBlocked(rules, sourceLayer, targetLayer) : undefined;
+      const relTarget = target ? normalize(path.relative(root, target)) : undefined;
+      const rule = targetLayer
+        ? isBlocked(rules, sourceLayer, targetLayer, {
+            fromPath: relFile,
+            toPath: relTarget,
+            layers: config.layers,
+          })
+        : undefined;
       if (rule) {
-        const relTarget = normalize(path.relative(root, target));
-        const targetCached = nextCacheFiles[relTarget];
+        const targetCached = relTarget ? nextCacheFiles[relTarget] : undefined;
         const staticEdge = edge.kind === 'import' || edge.kind === 'export';
         const targetTypeOnlyExports =
           staticEdge && Boolean(targetCached?.exportsOnlyTypes) && !edge.typeOnly;
@@ -257,6 +263,7 @@ export function runArchitectureScan({ root, config, manifest, rules, files, ts, 
           targetTypeNames.size > 0 &&
           !targetCached?.hasTopLevelSideEffects &&
           named.every((n) => targetTypeNames.has(n));
+        const peerIsolation = Boolean(rule.peerIsolation && sourceLayer === targetLayer);
         violations.push({
           ruleId: 'LAYER_IMPORT_VIOLATION',
           file: relFile,
@@ -269,7 +276,12 @@ export function runArchitectureScan({ root, config, manifest, rules, files, ts, 
           ...(sourcePureTypeModule ? { sourcePureTypeModule: true } : {}),
           ...(namedBindingsTypeOnly ? { namedBindingsTypeOnly: true } : {}),
           ...(edge.kind ? { edgeKind: edge.kind } : {}),
-          message: rule.message ?? `${sourceLayer} must not ${edge.kind} ${targetLayer}.`,
+          ...(peerIsolation ? { peerIsolation: true } : {}),
+          message:
+            rule.message ??
+            (peerIsolation
+              ? `${sourceLayer} must not ${edge.kind} another slice of ${targetLayer} (${relFile} → ${relTarget}). Extract shared code or use events/ports across slices.`
+              : `${sourceLayer} must not ${edge.kind} ${targetLayer}.`),
         });
       }
     }

@@ -256,7 +256,13 @@ export const noDomainInfraImports: ArkRule = {
 
         const toLayer = layerForRelativePath(relTarget, config.layers);
         if (!toLayer) return;
-        if (isEdgeDenied(config.rules, fromLayer, toLayer)) {
+        if (
+          isEdgeDenied(config.rules, fromLayer, toLayer, {
+            fromPath: relFile,
+            toPath: relTarget,
+            layers: config.layers,
+          })
+        ) {
           context.report({
             node,
             messageId: 'forbiddenImport',

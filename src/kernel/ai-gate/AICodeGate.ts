@@ -17,6 +17,7 @@ import type { Policy } from '../policy';
 import type { IntentCreator } from '../intent';
 import type { IntentName } from '../../domain/types';
 import type { ArchitectureProfile } from '../layers';
+import { findDeniedEdgeRule } from '../../domain/layerMatch';
 
 export interface AICodeGatePolicyContext<Context = AICodeGateContext> {
   source: string;
@@ -72,6 +73,20 @@ export interface AICodeGateOptions<Context = AICodeGateContext> {
    * (ark-mcp) supplies this using the config's layer globs + tsconfig path aliases.
    */
   resolveImportLayer?: (specifier: string, fromFilePath?: string) => string | undefined;
+  /**
+   * Resolve a source file path or import specifier to a repo-relative path for
+   * peerIsolation slice comparison. When omitted, same-layer peerIsolation rules
+   * cannot fire on the write gate (CI still enforces them via ark-check).
+   */
+  resolveImportRelativePath?: (
+    specifierOrFilePath: string,
+    fromFilePath?: string
+  ) => string | undefined;
+  /**
+   * Layer configs (patterns) used to infer sliceFolders when a peerIsolation rule
+   * omits an explicit list. Optional — rules may set sliceFolders themselves.
+   */
+  layersForSliceInfer?: Array<{ name: string; patterns?: string[] }>;
 }
 
 function violation(
@@ -459,21 +474,38 @@ export function createAICodeGate<Context = AICodeGateContext>(
         // (`ark.config.json` is authoritative), so an edge the config allows — e.g. a route
         // calling a repository, or a repository importing the DB — is never blocked here just
         // because the specifier contains an "infra" token.
-        // A resolvable CROSS-layer edge is governed by the config's rules — the contract
-        // decides, and the infra path-heuristic doesn't apply. (Same-layer or unclassified
-        // targets aren't a cross-layer edge, so they still fall through to the heuristic —
-        // e.g. a core file reaching `./infra/db` that lives in the same layer.)
+        // Cross-layer edges and same-layer peerIsolation rules are governed by the contract.
+        // Ungoverned / same-layer without peerIsolation still fall through to the infra path
+        // heuristic (e.g. a core file reaching `./infra/db` that lives in the same layer).
         const targetLayer = options.resolveImportLayer?.(specifier.value, filePath);
-        if (targetLayer && contextLayer && targetLayer !== contextLayer) {
-          const blocked = options.architectureProfile?.rules.find(
-            (rule) => !rule.allowed && rule.from === contextLayer && rule.to === targetLayer
+        if (targetLayer && contextLayer) {
+          const fromPath =
+            typeof filePath === 'string'
+              ? options.resolveImportRelativePath?.(filePath)
+              : undefined;
+          const toPath =
+            typeof filePath === 'string'
+              ? options.resolveImportRelativePath?.(specifier.value, filePath)
+              : options.resolveImportRelativePath?.(specifier.value);
+          const blocked = findDeniedEdgeRule(
+            options.architectureProfile?.rules,
+            contextLayer,
+            targetLayer,
+            {
+              fromPath: fromPath || undefined,
+              toPath: toPath || undefined,
+              layers: options.layersForSliceInfer,
+            }
           );
           if (blocked) {
+            const peer = Boolean(blocked.peerIsolation && targetLayer === contextLayer);
             violations.push(
               violation(
                 'LAYER_IMPORT_VIOLATION',
                 blocked.message ??
-                  `Layer "${contextLayer}" must not import "${targetLayer}".`,
+                  (peer
+                    ? `Layer "${contextLayer}" must not import another slice of "${targetLayer}".`
+                    : `Layer "${contextLayer}" must not import "${targetLayer}".`),
                 {
                   line: lineOf(source, specifier.index),
                   source: specifier.value,
@@ -481,19 +513,24 @@ export function createAICodeGate<Context = AICodeGateContext>(
                   filePath,
                   fromLayer: contextLayer,
                   toLayer: targetLayer,
-                  suggestion:
-                    'Depend on a port/interface owned by an inner layer instead, or move this ' +
-                    'code to a layer allowed to make this import.',
-                  details: { importKind: specifier.kind },
+                  suggestion: peer
+                    ? 'Extract shared code to a shared layer, or coordinate slices via events/ports — do not import across feature/context slices.'
+                    : 'Depend on a port/interface owned by an inner layer instead, or move this ' +
+                      'code to a layer allowed to make this import.',
+                  details: { importKind: specifier.kind, peerIsolation: peer },
                 }
               )
             );
+            continue;
           }
-          continue;
+          if (targetLayer !== contextLayer) {
+            // Allowed cross-layer edge — skip infra heuristic.
+            continue;
+          }
         }
 
-        // Ungoverned / same-layer target: fall back to the infra path-heuristic — unless this
-        // source layer is exempt from it.
+        // Ungoverned / same-layer (no peerIsolation hit): fall back to the infra path-heuristic
+        // unless this source layer is exempt from it.
         if (exemptFromInfraHeuristics) continue;
         if (!hasInfrastructureToken(specifier.value) && !isKnownInfrastructurePackage(specifier.value)) {
           continue;

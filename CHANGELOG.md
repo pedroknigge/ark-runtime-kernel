@@ -4,6 +4,16 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Added
+
+- **`--ratchet-cores`:** when architecture is green (0 active violations, governed ≥ 50%),
+  set `optional: false` on **populated** core layers only so doctor can report **ENFORCE**
+  honestly. Empty cores stay optional (no false-ENFORCE theatre). Doctor core-optional gaps
+  point at this command; `/ark-autopilot` documents the step after goal.met.
+- **Typecheck bootstrap:** `ark start` / `--install-agent-gates` add `"typecheck": "tsc --noEmit"`
+  when `tsconfig.json`/`jsconfig.json` exists and no typecheck-like script is present; generated
+  CI includes the typecheck step. Existing scripts are never overwritten.
+
 ## 2.8.2 — 2026-07-09
 
 Field-honesty patch (Next/UI host probe): no Nest false positives, no false ENFORCE on

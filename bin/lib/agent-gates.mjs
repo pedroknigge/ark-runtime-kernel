@@ -20,7 +20,8 @@ import {
   DEFAULT_DOMAIN_FORBIDDEN_GLOBALS,
   DEFAULT_RULES,
   createElevenLayerConfig,
-  applyFrameworkLayoutOverlays
+  applyFrameworkLayoutOverlays,
+  CORE_LAYER_NAMES,
 } from '../ark-shared.mjs';
 import {
   assessCodexHomeMcp,
@@ -74,6 +75,45 @@ export function readPackageJson(root) {
 export function hasCheckArchitectureScript(root) {
   const pkg = readPackageJson(root);
   return Boolean(pkg?.scripts?.['check:architecture']);
+}
+
+/**
+ * Add a conservative `typecheck` script when the host has a TS/JS project config
+ * but no typecheck-like script yet. Never overwrites an existing script.
+ *
+ * @param {string} root
+ * @param {{ write?: boolean }} [opts]
+ * @returns {{
+ *   changed: boolean,
+ *   reason: 'added' | 'already' | 'no-tsconfig' | 'no-package-json',
+ *   script?: string,
+ * }}
+ */
+export function ensureTypecheckScript(root, opts = {}) {
+  const write = opts.write !== false;
+  const hasTsconfig =
+    fs.existsSync(path.join(root, 'tsconfig.json')) ||
+    fs.existsSync(path.join(root, 'jsconfig.json'));
+  if (!hasTsconfig) return { changed: false, reason: 'no-tsconfig' };
+
+  const pkgPath = path.join(root, 'package.json');
+  if (!fs.existsSync(pkgPath)) return { changed: false, reason: 'no-package-json' };
+
+  // Reuse deploy-path detection so aliases (type-check, check:types, tsc) count.
+  if (detectDeployPathQuality(root).hasTypecheckScript) {
+    return { changed: false, reason: 'already' };
+  }
+
+  const pkg = readPackageJson(root) || {};
+  const scripts =
+    pkg.scripts && typeof pkg.scripts === 'object' ? { ...pkg.scripts } : {};
+  const script = 'tsc --noEmit';
+  scripts.typecheck = script;
+  if (write) {
+    const next = { ...pkg, scripts };
+    fs.writeFileSync(pkgPath, `${JSON.stringify(next, null, 2)}\n`);
+  }
+  return { changed: true, reason: 'added', script };
 }
 
 export const REQUIRED_GATE_FILES = [
@@ -945,14 +985,6 @@ export function brokenMcpGateFiles(root) {
   return bad;
 }
 
-/** Core layers whose optionality matters once they match files (presets share these names). */
-const CORE_LAYER_NAMES = new Set([
-  'DomainModel',
-  'ApplicationOrchestration',
-  'PresentationAdapters',
-  'PersistenceAdapters',
-]);
-
 /**
  * Production deploy path quality (universal — any consumer repo).
  * Detects when the production build host runs ESLint / typecheck as part of
@@ -1289,7 +1321,7 @@ export function collectAdoptionGaps(root, config, coverage) {
         id: `core-optional-${layer.name}`,
         severity: 'info',
         message: `Core layer ${layer.name} has ${files} file(s) but is still optional: true — contract is weaker than the tree`,
-        fix: `Edit ark.config.json: remove optional on ${layer.name} (or set false), then ${arkCommand(root, 'ark-check', '--strict-config')}`,
+        fix: `${arkCommand(root, 'ark-check', '--ratchet-cores')} (when architecture is green: 0 active violations)`,
       });
     }
   }
@@ -1612,6 +1644,13 @@ export function runInstallAgentGates(args) {
   }
   const pm = packageManager(root);
   const hasCheckScript = hasCheckArchitectureScript(root);
+  // Bootstrap typecheck before CI template so generated workflow includes the step.
+  const typecheckBootstrap = ensureTypecheckScript(root, { write: true });
+  if (typecheckBootstrap.changed && !args.json) {
+    console.log(
+      `Added package.json script "typecheck": "${typecheckBootstrap.script}" (tsconfig present; local/CI parity).`
+    );
+  }
   const { tools, source } = resolveTools(args);
   const toolSource =
     source === 'explicit'

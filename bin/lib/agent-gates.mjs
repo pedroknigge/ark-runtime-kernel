@@ -483,7 +483,12 @@ export function detectCiNode(root) {
   return { kind: 'default', value: DEFAULT_CI_NODE_VERSION };
 }
 
-export function githubWorkflow(pm, ciNode) {
+/**
+ * @param {{ name: string, install: string, run: string, cache: string, setup: string[] }} pm
+ * @param {{ kind: string, value: string }} ciNode
+ * @param {{ hasLintScript?: boolean, hasTypecheckScript?: boolean }} [quality]
+ */
+export function githubWorkflow(pm, ciNode, quality = {}) {
   // pnpm/yarn setup (corepack enable) MUST run before actions/setup-node so the package
   // manager is on PATH when setup-node's `cache: pnpm|yarn` tries to resolve the store —
   // otherwise the cache step fails on a fresh runner ("Unable to locate executable file: pnpm").
@@ -500,6 +505,24 @@ export function githubWorkflow(pm, ciNode) {
           # of sync, your local package manager is newer than this Node's — add a
           # .nvmrc with your Node version so CI matches the dev environment.
           node-version: '${ciNode.value}'`;
+  // When package.json already has lint/typecheck, emit CI steps so deploy-path
+  // honesty matches local scripts (Next/CRA often run these in production build).
+  const install = pm.install || '';
+  const runPrefix = install.startsWith('pnpm')
+    ? 'pnpm run'
+    : install.startsWith('yarn')
+      ? 'yarn'
+      : install.startsWith('bun')
+        ? 'bun run'
+        : 'npm run';
+  const qualityBlock = [
+    quality.hasTypecheckScript
+      ? `      - name: Typecheck\n        run: ${runPrefix} typecheck`
+      : '',
+    quality.hasLintScript ? `      - name: Lint\n        run: ${runPrefix} lint` : '',
+  ]
+    .filter(Boolean)
+    .join('\n');
   return `name: Ark architecture gate
 
 on:
@@ -520,7 +543,7 @@ ${nodeSetup}
           cache: ${pm.cache}
       - name: Install dependencies
         run: ${pm.install}
-      - name: Ark architecture check
+${qualityBlock ? `${qualityBlock}\n` : ''}      - name: Ark architecture check
         run: ${pm.run}
 `;
 }
@@ -1608,7 +1631,13 @@ export function runInstallAgentGates(args) {
     templates.push(['.mcp.json', mcpJson(root)]);
     templates.push([
       '.github/workflows/ark-check.yml',
-      githubWorkflow(pm, detectCiNode(root)),
+      (() => {
+        const deploy = detectDeployPathQuality(root);
+        return githubWorkflow(pm, detectCiNode(root), {
+          hasLintScript: deploy.hasLintScript,
+          hasTypecheckScript: deploy.hasTypecheckScript,
+        });
+      })(),
     ]);
     if (tools.has('cursor')) {
       templates.push(['.cursor/mcp.json', mcpJson(root)]);

@@ -205,14 +205,20 @@ describe('P1 contract-adopt + suggest-include', () => {
 });
 
 describe('P1 UI preset + recommend thin TS', () => {
-  it('ui-surface preset is listed and writes patterns for hooks/lib/routes', () => {
+  it('ui-surface preset is listed and writes patterns for hooks/routes + data-client lib bags', () => {
     const root = mk();
     const r = runCheck(root, ['--init', '--preset', 'ui-surface', '--force']);
     expect(r.status).toBe(0);
     const cfg = JSON.parse(fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8'));
     const pres = cfg.layers.find((l: { name: string }) => l.name === 'PresentationAdapters');
+    const persistence = cfg.layers.find((l: { name: string }) => l.name === 'PersistenceAdapters');
     expect(pres.patterns.some((p: string) => p.includes('hooks'))).toBe(true);
-    expect(pres.patterns.some((p: string) => p.includes('lib'))).toBe(true);
+    expect(pres.patterns.some((p: string) => p.includes('routes') || p.includes('app'))).toBe(true);
+    // No whole-src / bare lib presentation bag (false ENFORCE)
+    expect(pres.patterns).not.toContain('**/src/**');
+    expect(pres.patterns).not.toContain('**/lib/**');
+    // Data clients under lib/ are Persistence
+    expect(persistence.patterns.some((p: string) => p.includes('supabase'))).toBe(true);
   });
 
   it('recommend caps confidence on thin/no TS surface', () => {

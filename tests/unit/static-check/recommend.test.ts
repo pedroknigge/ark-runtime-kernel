@@ -275,4 +275,18 @@ describe('collectRepoShapeSignals — JavaScript / serverless layouts', () => {
     expect(signals.nestFramework).toBe(false);
     expect(signals.toolHints ?? []).not.toContain('@nestjs/*');
   });
+
+  it('still detects Nest from @nestjs/* or controller/module files', () => {
+    const root = mkTempDir('ark-rec-yes-nest-');
+    writeJson(path.join(root, 'package.json'), {
+      name: 'nest-app',
+      version: '0.1.0',
+      dependencies: { '@nestjs/common': '^11', '@nestjs/core': '^11' },
+    });
+    writeFile(path.join(root, 'src', 'app.module.ts'), 'export class AppModule {}\n');
+    writeFile(path.join(root, 'src', 'app.controller.ts'), 'export class AppController {}\n');
+
+    const signals = collectRepoShapeSignals(root);
+    expect(signals.nestFramework).toBe(true);
+  });
 });

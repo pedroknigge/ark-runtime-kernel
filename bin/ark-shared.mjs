@@ -247,6 +247,21 @@ export function applyFrameworkLayoutOverlays(config, root) {
       'src/lib/db/**',
       'src/lib/prisma/**',
       'src/server/db/**',
+      // Conventional client data bags under lib/ (higher specificity than bare src/lib/**).
+      'src/lib/supabase/**',
+      'src/lib/airtable/**',
+      'src/lib/firebase/**',
+      'src/lib/firestore/**',
+      'src/lib/mongodb/**',
+      'src/lib/mongoose/**',
+      'src/lib/drizzle/**',
+      'src/lib/kysely/**',
+      'src/lib/planetscale/**',
+      'src/lib/neon/**',
+      '**/lib/supabase/**',
+      '**/lib/airtable/**',
+      '**/lib/prisma/**',
+      '**/lib/db/**',
     ]);
     // Demo assets, generated public output, and tool configs are not architecture surface.
     const nextExcludes = [
@@ -323,15 +338,47 @@ export function applyFrameworkLayoutOverlays(config, root) {
 /**
  * Operating mode for the co-pilot surfaces (not "who the user is"):
  *   suggest | adapt | enforce
+ *
+ * ENFORCE means gates can honestly protect the tree. High governed% alone is not
+ * enough when core layers are empty (presentation bag false-green) or core layers
+ * with real files remain optional: true.
+ *
+ * @param {object} opts
+ * @param {number|null} [opts.governedPercent]
+ * @param {boolean|null} [opts.planMet]
+ * @param {boolean} [opts.mature]
+ * @param {number|null} [opts.totalFiles]
+ * @param {string[]} [opts.emptyLayers] layer names with zero matched files
+ * @param {number} [opts.coreOptionalWithFiles] count of core layers that have files but optional:true
+ * @param {number|null} [opts.presentationShare] PresentationAdapters file share 0..1 when known
  */
 export function resolveOperatingMode({
   governedPercent = null,
   planMet = null,
   mature = false,
   totalFiles = null,
+  emptyLayers = null,
+  coreOptionalWithFiles = 0,
+  presentationShare = null,
 } = {}) {
   // Zero files in scope is never ENFORCE — the contract is not looking at any code.
   if (totalFiles === 0) return 'adapt';
+  // Core layers still optional while holding real files → contract weaker than the tree.
+  if (coreOptionalWithFiles > 0) return 'adapt';
+  // Presentation-bag false green: almost everything is Presentation, Domain+Persistence empty.
+  const empty = Array.isArray(emptyLayers) ? emptyLayers : [];
+  const domainEmpty = empty.includes('DomainModel');
+  const persistenceEmpty = empty.includes('PersistenceAdapters');
+  if (
+    planMet === true &&
+    domainEmpty &&
+    persistenceEmpty &&
+    presentationShare != null &&
+    presentationShare >= 0.5 &&
+    (governedPercent ?? 0) >= 50
+  ) {
+    return 'adapt';
+  }
   if (planMet === true && (governedPercent == null || governedPercent >= 50)) return 'enforce';
   if (governedPercent != null && governedPercent < 50) return 'adapt';
   if (mature) return 'adapt';

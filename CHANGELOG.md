@@ -2,6 +2,21 @@
 
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
+## Unreleased
+
+### Fixed
+
+- **Nest detection false positive:** bare `*.service.ts` / similar names no longer set
+  `nestFramework` without `@nestjs/*` or controller/module/gateway/resolver files (Next/Node
+  apps no longer get a spurious `nestjs+next` overlay).
+- **False ENFORCE on UI bags:** doctor/report mode stays **ADAPT** when Domain+Persistence are
+  empty while Presentation dominates, or when core layers with files remain `optional: true`.
+- **ui-surface / Next defaults:** drop whole-`src` and bare `**/lib/**` presentation bags;
+  classify conventional data clients (`lib/supabase`, `lib/airtable`, `lib/prisma`, …) as
+  **Persistence**; add Application patterns for actions/services.
+- **Generated CI:** when `package.json` has `lint` / `typecheck` scripts, the installed
+  GitHub Actions workflow runs them before ark-check (closes deploy-path gaps for Next hosts).
+
 ## 2.8.1 — 2026-07-09
 
 Runtime honesty release (roadmap **R8–R9**): EventBus publish pipeline decomposition and

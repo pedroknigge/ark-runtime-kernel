@@ -4,8 +4,15 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+## 2.12.0 — 2026-07-10
+
 ### Fixed
 
+- **Install agent gates on temp roots:** skip rewriting the developer's real
+  `~/.codex/config.toml` when the project root is a temp/upgrade scratch and
+  `CODEX_HOME` is unset. Home MCP wire failures no longer fail an otherwise
+  successful repo gate install (sandbox/EPERM). Explicit `CODEX_HOME` and
+  `--codex-home` still wire as before.
 - **Q1 coverage floors (broad include, 80/85/95):** Vitest thresholds statements/lines **≥80%**,
   branches/functions **≥85%** on the **full product unit surface** (`src/**` + `bin/lib/**` +
   `bin/ark-shared.mjs`; only process-entry shells excluded — no cherry-picked enforcement-core
@@ -30,6 +37,15 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   `arkgate/runtime` imports; `npm run check` green under `--strict-config`.
 - **multi-app / monorepo rules:** deny App→Persistence, Presentation→Domain, and
   Persistence→Presentation (parity with crud-product starter).
+- **Generated CI Node default lags local npm (again):** when a project had no
+  `.nvmrc` / `engines.node`, the Ark architecture gate workflow defaulted to
+  Node 22. Lockfiles written on Node 24/26 then failed `npm ci` with
+  "Missing: … from lock file" before `ark-check` ran — CI green, Ark red.
+  Detection order is now `.nvmrc` / `.node-version` → `engines.node` → **highest
+  `node-version` from sibling workflows** (excludes `ark-check.yml` so a stale
+  gate cannot re-pin itself) → default **24**. Refresh existing gates with
+  `ark-check --install-agent-gates --force` (or edit `node-version` in
+  `.github/workflows/ark-check.yml`).
 
 ### Changed
 
@@ -50,18 +66,6 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - **Day-zero origin first:** `ark start` / `ark init` freeze `.ark/reports/origin.*`
   immediately after `ark.config.json` exists and **before** agent docs, skills, and CI
   templates. Later `--report` still shows evolution vs that snapshot.
-
-### Fixed
-
-- **Generated CI Node default lags local npm (again):** when a project had no
-  `.nvmrc` / `engines.node`, the Ark architecture gate workflow defaulted to
-  Node 22. Lockfiles written on Node 24/26 then failed `npm ci` with
-  "Missing: … from lock file" before `ark-check` ran — CI green, Ark red.
-  Detection order is now `.nvmrc` / `.node-version` → `engines.node` → **highest
-  `node-version` from sibling workflows** (excludes `ark-check.yml` so a stale
-  gate cannot re-pin itself) → default **24**. Refresh existing gates with
-  `ark-check --install-agent-gates --force` (or edit `node-version` in
-  `.github/workflows/ark-check.yml`).
 
 ## 2.11.0 — 2026-07-10
 

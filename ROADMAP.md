@@ -30,9 +30,10 @@ lives under [Shipped](#shipped-context); do not treat completed tracks as “nex
 | **Prove it outside this repository** | Publish reproducible adoption evidence across real greenfield and brownfield TypeScript projects, hosts, package managers, and repository sizes. |
 
 Track W shipped the constrained-write and verified-repair primitives. The bottleneck is now
-**confidence outside the happy path**: global coverage is still below the desired bar, this repo
-can dogfood a reject-only hook, branch protection is external state, and field evidence is thinner
-than the package surface. Trust 95+ closes those gaps before adding another broad capability.
+**confidence outside the happy path**: global coverage floors are met, this repo dogfoods a
+repair-capable write path (Q2 still requires multi-host proof), branch protection is external
+state, and field evidence is thinner than the package surface. Trust 95+ closes those gaps
+before adding another broad capability.
 
 One contract, two entries (unchanged):
 
@@ -291,4 +292,4 @@ Issues and PRs: [github.com/pedroknigge/arkgate](https://github.com/pedroknigge/
 
 For onboarding misfires, include archetype id and `ark-check --recommend --json`.
 
-**Start implementation at Q1.** Mark status in this file when you pick up or finish an item.
+**Start implementation at Q2.** Mark status in this file when you pick up or finish an item.

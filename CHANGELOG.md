@@ -6,6 +6,10 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ### Added
 
+- **W5 doctor write-path awareness:** `ark-check --doctor` (JSON + human) surfaces
+  `writePath.mode` (`repair` | `reject-only` | `mcp-only` | `none`) and
+  `prepareWrite` / `autoPatch` flags from installed hooks/MCP. Reject-only gap is
+  additive (info) with install fix.
 - **W4 opt-in hook repair payload:** `--hook-repair` / `ARK_HOOK_REPAIR=1` on deny emits
   `ARK_REPAIR_JSON` + `ARK_AUTOPATCH_JSON` (stderr) and optional Grok `autoPatch` (stdout).
   Default `--hook` remains hard-block prose only. Install templates (Claude/Grok) include

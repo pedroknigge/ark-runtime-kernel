@@ -39,6 +39,10 @@ npx arkgate-check --doctor
 npx arkgate-check --require-gates
 ```
 
+Doctor JSON (`--doctor --json`) includes **`writePath`**: whether PreToolUse is
+`repair` (machine-readable autoPatch on deny), `reject-only`, `mcp-only`, or
+`none` — plus `prepareWrite` / `autoPatch` booleans for leads.
+
 After upgrading the package, refresh skills so agents see the latest plan kinds:
 
 ```bash

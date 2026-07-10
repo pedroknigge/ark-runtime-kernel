@@ -38,6 +38,11 @@ GitHub Actions, `AGENTS.md`, a Codex TOML snippet under `docs/`, and (when
 selected) Grok Build project files under `.grok/`. It skips existing files unless
 you pass `--force`, so review and commit only the templates that match your project.
 
+**Doctor (W5):** `ark-check --doctor --json` includes `doctor.writePath`
+(`mode`: `repair` | `reject-only` | `mcp-only` | `none`, plus `prepareWrite` /
+`autoPatch` flags) so leads can see whether the write path is repair-capable or
+still reject-only.
+
 If your project uses Codex or Grok, treat MCP registration as part of the default
 setup, not an optional extra. Ark works best when the agent can read `ark://manifest`
 before it writes code; that is the fast path to avoiding architecture drift during

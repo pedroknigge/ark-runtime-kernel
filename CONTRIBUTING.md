@@ -4,6 +4,10 @@ Thanks for your interest! ArkGate is young and contributions of every size are w
 
 **Product site:** [arkgate.online](https://www.arkgate.online/) · **Source:** this repository.
 
+**Agents / contributors (git clone only — not in the npm tarball):** this checkout is the
+**canonical mother repository** for developing and releasing the `arkgate` library — not a
+sample app that consumes ArkGate. Read `AGENTS.md` (**Identity**) before large changes.
+
 ## Setup
 
 ```bash

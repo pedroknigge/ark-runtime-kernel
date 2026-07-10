@@ -4,8 +4,33 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+## 2.10.0 — 2026-07-10
+
+Track W — **Constrained write → verified repair**: write-boundary autoPatch, prepare_write,
+loop-cost measurement, opt-in hook repair payloads, doctor write-path awareness, and a
+proof-gated port-inject transform (judgment for auto-apply).
+
 ### Added
 
+- **W1 write-boundary autoPatch:** `validate_code` and PreToolUse `--hook` may return
+  additive `autoPatch: { source, remediationKind, confidence, valid }` for mechanical-safe
+  **import type** rewrites (`import-type-from-pure-type-module`, `import-type-of-type-exports`).
+  Post-patch revalidation must be green or the patch is discarded (never silent write).
+  Implementation: `bin/lib/auto-patch.mjs`.
+- **W2 `ark_prepare_write` MCP tool:** place + constrain + validate + optional autoPatch +
+  judgmentBrief + contentHash in one call (`bin/lib/prepare-write.mjs`). Composes
+  `ark_place` + write gate — not a second contract.
+- **W3 loop-cost eval harness:** `eval/loop-cost-run.mjs` / `npm run eval:loop-cost`
+  records turns-to-green, optional tokens, CHEATED (fixture-measured). Baseline
+  `eval/loop-cost-baseline.json` (medianTurnsTypeOnly=1, cheatedRate=0).
+- **W4 opt-in hook repair payload:** `--hook-repair` / `ARK_HOOK_REPAIR=1` on deny emits
+  `ARK_REPAIR_JSON` + `ARK_AUTOPATCH_JSON` (stderr) and optional Grok `autoPatch` (stdout).
+  Default `--hook` remains hard-block prose only. Install templates (Claude/Grok) include
+  `--hook-repair`. Never silent write.
+- **W5 doctor write-path awareness:** `ark-check --doctor` (JSON + human) surfaces
+  `writePath.mode` (`repair` | `reject-only` | `mcp-only` | `none`) and
+  `prepareWrite` / `autoPatch` flags from installed hooks/MCP. Reject-only gap is
+  additive (info) with install fix.
 - **W6 port-proof inject binding (eval-gated):** prove+transform for
   `port-proof-inject-binding` — single named value import used only as
   `binding.method(...)` inside function declarations. Removes the import, emits a
@@ -13,25 +38,6 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   auto-apply** (call arity changes; not write-path autoPatch). Fail-closed static proof;
   rest params refuse apply. Labeled eval case. Implementation: `bin/lib/port-proof.mjs` +
   scan flag `portProofEligible`.
-- **W5 doctor write-path awareness:** `ark-check --doctor` (JSON + human) surfaces
-  `writePath.mode` (`repair` | `reject-only` | `mcp-only` | `none`) and
-  `prepareWrite` / `autoPatch` flags from installed hooks/MCP. Reject-only gap is
-  additive (info) with install fix.
-- **W4 opt-in hook repair payload:** `--hook-repair` / `ARK_HOOK_REPAIR=1` on deny emits
-  `ARK_REPAIR_JSON` + `ARK_AUTOPATCH_JSON` (stderr) and optional Grok `autoPatch` (stdout).
-  Default `--hook` remains hard-block prose only. Install templates (Claude/Grok) include
-  `--hook-repair`. Never silent write.
-- **W3 loop-cost eval harness:** `eval/loop-cost-run.mjs` / `npm run eval:loop-cost`
-  records turns-to-green, optional tokens, CHEATED (fixture-measured). Baseline
-  `eval/loop-cost-baseline.json` (medianTurnsTypeOnly=1, cheatedRate=0).
-- **W2 `ark_prepare_write` MCP tool:** place + constrain + validate + optional autoPatch +
-  judgmentBrief + contentHash in one call (`bin/lib/prepare-write.mjs`). Composes
-  `ark_place` + write gate — not a second contract.
-- **W1 write-boundary autoPatch:** `validate_code` and PreToolUse `--hook` may return
-  additive `autoPatch: { source, remediationKind, confidence, valid }` for mechanical-safe
-  **import type** rewrites (`import-type-from-pure-type-module`, `import-type-of-type-exports`).
-  Post-patch revalidation must be green or the patch is discarded (never silent write).
-  Implementation: `bin/lib/auto-patch.mjs`.
 
 ### Changed
 

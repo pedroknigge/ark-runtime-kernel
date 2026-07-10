@@ -6,6 +6,13 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ### Added
 
+- **W6 port-proof inject binding (eval-gated):** one narrow mechanical-safe kind
+  `port-proof-inject-binding` — single named value import used only as
+  `binding.method(...)` inside function declarations. Removes the import, emits a
+  port type, injects the binding as a parameter (call sites preserved). Fail-closed
+  static proof; require/dynamic/free uses stay judgment. Labeled eval case + precision
+  corpus updated (0 false-safe). Implementation: `bin/lib/port-proof.mjs` + scan flag
+  `portProofEligible` + autoPatch path after import-type.
 - **W5 doctor write-path awareness:** `ark-check --doctor` (JSON + human) surfaces
   `writePath.mode` (`repair` | `reject-only` | `mcp-only` | `none`) and
   `prepareWrite` / `autoPatch` flags from installed hooks/MCP. Reject-only gap is

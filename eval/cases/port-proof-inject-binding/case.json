@@ -1,0 +1,10 @@
+{
+  "description": "W6: domain value-imports infra with a single binding.method(...) call — port-proof inject is mechanical-safe when static proof holds.",
+  "expectedFix": "Remove the infra import; inject the binding as a port parameter on the function (outer layer passes the implementation).",
+  "mustKeep": ["src/domain/order.ts", "src/infra/db.ts"],
+  "theme": "port-proof-inject",
+  "expectedRuleId": "LAYER_IMPORT_VIOLATION",
+  "expectedFixClass": "port-inversion",
+  "expectedRemediationClass": "mechanical-safe",
+  "expectedRemediationKind": "port-proof-inject-binding"
+}

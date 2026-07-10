@@ -19,6 +19,7 @@ export const MECHANICAL_SAFE_KINDS = [
     'type-only-import-move',
     'import-type-from-pure-type-module',
     'import-type-of-type-exports',
+    'port-proof-inject-binding',
 ];
 /** fixClass values from enrichViolationWithFixClass (eval corpus / reports). */
 export const KNOWN_FIX_CLASSES = [
@@ -89,6 +90,19 @@ export function classifyRemediation(violation) {
                 confidence: 0.86,
                 remediationKind: 'import-type-of-type-exports',
                 rationale: 'Named bindings are type-only exports of the target module (even if the file also exports values): convert to `import type` / `export type` (erased at runtime). Gate verifies.',
+            };
+        }
+        // W6: port-proof inject — only when scan/static proof set portProofEligible.
+        // Value/require/dynamic/mixed without proof stay judgment (fail closed).
+        if (violation?.portProofEligible &&
+            edgeKind !== 'require' &&
+            edgeKind !== 'dynamic-import' &&
+            !violation?.typeOnly) {
+            return {
+                class: 'mechanical-safe',
+                confidence: 0.8,
+                remediationKind: 'port-proof-inject-binding',
+                rationale: 'Single named value import used only as binding.method(...) inside function declarations: inject the binding as a port parameter (call sites preserved). Outer layer must pass the implementation. Static proof of body-identical evaluation when the param equals the former import; gate revalidates.',
             };
         }
         return {

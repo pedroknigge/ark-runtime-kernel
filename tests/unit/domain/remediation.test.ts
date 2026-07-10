@@ -15,14 +15,15 @@ describe('classifyRemediation (src/domain — pure, no CLI spawn)', () => {
     expect([...REMEDIATION_CLASSES]).toEqual(['mechanical-safe', 'judgment', 'deferred']);
   });
 
-  it('exposes four mechanical-safe remediationKinds (R6)', () => {
+  it('exposes five mechanical-safe remediationKinds (R6 + W6 port-proof)', () => {
     expect([...MECHANICAL_SAFE_KINDS]).toEqual([
       'pure-type-file-relocate',
       'type-only-import-move',
       'import-type-from-pure-type-module',
       'import-type-of-type-exports',
+      'port-proof-inject-binding',
     ]);
-    expect(MECHANICAL_SAFE_KINDS.length).toBeGreaterThanOrEqual(4);
+    expect(MECHANICAL_SAFE_KINDS.length).toBeGreaterThanOrEqual(5);
   });
 
   it('marks type-only and pure-type-module edges mechanical-safe', () => {

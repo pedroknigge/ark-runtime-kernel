@@ -20,7 +20,12 @@ export type RemediationKind =
   | 'type-only-import-move'
   | 'import-type-from-pure-type-module'
   /** R6: named bindings are type-only exports of (possibly mixed) target — convert to import/export type. */
-  | 'import-type-of-type-exports';
+  | 'import-type-of-type-exports'
+  /**
+   * W6: single named value import used only as `binding.method(...)` inside function
+   * declarations — inject binding as a typed port parameter (static proof + eval-gated).
+   */
+  | 'port-proof-inject-binding';
 
 /** All remediationKinds that may return class: mechanical-safe (ordered for docs/tests). */
 export const MECHANICAL_SAFE_KINDS: readonly RemediationKind[] = [
@@ -28,6 +33,7 @@ export const MECHANICAL_SAFE_KINDS: readonly RemediationKind[] = [
   'type-only-import-move',
   'import-type-from-pure-type-module',
   'import-type-of-type-exports',
+  'port-proof-inject-binding',
 ] as const;
 
 /** fixClass values from enrichViolationWithFixClass (eval corpus / reports). */
@@ -59,6 +65,11 @@ export type ArkViolationLike = {
   targetTypeOnlyExports?: boolean;
   /** True when every named binding on a static import/export is a type-only export of the target. */
   namedBindingsTypeOnly?: boolean;
+  /**
+   * W6: static proof that a value import is eligible for port-proof inject
+   * (single named binding, only `binding.method(...)` in function decls). Fail-closed.
+   */
+  portProofEligible?: boolean;
   /** Cross-slice / cross-context peerIsolation violation. Always judgment. */
   peerIsolation?: boolean;
   edgeKind?: string;
@@ -138,6 +149,22 @@ export function classifyRemediation(violation: ArkViolationLike | null | undefin
         remediationKind: 'import-type-of-type-exports',
         rationale:
           'Named bindings are type-only exports of the target module (even if the file also exports values): convert to `import type` / `export type` (erased at runtime). Gate verifies.',
+      };
+    }
+    // W6: port-proof inject — only when scan/static proof set portProofEligible.
+    // Value/require/dynamic/mixed without proof stay judgment (fail closed).
+    if (
+      violation?.portProofEligible &&
+      edgeKind !== 'require' &&
+      edgeKind !== 'dynamic-import' &&
+      !violation?.typeOnly
+    ) {
+      return {
+        class: 'mechanical-safe',
+        confidence: 0.8,
+        remediationKind: 'port-proof-inject-binding',
+        rationale:
+          'Single named value import used only as binding.method(...) inside function declarations: inject the binding as a port parameter (call sites preserved). Outer layer must pass the implementation. Static proof of body-identical evaluation when the param equals the former import; gate revalidates.',
       };
     }
     return {

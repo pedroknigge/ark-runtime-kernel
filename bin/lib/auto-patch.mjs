@@ -17,6 +17,7 @@ import {
   typeOnlyExportNames,
 } from './ast-scan.mjs';
 import { classifyRemediation } from './remediation.mjs';
+import { applyPortProofInject } from './port-proof.mjs';
 
 const EXT_CANDIDATES = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', ''];
 
@@ -213,6 +214,7 @@ export function validateWithAutoPatch(opts) {
       sourcePureTypeModule: v.sourcePureTypeModule,
       targetTypeOnlyExports: v.targetTypeOnlyExports,
       namedBindingsTypeOnly: v.namedBindingsTypeOnly,
+      portProofEligible: v.portProofEligible ?? v.details?.portProofEligible,
       peerIsolation: v.peerIsolation ?? v.details?.peerIsolation,
       edgeKind: v.edgeKind ?? v.details?.importKind,
       fromLayer: v.fromLayer,
@@ -231,11 +233,16 @@ export function validateWithAutoPatch(opts) {
     return { valid: true, violations: [], autoPatch: null };
   }
 
-  const attempt = applyImportTypeAutoPatch(ts, source, {
+  // Prefer import-type mechanical-safe (W1); then W6 port-proof inject.
+  let attempt = applyImportTypeAutoPatch(ts, source, {
     root,
     filePath,
     resolveTargetAbs: resolveTargetAbs || resolveImportFileAbs,
   });
+
+  if (!attempt) {
+    attempt = applyPortProofInject(ts, source, { filePath });
+  }
 
   if (!attempt) {
     return { valid: false, violations, autoPatch: null };

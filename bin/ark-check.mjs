@@ -985,7 +985,8 @@ async function main() {
 
   if (args.requireGates) {
     const missing = missingGates(args.root);
-    if (args.strict && !detectWritePathCapabilities(args.root).hookPresent) {
+    const writePath = detectWritePathCapabilities(args.root);
+    if (args.strict && !writePath.inventory.capabilities['hard-write']) {
       missing.push('PreToolUse write hook');
     }
     if (missing.length > 0) {

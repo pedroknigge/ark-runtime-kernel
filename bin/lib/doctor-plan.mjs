@@ -327,8 +327,12 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
             gatesMissing,
             skillGaps,
             staleRunnerFiles: staleRunners,
-            // W5 — prepare-write / autoPatch / reject-only awareness (stable additive)
+            // Active-host guarantees plus separate repo-wide inventory.
             writePath: {
+              activeHost: writePath.activeHost,
+              capabilities: writePath.capabilities,
+              capabilityEvidence: writePath.capabilityEvidence,
+              inventory: writePath.inventory,
               mode: writePath.mode,
               prepareWrite: writePath.prepareWrite,
               autoPatch: writePath.autoPatch,
@@ -496,6 +500,7 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
 
   console.log('');
   console.log(color.bold('Write path (agent)'));
+  const capabilities = writePath.capabilities;
   const writePathLabels = {
     repair: 'repair-capable — hard block + machine-readable autoPatch / ARK_REPAIR_JSON',
     'reject-only': 'reject-only — hard block with prose; no repair payload',
@@ -503,19 +508,28 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     none: 'none — no write gate hook and no Ark MCP',
   };
   const wpMark =
-    writePath.mode === 'repair'
+    capabilities['hard-write']
       ? ok
-      : writePath.mode === 'none'
-        ? bad
-        : warn;
+      : capabilities['advisory-write'] || capabilities['merge-gate']
+        ? warn
+        : bad;
+  line(' ', `Active host: ${writePath.activeHost}`);
   line(wpMark, `Mode: ${writePath.mode} — ${writePathLabels[writePath.mode] || writePath.mode}`);
   line(
-    writePath.prepareWrite ? ok : warn,
-    `prepare-write (MCP): ${writePath.prepareWrite ? 'yes' : 'no'}`
+    capabilities['hard-write'] ? ok : warn,
+    `Hard write boundary: ${capabilities['hard-write'] ? 'yes' : 'no'}`
   );
   line(
-    writePath.autoPatch ? ok : warn,
-    `autoPatch surface: ${writePath.autoPatch ? 'yes' : 'no'}`
+    capabilities['advisory-write'] ? warn : warn,
+    `Advisory write tools (MCP): ${capabilities['advisory-write'] ? 'yes' : 'no'}`
+  );
+  line(
+    capabilities['merge-gate'] ? ok : bad,
+    `Merge gate (CI): ${capabilities['merge-gate'] ? 'yes' : 'no'}`
+  );
+  line(
+    capabilities['repair-payload'] ? ok : warn,
+    `Repair payload at hard boundary: ${capabilities['repair-payload'] ? 'yes' : 'no'}`
   );
   if (writePath.gap) {
     line(writePath.gap.severity === 'warn' ? warn : warn, writePath.gap.message);

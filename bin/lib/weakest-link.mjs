@@ -53,6 +53,7 @@ export function detectPreCommitArk(root) {
  * @returns {{
  *   hasWorkflowsDir: boolean,
  *   workflowFiles: string[],
+ *   arkWorkflowFiles: string[],
  *   hasArkCheckWorkflow: boolean,
  *   hasStrictFlag: boolean,
  *   hasArchitectureJobName: boolean,
@@ -63,6 +64,7 @@ export function detectCiEnforcement(root) {
   const out = {
     hasWorkflowsDir: fs.existsSync(wfDir),
     workflowFiles: [],
+    arkWorkflowFiles: [],
     hasArkCheckWorkflow: false,
     hasStrictFlag: false,
     hasArchitectureJobName: false,
@@ -89,6 +91,7 @@ export function detectCiEnforcement(root) {
       /pedroknigge\/arkgate/.test(text);
     if (mentionsArk) {
       out.hasArkCheckWorkflow = true;
+      out.arkWorkflowFiles.push(`.github/workflows/${f}`);
       if (/--strict\b/.test(text) || /check:architecture/.test(text)) {
         out.hasStrictFlag = true;
       }

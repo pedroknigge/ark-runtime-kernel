@@ -28,7 +28,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
   it('returns none when no hooks or MCP are installed', () => {
     const root = mk();
     try {
-      const cap = detectWritePathCapabilities(root);
+      const cap = detectWritePathCapabilities(root, 'unknown');
       expect(cap.mode).toBe('none');
       expect(cap.hookPresent).toBe(false);
       expect(cap.mcpPresent).toBe(false);
@@ -58,7 +58,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
           },
         })
       );
-      const cap = detectWritePathCapabilities(root);
+      const cap = detectWritePathCapabilities(root, 'claude');
       expect(cap.mode).toBe('reject-only');
       expect(cap.hookPresent).toBe(true);
       expect(cap.hookRepair).toBe(false);
@@ -97,7 +97,11 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
           },
         })
       );
-      const cap = detectWritePathCapabilities(root);
+      fs.writeFileSync(
+        path.join(root, '.grok', 'config.toml'),
+        '[mcp_servers.ark]\ncommand = "npx"\nargs = ["arkgate-mcp"]\n'
+      );
+      const cap = detectWritePathCapabilities(root, 'grok');
       expect(cap.mode).toBe('repair');
       expect(cap.hookRepair).toBe(true);
       expect(cap.prepareWrite).toBe(true);
@@ -118,7 +122,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
           mcpServers: { ark: { command: 'npx', args: ['arkgate-mcp'] } },
         })
       );
-      const cap = detectWritePathCapabilities(root);
+      const cap = detectWritePathCapabilities(root, 'claude');
       expect(cap.mode).toBe('mcp-only');
       expect(cap.gap?.id).toBe('write-path-mcp-only');
     } finally {
@@ -142,7 +146,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
           },
         })
       );
-      const cap = detectWritePathCapabilities(root);
+      const cap = detectWritePathCapabilities(root, 'claude');
       expect(cap.hookPresent).toBe(true);
       expect(cap.hookRepair).toBe(true);
       expect(cap.mcpPresent).toBe(false);
@@ -161,7 +165,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
       fs.writeFileSync(path.join(root, '.claude', 'settings.json'), '{"hooks":[]}');
       fs.writeFileSync(path.join(root, '.mcp.json'), '{"mcpServers":{"other":{}}}');
 
-      expect(detectWritePathCapabilities(root)).toMatchObject({
+      expect(detectWritePathCapabilities(root, 'claude')).toMatchObject({
         mode: 'none',
         hookPresent: false,
         hookRepair: false,
@@ -175,19 +179,19 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
 
   it('detects each supported MCP config signature independently', () => {
     const cases = [
-      { rel: '.mcp.json', text: 'command = "arkgate-mcp"' },
-      { rel: '.grok/config.toml', text: '[mcp_servers.ark]\ncommand = "custom"' },
-      { rel: '.cursor/mcp.json', text: '"ark": {' },
-      { rel: '.mcp.json', text: 'mcpServers = ["ark"]' },
+      { host: 'claude', rel: '.mcp.json', text: 'command = "arkgate-mcp"' },
+      { host: 'grok', rel: '.grok/config.toml', text: '[mcp_servers.ark]\ncommand = "custom"' },
+      { host: 'cursor', rel: '.cursor/mcp.json', text: '"ark": {' },
+      { host: 'claude', rel: '.mcp.json', text: 'mcpServers = ["ark"]' },
     ];
 
-    for (const { rel, text } of cases) {
+    for (const { host, rel, text } of cases) {
       const root = mk();
       try {
         fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true });
         fs.writeFileSync(path.join(root, rel), text);
 
-        expect(detectWritePathCapabilities(root)).toMatchObject({
+        expect(detectWritePathCapabilities(root, host)).toMatchObject({
           mode: 'mcp-only',
           prepareWrite: true,
           autoPatch: true,
@@ -207,7 +211,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
       fs.mkdirSync(path.join(root, '.claude', 'settings.json'), { recursive: true });
       fs.mkdirSync(path.join(root, '.mcp.json'), { recursive: true });
 
-      expect(detectWritePathCapabilities(root)).toMatchObject({
+      expect(detectWritePathCapabilities(root, 'claude')).toMatchObject({
         mode: 'none',
         hookPresent: false,
         mcpPresent: false,
@@ -219,7 +223,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
   });
 
   it('dogfood: this repository reports repair-capable write path', () => {
-    const cap = detectWritePathCapabilities(REPO);
+    const cap = detectWritePathCapabilities(REPO, 'grok');
     expect(cap.mode).toBe('repair');
     expect(cap.hookRepair).toBe(true);
     expect(cap.hookPresent).toBe(true);

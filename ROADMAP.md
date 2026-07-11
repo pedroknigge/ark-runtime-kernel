@@ -149,7 +149,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 |---:|---|---|---:|---|---|
 | 1 | `S01` | `done` | S | — | Workflow effects are never retried because telemetry failed |
 | 2 | `S02` | `done` | M | `S01` | Local confidence gates are green and truthfully named |
-| 3 | `S03` | `todo` | M | `S02` | Enforcement capabilities are computed per active host |
+| 3 | `S03` | `doing` | M | `S02` | Enforcement capabilities are computed per active host |
 | 4 | `S04` | `todo` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
 | 5 | `S05` | `todo` | M | `S04` | All confirmed scanner false positives and bypasses are closed |
 | 6 | `S06` | `todo` | S | `S03`–`S05` | README, docs, doctor, and site use one truthful support matrix |
@@ -257,7 +257,7 @@ module-budget, package-files, and production security-audit gates pass.
 
 ### S03 — Model write enforcement per active host
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Closes:** `RB-02`
 - **Likely files:** `bin/lib/write-path-detect.mjs`, `bin/lib/doctor-plan.mjs`,
 `bin/lib/mcp-adoption.mjs`, host detection modules, write-path tests

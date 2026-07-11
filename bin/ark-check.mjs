@@ -93,6 +93,7 @@ import {
   configWarning,
 } from './lib/config-warnings.mjs';
 import { runArchitectureScan } from './lib/architecture-scan.mjs';
+import { validateHardWriteRequest } from './lib/enforcement-profiles.mjs';
 
 
 function parseArgs(argv) {
@@ -103,9 +104,9 @@ function parseArgs(argv) {
     printConfig: undefined,
     tsconfig: undefined,
     json: false,
-    strict: false,
     strictConfig: false,
     requireGates: false,
+    requireWriteHook: undefined,
     init: false,
     installAgentGates: false,
     tools: undefined,
@@ -139,13 +140,15 @@ function parseArgs(argv) {
   for (let i = 2; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg === '--json') args.json = true;
-    else if (arg === '--strict') {
-      args.strict = true;
+    else if (arg === '--strict' || arg === '--strict-merge') {
       args.strictConfig = true;
       args.requireGates = true;
     }
     else if (arg === '--strict-config') args.strictConfig = true;
     else if (arg === '--require-gates') args.requireGates = true;
+    else if (arg === '--require-write-hook') {
+      args.requireWriteHook = requireValue(arg, i++).trim().toLowerCase();
+    }
     else if (arg === '--init') args.init = true;
     else if (arg === '--preset') args.preset = requireValue(arg, i++);
     else if (arg === '--install-agent-gates') args.installAgentGates = true;
@@ -220,7 +223,7 @@ function usage() {
   return [
     'Usage: arkgate-check | ark-check  (identical bins; product name ArkGate)',
     '       ark-check --version',
-    '       ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict | --strict-config] [--require-gates] [--json] [--baseline [file]] [--report [file.html]] [--no-cache]',
+    '       ark-check --root <project> --config <ark.config.json> [--manifest <ark.manifest.json>] [--tsconfig <tsconfig.json>] [--strict-merge | --strict | --strict-config] [--require-gates] [--require-write-hook <host>] [--json] [--baseline [file]] [--report [file.html]] [--no-cache]',
     '       ark-check --coverage [--json]          per-layer file counts + full unclassified list (report only, exit 0)',
     '       ark-check --plan [--json]              classified remediation plan (mechanical-safe / judgment / deferred) + goal; report only',
     '       ark-check --recommend [--json] [--write-plan]  application-shape plan; --write-plan emits ark-adoption-plan.json',
@@ -234,7 +237,7 @@ function usage() {
     '           HTML report + snapshots under .ark/reports/ (origin once, latest each run, history JSON)',
     '           Best-effort open in browser (local TTY). No-op if open fails. --no-open / ARK_NO_OPEN_REPORT=1 to skip; --open forces open.',
     '       ark-check --init [--preset hexagonal|layered|feature-sliced|monorepo|ui-surface|vertical-slice|ddd-bounded-contexts|clean-architecture|onion-architecture] [--force]',
-    '       ark-check --install-agent-gates [--tools claude,cursor,codex,grok] [--skills-only] [--codex-home] [--force]',
+    '       ark-check --install-agent-gates [--tools claude,cursor,codex,grok] [--require-write-hook <host>] [--skills-only] [--codex-home] [--force]',
     '       ark-check --update-baseline [file]     freeze current violations (default .ark-baseline.json)',
     '       ark-check --print-config eleven-layer',
     '',
@@ -274,8 +277,11 @@ function usage() {
     '',
     'Config warnings are advisory by default and are included in JSON output.',
     'Use --strict-config to make config warnings fail the check.',
-    'Use --strict for the fail-closed CI profile: --strict-config + --require-gates',
-    'plus the security diagnostics surfaced by doctor.',
+    'Use --strict-merge for the fail-closed CI profile: --strict-config + --require-gates',
+    'plus the security diagnostics surfaced by doctor. --strict is a compatibility alias.',
+    'This merge profile never depends on an editor/agent hook.',
+    'Add --require-write-hook claude|grok to validate a hard local write boundary for that',
+    'specific host. Cursor and Codex expose advisory MCP tools plus the hard CI merge gate.',
     '',
     '--require-gates fails the check when AGENTS.md, .mcp.json, or the generated CI',
     'workflow is missing, so "installed but never configured" is a red CI. Combine it',
@@ -283,7 +289,8 @@ function usage() {
     '',
     '--install-agent-gates writes AGENTS.md, .mcp.json, and the CI workflow for every',
     'project, plus tool-specific templates. Known tools: claude, cursor, codex, grok',
-    '(full MCP/hook gates) and windsurf, cline, copilot, kiro, roo, continue, gemini',
+    '(Claude/Grok hard-write hooks; Cursor/Codex advisory MCP; hard CI for all) and',
+    'windsurf, cline, copilot, kiro, roo, continue, gemini',
     '(instruction-tier rule files derived from the same contract).',
     'It also installs the /ark-* skills shipped in templates/skills/ into each',
     'detected tool\'s command location (.claude/skills/, .cursor/commands/,',
@@ -297,7 +304,7 @@ function usage() {
     'Pass --tools to pick which tool configs to write; otherwise they are auto-detected',
     'from their config directories (.claude/, .cursor/, .codex/, .grok/, .windsurf/,',
     '.clinerules/, .kiro/, .roo/, .continue/, .gemini/; copilot is explicit-only).',
-    'claude+cursor+codex are written when nothing is detected.',
+    'claude+cursor+codex+grok are written when nothing is detected.',
     '',
     'Generate a starter 11-layer config:',
     '  ark-check --print-config eleven-layer > ark.config.json',
@@ -983,17 +990,41 @@ async function main() {
     return;
   }
 
-  if (args.requireGates) {
-    const missing = missingGates(args.root);
-    const writePath = detectWritePathCapabilities(args.root);
-    if (args.strict && !writePath.inventory.capabilities['hard-write']) {
-      missing.push('PreToolUse write hook');
+  if (args.requireGates || args.requireWriteHook) {
+    let writeRequest = null;
+    if (args.requireWriteHook) {
+      writeRequest = validateHardWriteRequest({
+        root: args.root,
+        host: args.requireWriteHook,
+        tools: [args.requireWriteHook],
+        force: true,
+      });
+      if (!writeRequest.ok) {
+        const payload = {
+          ok: false,
+          error: 'unsupported-enforcement-profile',
+          message: writeRequest.error,
+        };
+        if (args.json) console.log(JSON.stringify(payload, null, 2));
+        else console.error(writeRequest.error);
+        process.exitCode = 2;
+        return;
+      }
+    }
+
+    const missing = args.requireGates ? missingGates(args.root) : [];
+    if (
+      writeRequest?.host &&
+      !detectWritePathCapabilities(args.root, writeRequest.host).capabilities['hard-write']
+    ) {
+      missing.push(`${writeRequest.host} hard-write hook`);
     }
     if (missing.length > 0) {
       const payload = {
         ok: false,
         error: 'missing-gates',
         missing,
+        ...(writeRequest?.host ? { writeHost: writeRequest.host } : {}),
       };
       if (args.json) {
         console.log(JSON.stringify(payload, null, 2));
@@ -1002,7 +1033,12 @@ async function main() {
         for (const relativePath of missing) {
           console.error(`  - ${relativePath}`);
         }
-        console.error(`\nRun \`${arkCommand(args.root, 'ark', 'init')}\` (or \`ark-check --install-agent-gates\`) to configure enforcement.`);
+        const installArgs = writeRequest?.host
+          ? `--install-agent-gates --tools ${writeRequest.host} --require-write-hook ${writeRequest.host}`
+          : '--install-agent-gates';
+        console.error(
+          `\nRun \`${arkCommand(args.root, 'ark', 'init')}\` (or \`${arkCommand(args.root, 'ark-check', installArgs)}\`) to configure enforcement.`
+        );
       }
       process.exitCode = 1;
       return;
@@ -1012,7 +1048,12 @@ async function main() {
     // When --require-gates is the only intent (no config/architecture run needed),
     // callers still get a clear signal from the exit code and the human-mode line.
     if (!args.json) {
-      console.log('Ark gates present: ' + REQUIRED_GATE_FILES.join(', '));
+      if (args.requireGates) {
+        console.log('Ark gates present (merge profile): ' + REQUIRED_GATE_FILES.join(', '));
+      }
+      if (writeRequest?.host) {
+        console.log(`Ark hard-write hook present for ${writeRequest.host}.`);
+      }
     }
   }
 

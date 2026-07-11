@@ -17,6 +17,11 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   with evidence paths and a separate repo-wide inventory. Claude/Grok hooks can no longer make
   Codex, Cursor, or an unknown host appear hard-enforced; human doctor output names the host and
   separates advisory MCP checks from the hard CI merge gate.
+- **Host-compatible enforcement profiles:** generated CI now uses `--strict-merge`, while
+  `--strict` remains a compatibility alias; neither depends on an editor hook. The optional
+  `--require-write-hook <host>` check verifies Claude/Grok explicitly, reports Cursor/Codex as
+  advisory-write plus hard merge only, and makes `ark start` reject impossible, mismatched, or
+  preserved-incompatible requests before writing project files.
 - **Executable regression confidence gate:** `npm run test:confidence` now combines the existing
   broad Vitest coverage thresholds with real Stryker mutation testing over write-path detection,
   dependency extraction, forbidden-global detection, baseline keys, and workflow retry logic.

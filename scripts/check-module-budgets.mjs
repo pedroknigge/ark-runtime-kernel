@@ -21,6 +21,7 @@ const BUDGETS = [
   { path: 'bin/lib/doctor-plan.mjs', max: 700 },
   { path: 'bin/lib/presets.mjs', max: 650 },
   { path: 'bin/lib/weakest-link.mjs', max: 500 },
+  { path: 'bin/lib/enforcement-profiles.mjs', max: 150 },
   { path: 'bin/lib/write-path-detect.mjs', max: 200 },
   { path: 'bin/lib/html-report.mjs', max: 1500 },
 ];

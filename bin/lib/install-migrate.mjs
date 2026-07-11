@@ -40,9 +40,7 @@ import {
   checkArchitectureScriptSnippet,
 } from './ci-and-commands.mjs';
 import {
-  normalizeToolsList,
   resolveTools,
-  KNOWN_TOOLS,
   SKILL_TOOL_TARGETS,
   skillTemplates,
   stampSkill,
@@ -59,6 +57,11 @@ import {
   PREFERRED_CHECK_BIN,
   RUNNER_BEFORE_ARK,
 } from './mcp-adoption.mjs';
+import {
+  hasHardWriteHook,
+  validateHardWriteRequest,
+  validateSelectedTools,
+} from './enforcement-profiles.mjs';
 
 export function staleRunnerGateFiles(root) {
   const want = execRunner(root);
@@ -179,17 +182,35 @@ export function runInstallAgentGates(args) {
     return;
   }
   if (args.tools != null) {
-    const list = normalizeToolsList(args.tools);
-    args.tools = list;
-    const unknown = list.filter((tool) => !KNOWN_TOOLS.includes(tool));
-    if (list.length === 0 || unknown.length > 0) {
-      console.error(
-        `--tools expects a comma-separated subset of: ${KNOWN_TOOLS.join(', ')}` +
-          (unknown.length > 0 ? ` (unknown: ${unknown.join(', ')})` : '')
-      );
+    const selection = validateSelectedTools(args.tools);
+    if (!selection.ok) {
+      console.error(selection.error);
       process.exitCode = 2;
       return;
     }
+    args.tools = selection.tools;
+  }
+  const writeRequest = validateHardWriteRequest({
+    root,
+    host: args.requireWriteHook,
+    tools: args.tools,
+    force: args.force,
+  });
+  if (!writeRequest.ok) {
+    console.error(writeRequest.error);
+    process.exitCode = 2;
+    return;
+  }
+  if (writeRequest.host && args.tools == null) {
+    args.tools = writeRequest.tools;
+  }
+  if (writeRequest.host && args.skillsOnly && !hasHardWriteHook(root, writeRequest.host)) {
+    console.error(
+      `--skills-only cannot install the requested ${writeRequest.host} hard-write hook. ` +
+      'Remove --skills-only or omit --require-write-hook.'
+    );
+    process.exitCode = 2;
+    return;
   }
   const pm = packageManager(root);
   const hasCheckScript = hasCheckArchitectureScript(root);
@@ -415,6 +436,14 @@ export function runInstallAgentGates(args) {
     console.error(
       `\nWarning: Codex home MCP registration failed (${codexMcp.message}). Repo gates were written; fix ~/.codex access or re-run with --tools codex --force.`
     );
+  }
+  if (writeRequest.host) {
+    if (!hasHardWriteHook(root, writeRequest.host)) {
+      console.error(`\nFailed to verify the ${writeRequest.host} hard-write hook after install.`);
+      process.exitCode = 1;
+      return;
+    }
+    console.log(`\nHard-write hook verified for ${writeRequest.host}.`);
   }
   console.log('');
   console.log('Next steps:');

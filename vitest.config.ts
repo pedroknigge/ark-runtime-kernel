@@ -52,6 +52,12 @@ export default defineConfig({
           branches: 95,
           functions: 100,
         },
+        'bin/lib/enforcement-profiles.mjs': {
+          statements: 95,
+          lines: 95,
+          branches: 95,
+          functions: 100,
+        },
         'bin/lib/auto-patch.mjs': {
           statements: 95,
           lines: 95,

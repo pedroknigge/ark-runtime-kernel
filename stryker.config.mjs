@@ -10,6 +10,7 @@ const config = {
   // Named enforcement boundaries from ROADMAP S02. Ranges keep the initial gate
   // focused on product decisions instead of presentation-only strings and entry shells.
   mutate: [
+    'bin/lib/enforcement-profiles.mjs:10-92',
     'bin/lib/write-path-capabilities.mjs:39-176',
     'bin/lib/write-path-detect.mjs:11-32',
     'bin/lib/write-path-detect.mjs:47-47',
@@ -27,6 +28,7 @@ const config = {
     'tests/unit/domain/baselineKey.test.ts',
     'tests/unit/static-check/writePathDetect.test.ts',
     'tests/unit/static-check/writePathHostCapabilities.test.ts',
+    'tests/unit/static-check/enforcementProfiles.test.ts',
     'tests/unit/static-check/criticalBranchCoverage.test.ts',
     'tests/unit/static-check/mutationCritical.test.ts',
   ],
@@ -35,6 +37,9 @@ const config = {
   thresholds: { high: 90, low: 90, break: 90 },
   concurrency: 2,
   timeoutMS: 10000,
+  // Vitest imports frozen support tables before per-mutant activation. Their exact
+  // values are unit-tested; mutate executable decisions without false static survivors.
+  ignoreStatic: true,
   cleanTempDir: 'always',
   ignorePatterns: ['coverage', 'internal', '.gstack'],
 };

@@ -30,7 +30,7 @@ export function checkArgsForRoot(root, { requireGates = false } = {}) {
   const baselineFlag = fs.existsSync(path.join(root, '.ark-baseline.json'))
     ? ' --baseline .ark-baseline.json'
     : '';
-  const profile = requireGates ? '--strict' : '--strict-config';
+  const profile = requireGates ? '--strict-merge' : '--strict-config';
   return `--root . --config ark.config.json ${profile}${baselineFlag}`;
 }
 

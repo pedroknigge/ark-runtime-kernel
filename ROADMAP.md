@@ -150,7 +150,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 1 | `S01` | `done` | S | — | Workflow effects are never retried because telemetry failed |
 | 2 | `S02` | `done` | M | `S01` | Local confidence gates are green and truthfully named |
 | 3 | `S03` | `done` | M | `S02` | Enforcement capabilities are computed per active host |
-| 4 | `S04` | `todo` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
+| 4 | `S04` | `done` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
 | 5 | `S05` | `todo` | M | `S04` | All confirmed scanner false positives and bypasses are closed |
 | 6 | `S06` | `todo` | S | `S03`–`S05` | README, docs, doctor, and site use one truthful support matrix |
 | 7 | `S07` | `todo` | S | `S06` | Product naming is decided before the public core API is stabilized |
@@ -170,8 +170,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
 | 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `S04`. Make strict/onboarding guarantees explicit per host without coupling CI to an
-unrelated write hook.
+**Next:** `S05`. Close the required scanner bypass corpus across every shipped analysis surface.
 
 ---
 
@@ -301,7 +300,7 @@ pass (0 vulnerabilities).
 
 ### S04 — Make strict and onboarding compatible with each host
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Closes:** `RB-03`
 - **Likely files:** `bin/ark-check.mjs`, `bin/ark.mjs`, gate/workflow templates, onboarding tests
 
@@ -331,6 +330,18 @@ npx vitest run tests/unit/static-check/arkCheck.test.ts
 npx vitest run tests/unit/static-check/fieldHonestyDefaults.test.ts
 npm run test:coverage
 ```
+
+**Local evidence (2026-07-11):** generated CI uses the host-agnostic `--strict-merge` profile
+(`--strict` remains an alias), and `--require-write-hook <host>` validates only the named host.
+Fresh Claude-only, Grok-only, Cursor-only, Codex-only, and mixed fixtures prove their generated
+merge command exits 0; Claude/Grok expose hard-write + repair, while Cursor/Codex expose advisory
+write + hard CI with host-local fix guidance. Every host install is byte-for-byte idempotent.
+`ark start` rejects advisory-only, tool-mismatched, and preserved-incompatible hard-hook requests
+before writing, while a supported Claude request completes and verifies. The full suite passes
+719/719 tests at 85.20% branch coverage; enforcement-profile focused coverage and mutation are
+100%, with the full mutation gate at 98.42%. Typecheck, build, JavaScript syntax, architecture,
+generated-parity, module-budget, package-files, and production security-audit gates pass
+(0 vulnerabilities).
 
 ### S05 — Close the confirmed scanner bypass corpus
 

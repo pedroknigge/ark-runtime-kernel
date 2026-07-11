@@ -38,6 +38,9 @@ jobs:
       - name: CLI pure helpers derived artifacts (drift guard)
         run: npm run check:cli-pure
 
+      - name: Analysis engine CLI bundle (drift guard)
+        run: npm run check:analysis-engine
+
       - name: Test confidence (coverage + mutation)
         run: npm run test:confidence
         # Includes evalCorpus.test.ts (spawns npm run eval:corpus) — no separate step

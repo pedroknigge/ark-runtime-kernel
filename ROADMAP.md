@@ -138,8 +138,8 @@ Stop the queue and add a new stabilization item before continuing when any of th
 - A package/release check cannot be reproduced from a clean checkout.
 
 While any `RB-*` blocker is open, allow only canary releases on a non-`latest` dist-tag and emergency
-P0/security patches. Do not publish a normal stable feature release until `S01`–`S07` and `O03` are
-`done`.
+P0/security patches. Do not publish a normal stable feature release until `S01`–`S07`, `S07-M1`,
+and `O03` are `done`.
 
 ---
 
@@ -152,25 +152,27 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 3 | `S03` | `done` | M | `S02` | Enforcement capabilities are computed per active host |
 | 4 | `S04` | `done` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
 | 5 | `S05` | `done` | M | `S04` | All confirmed scanner false positives and bypasses are closed |
-| 6 | `S06` | `todo` | S | `S03`–`S05` | README, docs, doctor, and site use one truthful support matrix |
-| 7 | `S07` | `todo` | S | `S06` | Product naming is decided before the public core API is stabilized |
-| 8 | `C01` | `todo` | M | `S07` | `ark.config.json` has a versioned JSON Schema and migrations |
-| 9 | `C02` | `todo` | M | `C01` | A stable analysis IR and programmatic API are specified |
-| 10 | `C03` | `todo` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
-| 11 | `C04` | `todo` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
-| 12 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
-| 13 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
-| 14 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
-| 15 | `O02` | `todo` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
-| 16 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
-| 17 | `O04` | `todo` | M | `O03` | Clean-room onboarding remains green for every supported host profile |
-| 18 | `V01` | `todo` | L | `C05`, `O04` | Cold, warm, and incremental performance have real CI budgets |
-| 19 | `V02` | `todo` | M | `C04` | Mutation, property, and fuzz tests defend critical boundaries |
-| 20 | `V03` | `todo` | L | `O04`, `V01`, `V02` | External adoption is reproduced on at least 12 pinned repositories |
-| 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
-| 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
+| 6 | `S06` | `done` | S | `S03`–`S05` | README, docs, doctor, and site use one truthful support matrix |
+| 7 | `S07` | `done` | S | `S06` | Structrail is the decided identity before the public core API is stabilized |
+| 8 | `S07-M1` | `todo` | L | `S07` | ArkGate migrates to Structrail with one-major compatibility |
+| 9 | `C01` | `todo` | M | `S07-M1` | `structrail.config.json` has a versioned JSON Schema and migrations |
+| 10 | `C02` | `todo` | M | `C01` | A stable analysis IR and programmatic API are specified |
+| 11 | `C03` | `todo` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
+| 12 | `C04` | `todo` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
+| 13 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
+| 14 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
+| 15 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
+| 16 | `O02` | `todo` | M | `O01` | `structrail start` previews all mutations and measured coverage before apply |
+| 17 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
+| 18 | `O04` | `todo` | M | `O03` | Clean-room onboarding remains green for every supported host profile |
+| 19 | `V01` | `todo` | L | `C05`, `O04` | Cold, warm, and incremental performance have real CI budgets |
+| 20 | `V02` | `todo` | M | `C04` | Mutation, property, and fuzz tests defend critical boundaries |
+| 21 | `V03` | `todo` | L | `O04`, `V01`, `V02` | External adoption is reproduced on at least 12 pinned repositories |
+| 22 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
+| 23 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `S06`. Publish one truthful support matrix from the active-host capability model.
+**Next:** `S07-M1`. Reserve the Structrail identity, then execute the compatibility migration before
+stabilizing the Phase C schema.
 
 ---
 
@@ -435,7 +437,7 @@ package allowlist/dry-run, and the production security audit pass (0 vulnerabili
 
 ### S07 — Decide the product name before stabilizing new APIs
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Decision input:** direct category/name collision with `archgate/cli`
 
 **Implementation**
@@ -456,14 +458,54 @@ package allowlist/dry-run, and the production security audit pass (0 vulnerabili
 
 **Verify:** documentation review plus package/domain availability evidence. No release is required.
 
+**Decision (2026-07-11):** adopt **Structrail** and `structrail`; do not retain ArkGate as the
+primary identity. [ADR 0001](docs/adr/0001-product-identity-structrail.md) records the owner, final
+decision, five-candidate package/repository/domain/search/basic-mark screen, evidence links, and
+rejected retain-name option. The point-in-time leading-candidate checks found the bare `structrail`
+npm name, exact GitHub identity, and `.com`/`.dev` RDAP records unclaimed; this is availability
+evidence, not a reservation or legal clearance. The direct Archgate category collision and multiple
+unrelated ArkGate uses make differentiation insufficient. The
+[compatibility migration plan](docs/migrations/arkgate-to-structrail.md) inventories every public
+identity category, targets v3 compatibility with removal no earlier than v4, and creates `S07-M1`
+as a hard dependency of `C01`.
+
+### S07-M1 — Migrate ArkGate to Structrail with compatibility
+
+- **Status:** `todo`
+- **Depends on:** `S07`
+- **Plan:** [ArkGate to Structrail migration](docs/migrations/arkgate-to-structrail.md)
+
+**Implementation**
+
+1. Reserve the external identity and complete the required legal availability work; stop and
+   supersede ADR 0001 if a prerequisite fails.
+2. Commit failing installed-package fixtures for every current public identity and every target
+   Structrail surface.
+3. Make Structrail primary across package, bins, config, environment, MCP, skills, repository, and
+   website without redesigning unrelated product behavior.
+4. Publish or prepare the `arkgate@3` compatibility package and retain legacy names for all of v3.
+5. Ratchet new public names so ArkGate identifiers can exist only in explicit compatibility,
+   migration, history, fixture, or negative-test locations.
+
+**Acceptance**
+
+- New output and Phase C plans use only the Structrail identity.
+- Clean npm, pnpm, and yarn fixtures prove both the primary package and every v2 compatibility path.
+- Canonical and legacy paths produce identical enforcement verdicts.
+- No config/environment conflict is resolved silently.
+- External domain, npm, GitHub, website, registry, and redirect evidence is recorded before cutover.
+- Common merge gate, package/type compatibility, security, and clean-checkout checks pass.
+
+**Verify:** follow the `S07-M1` acceptance gate and ordered M0–M7 checklist in the migration plan.
+
 ---
 
 ## Phase C — create one product core
 
-### C01 — Version and validate `ark.config.json`
+### C01 — Version and validate `structrail.config.json`
 
 - **Status:** `todo`
-- **Depends on:** `S07`
+- **Depends on:** `S07-M1`
 
 **Implementation**
 
@@ -828,29 +870,30 @@ the new exit evidence.
   Codex multi-project handling, runtime decomposition/honesty, and product site.
 - Track P: architecture preset and peer-isolation work.
 
-### Current identity until S07
+### Identity transition decided by S07
 
-| Surface | Current value |
-|---|---|
-| Product | ArkGate |
-| npm | `arkgate` |
-| Preferred bins | `arkgate`, `arkgate-check`, `arkgate-mcp` |
-| Compatibility bins | `ark`, `ark-check`, `ark-mcp` |
-| Config | `ark.config.json` |
-| Website | [arkgate.online](https://www.arkgate.online/) |
-| Repository | [pedroknigge/arkgate](https://github.com/pedroknigge/arkgate) |
+| Surface | Current until `S07-M1` | Target primary | v3 compatibility |
+|---|---|---|---|
+| Product | ArkGate | Structrail | ArkGate deprecated |
+| npm | `arkgate` | `structrail` | `arkgate@3` wrapper |
+| Bins | `arkgate*`, `ark*` | `structrail*` | six old bins via wrapper |
+| Config | `ark.config.json` | `structrail.config.json` | legacy loader through v3 |
+| MCP | `ark://...`, `ark_*` | `structrail://...`, `structrail_*` | aliases through v3 |
+| Website | [arkgate.online](https://www.arkgate.online/) | reserved Structrail domain | redirects through v3 |
+| Repository | [pedroknigge/arkgate](https://github.com/pedroknigge/arkgate) | `pedroknigge/structrail` | GitHub redirect |
 
-The identity is no longer described as locked. `S07` must decide whether to retain or migrate it
-before Phase C stabilizes new public surfaces.
+[ADR 0001](docs/adr/0001-product-identity-structrail.md) fixes the target identity. The repository
+must continue describing its shipped surfaces as ArkGate until `S07-M1` completes; Phase C must not
+stabilize a new ArkGate-named surface.
 
 ---
 
 ## Next implementation session
 
 ```text
-Item: S03 — Model write enforcement per active host
-First result: define the canonical host capability/evidence model and expose a failing mixed-host case
-Then: make doctor/write-path verdicts explicit-host aware without losing repo-wide inventory
-Primary files: write-path-detect, doctor-plan, mcp-adoption, active-host helpers, focused snapshots
-Required finish: Claude/Grok/Cursor/Codex/unknown/mixed fixtures + common confidence gates green
+Item: S07-M1 — Migrate ArkGate to Structrail with compatibility
+First result: complete M0 identity reservation/legal prerequisites; do not rename code before them
+Then: commit failing package/bin/config/environment/MCP/skill compatibility fixtures
+Primary plan: docs/migrations/arkgate-to-structrail.md
+Required finish: target identity cut over + all v2 paths green through arkgate@3 + common/package gates
 ```

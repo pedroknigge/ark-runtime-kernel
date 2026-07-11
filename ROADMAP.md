@@ -157,7 +157,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 7 | `S07` | `done` | S | `S06` | ArkGate is retained as the canonical product identity |
 | 8 | `C01` | `done` | M | `S07` | `ark.config.json` has a versioned JSON Schema and migrations |
 | 9 | `C02` | `done` | M | `C01` | A stable analysis IR and programmatic API are specified |
-| 10 | `C03` | `todo` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
+| 10 | `C03` | `done` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
 | 11 | `C04` | `todo` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
 | 12 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
 | 13 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
@@ -171,7 +171,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
 | 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `C03`. Move CLI/MCP scanning behind the importable engine.
+**Next:** `C04`. Complete symbol-aware semantic analysis.
 
 ---
 
@@ -536,7 +536,7 @@ after the change.
 
 ### C03 â€” Move scanning behind the importable engine
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `C02`
 
 **Implementation**
@@ -546,6 +546,14 @@ after the change.
 - Keep a temporary parity harness comparing old and new engines on the full fixture corpus.
 - Delete old implementations only after parity reaches 100% or every intentional difference has an
   approved fixture and changelog entry.
+
+**Evidence:** `src/kernel/analysis.ts` owns graph policy, cycle detection, and configuration
+diagnostics. `bin/lib/architecture-scan.mjs` and its MCP callers provide filesystem/compiler facts
+to the generated standalone `bin/lib/analysis-engine.mjs`; the bundle contract and drift guard are
+documented by ADR 0003 and enforced in CI. Kernel/bundle parity covers project analysis, changes,
+strict/soft/off cycles, layer verdict metadata, and configuration diagnostics. The full fixture
+corpus passed 858/858 tests after the closure run exposed and fixed Node 26's asynchronous
+recursive-watcher `EMFILE` path.
 
 **Acceptance**
 
@@ -878,9 +886,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: C03 â€” Move scanning behind the importable engine
-First result: inventory the CLI/MCP scanner paths and write contract tests against C02's API
-Then: route adapters through the engine without generated scanner duplication
-Primary files: scanner adapters, importable engine integration, and parity fixtures
-Required finish: CLI/MCP scanning shares C02's engine and public contract
+Item: C04 â€” Complete symbol-aware semantic analysis
+First result: specify the soundness envelope and extend the adversarial corpus
+Then: move dependency and forbidden-capability extraction behind TypeScript symbols
+Primary files: semantic scanner, compiler-resolution adapter, adversarial fixtures, and reference docs
+Required finish: JS/TS and ESM/CJS semantics meet the documented false-negative/false-positive gates
 ```

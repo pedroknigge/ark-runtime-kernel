@@ -4,6 +4,21 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
+### Added
+
+- **Canonical analysis engine bundle:** graph policy, cycle evaluation, and configuration
+  diagnostics now have one Kernel implementation shared by the library, CLI, and MCP. A documented
+  standalone CLI bundle preserves the package's self-hosted boundary and is protected by a CI drift
+  check and Kernel/bundle parity fixtures.
+
+### Fixed
+
+- **Deterministic offline setup tests:** `ark start` fixtures that do not exercise installation now
+  pass `--no-install`, preventing a published current version from turning unit tests into registry
+  installs.
+- **Node 26 watch fallback:** `ark-check --watch` falls back to bounded polling when recursive
+  `fs.watch` fails asynchronously with `EMFILE`, instead of crashing the watcher process.
+
 ## 2.13.0 — 2026-07-11
 
 - Added the stable, deterministic analysis IR and public in-memory API: `loadContract`,

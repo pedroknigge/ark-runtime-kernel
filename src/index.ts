@@ -247,10 +247,18 @@ export {
   analyzeProject,
   analyzeChange,
   explainViolation,
+  evaluateArchitectureGraph,
+  collectAnalysisConfigWarnings,
+  detectArchitectureCycles,
   type AnalysisContract,
   type AnalyzeProjectInput,
   type AnalyzeChangeInput,
   type AnalysisResult,
+  type ArchitectureEngineViolation,
+  type ArchitectureEngineEdge,
+  type EvaluateArchitectureGraphInput,
+  type ArchitectureEngineResult,
+  type CollectAnalysisConfigWarningsInput,
 } from './kernel/analysis';
 
 export {

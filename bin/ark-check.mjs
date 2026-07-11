@@ -1489,14 +1489,50 @@ async function runWatchMode(args) {
     const target = path.join(args.root, entry);
     if (!fs.existsSync(target)) continue;
     try {
-      fs.watch(target, { recursive: true }, rerun);
+      const watcher = fs.watch(target, { recursive: true }, rerun);
+      watcher.on('error', () => {
+        watcher.close();
+        watchByPolling(target, rerun);
+      });
     } catch {
-      fs.watch(target, rerun);
+      watchByPolling(target, rerun);
     }
   }
 
   console.log(color.dim('Watching governed paths for changes… (Ctrl+C to stop)'));
   await new Promise(() => {});
+}
+
+function watchByPolling(target, onChange) {
+  let previous = watchFingerprint(target);
+  setInterval(() => {
+    const current = watchFingerprint(target);
+    if (current === previous) return;
+    previous = current;
+    onChange();
+  }, 250);
+}
+
+function watchFingerprint(target) {
+  const pending = [target];
+  const entries = [];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    let stat;
+    try {
+      stat = fs.statSync(current);
+    } catch {
+      continue;
+    }
+    entries.push(`${current}:${stat.mtimeMs}:${stat.size}`);
+    if (!stat.isDirectory()) continue;
+    try {
+      for (const name of fs.readdirSync(current)) pending.push(path.join(current, name));
+    } catch {
+      // A concurrent delete is represented by the next fingerprint.
+    }
+  }
+  return entries.sort().join('|');
 }
 
 main().catch((error) => {

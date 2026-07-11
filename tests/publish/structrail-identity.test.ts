@@ -189,6 +189,10 @@ describe('Structrail v3 identity and ArkGate compatibility contract', () => {
           "if (primary.version !== legacy.version) throw new Error('root export mismatch');",
           "if (primaryRuntime.version !== legacyRuntime.version) throw new Error('runtime mismatch');",
           "if (primaryEslint.default !== legacyEslint.default) throw new Error('eslint mismatch');",
+          "if (primary.createStructrailKernel !== primary.createArkKernel) throw new Error('kernel alias mismatch');",
+          "if (primary.createStructrailManifest !== primary.createArkManifest) throw new Error('manifest alias mismatch');",
+          "if (primaryRuntime.createStructrailKernel !== primaryRuntime.createArkKernel) throw new Error('runtime alias mismatch');",
+          "if (primaryEslint.loadStructrailConfig !== primaryEslint.loadArkConfig) throw new Error('eslint alias mismatch');",
         ].join('\n'),
       ],
       { cwd: consumer, stdio: 'pipe' }

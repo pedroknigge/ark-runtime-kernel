@@ -46,6 +46,13 @@ describe('active agent host detection', () => {
     expect(detectActiveAgentHost({})).toBe(null);
   });
 
+  it('prefers STRUCTRAIL_ACTIVE_HOST over the v3 ARK_ACTIVE_HOST alias', () => {
+    expect(detectActiveAgentHost({ STRUCTRAIL_ACTIVE_HOST: 'grok' })).toBe('grok');
+    expect(
+      detectActiveAgentHost({ STRUCTRAIL_ACTIVE_HOST: 'claude', ARK_ACTIVE_HOST: 'cursor' })
+    ).toBe('claude');
+  });
+
   it('codexConcernIsActive only when session host is Codex', () => {
     expect(codexConcernIsActive({ CODEX_THREAD_ID: 't1' })).toBe(true);
     expect(codexConcernIsActive({ GROK_BUILD: '1' })).toBe(false);

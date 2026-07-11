@@ -28,6 +28,18 @@ describe('verify-release-tag policy (pure)', () => {
     expect(p.requireSigned).toBe(false);
   });
 
+  it('accepts Structrail release variables and gives them precedence over v3 aliases', () => {
+    expect(
+      resolveSignedTagPolicy({
+        STRUCTRAIL_ALLOW_UNSIGNED_RELEASE_TAG: 'false',
+        ARK_ALLOW_UNSIGNED_RELEASE_TAG: 'true',
+      })
+    ).toEqual({ allowUnsigned: false, requireSigned: true });
+    expect(
+      resolveSignedTagPolicy({ STRUCTRAIL_ALLOW_UNSIGNED_RELEASE_TAG: 'true' })
+    ).toEqual({ allowUnsigned: true, requireSigned: false });
+  });
+
   it('rejects tag/version mismatch', () => {
     const r = checkTagMatchesVersion({ tag: 'v1.0.0', packageVersion: '2.0.0' });
     expect(r.ok).toBe(false);
@@ -53,6 +65,17 @@ describe('verify-release-tag script (real entry)', () => {
     const r = runScript(['v2.2.0'], {
       ARK_VERIFY_PACKAGE_VERSION: '2.2.0',
       ARK_VERIFY_SKIP_GIT: 'true',
+    });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('version/tag match only');
+  });
+
+  it('uses canonical Structrail verification values when both generations are set', () => {
+    const r = runScript(['v3.0.0'], {
+      STRUCTRAIL_VERIFY_PACKAGE_VERSION: '3.0.0',
+      ARK_VERIFY_PACKAGE_VERSION: '2.2.0',
+      STRUCTRAIL_VERIFY_SKIP_GIT: 'true',
+      ARK_VERIFY_SKIP_GIT: 'false',
     });
     expect(r.status).toBe(0);
     expect(r.stdout).toContain('version/tag match only');

@@ -154,7 +154,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
 | 1 | `S01` | `done` | S | — | Workflow effects are never retried because telemetry failed |
-| 2 | `S02` | `todo` | M | `S01` | Local confidence gates are green and truthfully named |
+| 2 | `S02` | `doing` | M | `S01` | Local confidence gates are green and truthfully named |
 | 3 | `S03` | `todo` | M | `S02` | Enforcement capabilities are computed per active host |
 | 4 | `S04` | `todo` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
 | 5 | `S05` | `todo` | M | `S04` | All confirmed scanner false positives and bypasses are closed |
@@ -222,7 +222,7 @@ from 84.73% to 84.77% and remains the explicit `S02` blocker.
 
 ### S02 — Restore honest regression gates
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Closes:** `RB-05`
 - **Likely files:** tests for uncovered branches, `vitest.config.ts`, mutation config, CI/release scripts
 

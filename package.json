@@ -1,7 +1,7 @@
 {
-  "name": "structrail",
-  "version": "3.0.0",
-  "description": "Structrail — architecture guardrails for AI TypeScript (write gate, CI gate, plan/loop)",
+  "name": "arkgate",
+  "version": "2.12.0",
+  "description": "ArkGate — architecture co-pilot for AI TypeScript (write gate, CI gate, plan/loop)",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -30,11 +30,14 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "structrail": "bin/structrail.mjs",
-    "structrail-check": "bin/structrail-check.mjs",
-    "structrail-mcp": "bin/structrail-mcp.mjs"
+    "arkgate": "bin/ark.mjs",
+    "arkgate-check": "bin/ark-check.mjs",
+    "arkgate-mcp": "bin/ark-mcp.mjs",
+    "ark": "bin/ark.mjs",
+    "ark-check": "bin/ark-check.mjs",
+    "ark-mcp": "bin/ark-mcp.mjs"
   },
-  "mcpName": "io.github.pedroknigge/structrail",
+  "mcpName": "io.github.pedroknigge/arkgate",
   "files": [
     "bin",
     "bin/lib",
@@ -45,7 +48,7 @@
     "docs/ai-gates.md",
     "docs/migrate-from-ark-runtime-kernel.md",
     "docs/typescript-support.md",
-    "docs/structrail-check-example.json",
+    "docs/ark-check-example.json",
     "docs/assets",
     "docs/brownfield-adoption.md",
     "docs/package-surface.md",
@@ -69,8 +72,7 @@
     "test:confidence": "npm run test:coverage && npm run test:mutation",
     "typecheck": "tsc --noEmit",
     "security:audit": "npm audit --omit=dev --audit-level=high",
-    "check:identity": "node scripts/check-legacy-identity.mjs",
-    "check:architecture": "node bin/structrail-check.mjs --root . --config structrail.config.json --strict",
+    "check:architecture": "node bin/ark-check.mjs --root . --config ark.config.json --strict",
     "check:js": "node scripts/check-js-syntax.mjs",
     "generate:layer-match": "node scripts/generate-layer-match.mjs",
     "check:layer-match": "node scripts/generate-layer-match.mjs --check",
@@ -121,18 +123,16 @@
     "@stryker-mutator/vitest-runner": "^9.6.1",
     "@types/node": "^20.14.0",
     "@vitest/coverage-v8": "^3.2.6",
-    "pnpm": "10.34.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tsup": "^8.1.0",
-    "vitest": "^3.2.6",
-    "yarn": "1.22.22"
+    "vitest": "^3.2.6"
   },
   "engines": {
     "node": ">=18"
   },
   "keywords": [
-    "structrail",
+    "arkgate",
     "architecture",
     "architecture-gate",
     "ai-agents",
@@ -161,5 +161,6 @@
   },
   "bugs": {
     "url": "https://github.com/pedroknigge/arkgate/issues"
-  }
+  },
+  "homepage": "https://www.arkgate.online/"
 }

@@ -17,6 +17,7 @@ import {
   wireCodexMcp,
 } from './codex-home.mjs';
 import {
+  PREFERRED_MCP_BIN,
   claudeSettings,
   grokHooks,
   grokProjectConfig,
@@ -53,6 +54,7 @@ import {
   stripMcpServerArgs,
   COMMAND_GATE_TEXT_FILES,
   COMMAND_GATE_JSON_FILES,
+  PREFERRED_CHECK_BIN,
   RUNNER_BEFORE_ARK,
 } from './mcp-adoption.mjs';
 import {
@@ -60,7 +62,6 @@ import {
   validateHardWriteRequest,
   validateSelectedTools,
 } from './enforcement-profiles.mjs';
-import { generationIdentity } from './product-identity.mjs';
 
 export function staleRunnerGateFiles(root) {
   const want = execRunner(root);
@@ -89,8 +90,8 @@ export function staleRunnerGateFiles(root) {
     } catch {
       continue;
     }
-    const server = json?.mcpServers?.structrail ?? json?.mcpServers?.ark;
-    if (server && server.command && server.command !== want.split(' ')[0]) stale.push(rel);
+    const ark = json?.mcpServers?.ark;
+    if (ark && ark.command && ark.command !== want.split(' ')[0]) stale.push(rel);
   }
   return stale;
 }
@@ -121,11 +122,8 @@ export function warnLockfileConflict(root) {
 // adopted before the package-manager-aware templates keeps a stale `npx`.
 // Also normalizes MCP JSON to a single preferred bin (arkgate-mcp), stripping any dual
 // ark-mcp + arkgate-mcp residue left by partial renames during package identity cutover.
-export function runMigrateCommands(root, identity = generationIdentity(false)) {
+export function runMigrateCommands(root) {
   const runner = execRunner(root);
-  const preferredMcpBin = identity.primary ? identity.mcpBin : 'arkgate-mcp';
-  const preferredCheckBin = identity.primary ? identity.checkBin : 'arkgate-check';
-  const migrationProductName = identity.primary ? identity.productName : 'ArkGate';
   const changed = [];
   for (const rel of COMMAND_GATE_TEXT_FILES) {
     const full = path.join(root, rel);
@@ -138,9 +136,8 @@ export function runMigrateCommands(root, identity = generationIdentity(false)) {
     let next = text.replace(RUNNER_BEFORE_ARK, runner);
     // Prefer primary product bins in command strings (aliases still work if left alone).
     next = next
-      .replace(/\b(?:structrail-mcp|arkgate-mcp|ark-mcp)\b/g, preferredMcpBin)
-      .replace(/\b(?:structrail-check|arkgate-check|ark-check)\b/g, preferredCheckBin)
-      .replace(/\b(?:structrail|ark)\.config\.json\b/g, identity.configName);
+      .replace(/\bark-mcp\b/g, PREFERRED_MCP_BIN)
+      .replace(/\bark-check\b/g, PREFERRED_CHECK_BIN);
     // Do not blanket-replace bare `ark` — it appears in prose ("Ark check", product name).
     if (next !== text) {
       fs.writeFileSync(full, next);
@@ -155,36 +152,24 @@ export function runMigrateCommands(root, identity = generationIdentity(false)) {
     } catch {
       continue;
     }
-    const sourceKey = json?.mcpServers?.[identity.mcpServerKey]
-      ? identity.mcpServerKey
-      : identity.primary
-        ? 'ark'
-        : 'structrail';
-    const server = json?.mcpServers?.[sourceKey];
-    if (!server) continue;
-    const binArgs = stripMcpServerArgs(server.args, identity);
-    const parts = execCommandParts(root, preferredMcpBin, binArgs);
-    if (
-      sourceKey !== identity.mcpServerKey ||
-      server.command !== parts.command ||
-      JSON.stringify(server.args) !== JSON.stringify(parts.args)
-    ) {
-      json.mcpServers[identity.mcpServerKey] = { ...server, ...parts };
-      if (sourceKey !== identity.mcpServerKey) delete json.mcpServers[sourceKey];
+    const ark = json?.mcpServers?.ark;
+    if (!ark) continue;
+    const binArgs = stripMcpServerArgs(ark.args);
+    const parts = execCommandParts(root, PREFERRED_MCP_BIN, binArgs);
+    if (ark.command !== parts.command || JSON.stringify(ark.args) !== JSON.stringify(parts.args)) {
+      json.mcpServers.ark = { ...ark, ...parts };
       fs.writeFileSync(full, `${JSON.stringify(json, null, 2)}\n`);
       changed.push(rel);
     }
   }
   const pm = runner === 'pnpm exec' || runner.startsWith('pnpm ') ? 'pnpm' : runner;
-  console.log(
-    `Migrated ${migrationProductName} command runners to "${pm}" and normalized MCP bins in gate files.`
-  );
+  console.log(`Migrated ArkGate command runners to "${pm}" and normalized MCP bins in gate files.`);
   if (changed.length === 0) {
     console.log('  Nothing to change — runners and MCP bins already look correct.');
   } else {
     for (const rel of changed) console.log(`  updated ${rel}`);
     console.log(
-      `  (runner + single MCP bin \`${preferredMcpBin}\`; customized non-command content is untouched.)`
+      `  (runner + single MCP bin \`${PREFERRED_MCP_BIN}\`; customized non-command content is untouched.)`
     );
   }
   warnLockfileConflict(root);
@@ -192,9 +177,8 @@ export function runMigrateCommands(root, identity = generationIdentity(false)) {
 
 export function runInstallAgentGates(args) {
   const root = args.root;
-  const identity = generationIdentity(Boolean(args.primaryIdentity));
   if (args.migrateCommands) {
-    runMigrateCommands(root, identity);
+    runMigrateCommands(root);
     return;
   }
   if (args.tools != null) {
@@ -211,7 +195,6 @@ export function runInstallAgentGates(args) {
     host: args.requireWriteHook,
     tools: args.tools,
     force: args.force,
-    identity,
   });
   if (!writeRequest.ok) {
     console.error(writeRequest.error);
@@ -229,7 +212,7 @@ export function runInstallAgentGates(args) {
     process.exitCode = 2;
     return;
   }
-  const pm = packageManager(root, identity);
+  const pm = packageManager(root);
   const hasCheckScript = hasCheckArchitectureScript(root);
   const { tools, source } = resolveTools(args);
   const toolSource =
@@ -254,61 +237,55 @@ export function runInstallAgentGates(args) {
       );
     }
     // Base gates: tool-agnostic contract + CI backstop, always written.
-    templates.push(['AGENTS.md', agentInstructions(root, identity)]);
-    templates.push(['.mcp.json', mcpJson(root, identity)]);
+    templates.push(['AGENTS.md', agentInstructions(root)]);
+    templates.push(['.mcp.json', mcpJson(root)]);
     templates.push([
-      `.github/workflows/${identity.fileStem}-check.yml`,
+      '.github/workflows/ark-check.yml',
       (() => {
         const deploy = detectDeployPathQuality(root);
         return githubWorkflow(pm, detectCiNode(root), {
           hasLintScript: deploy.hasLintScript,
           hasTypecheckScript: deploy.hasTypecheckScript,
-        }, identity);
+        });
       })(),
     ]);
     if (tools.has('cursor')) {
-      templates.push(['.cursor/mcp.json', mcpJson(root, identity)]);
-      templates.push([`.cursor/rules/${identity.fileStem}.mdc`, cursorRule(root, identity)]);
+      templates.push(['.cursor/mcp.json', mcpJson(root)]);
+      templates.push(['.cursor/rules/ark.mdc', cursorRule(root)]);
     }
     if (tools.has('claude')) {
-      templates.push(['.claude/settings.json', claudeSettings(root, identity)]);
+      templates.push(['.claude/settings.json', claudeSettings(root)]);
     }
     if (tools.has('codex')) {
-      templates.push([
-        `docs/${identity.fileStem}-codex-config.toml`,
-        codexTomlSnippet(root, identity),
-      ]);
+      templates.push(['docs/ark-codex-config.toml', codexTomlSnippet(root)]);
     }
     if (tools.has('grok')) {
-      templates.push(['.grok/config.toml', grokProjectConfig(root, identity)]);
-      templates.push([
-        `.grok/hooks/${identity.fileStem}-write-gate.json`,
-        grokHooks(root, identity),
-      ]);
+      templates.push(['.grok/config.toml', grokProjectConfig(root)]);
+      templates.push(['.grok/hooks/ark-write-gate.json', grokHooks(root)]);
     }
     // Instruction-tier hosts: one shared rule text, host-specific path.
     if (tools.has('windsurf')) {
-      templates.push([`.windsurf/rules/${identity.fileStem}.md`, instructionRule(root, identity)]);
+      templates.push(['.windsurf/rules/ark.md', instructionRule(root)]);
     }
     if (tools.has('cline')) {
-      templates.push([`.clinerules/${identity.fileStem}.md`, instructionRule(root, identity)]);
+      templates.push(['.clinerules/ark.md', instructionRule(root)]);
     }
     if (tools.has('copilot')) {
-      templates.push(['.github/copilot-instructions.md', instructionRule(root, identity)]);
+      templates.push(['.github/copilot-instructions.md', instructionRule(root)]);
     }
     if (tools.has('kiro')) {
-      templates.push([`.kiro/steering/${identity.fileStem}.md`, instructionRule(root, identity)]);
+      templates.push(['.kiro/steering/ark.md', instructionRule(root)]);
     }
     if (tools.has('roo')) {
-      templates.push([`.roo/rules/${identity.fileStem}.md`, instructionRule(root, identity)]);
+      templates.push(['.roo/rules/ark.md', instructionRule(root)]);
     }
     if (tools.has('continue')) {
-      templates.push([`.continue/rules/${identity.fileStem}.md`, instructionRule(root, identity)]);
+      templates.push(['.continue/rules/ark.md', instructionRule(root)]);
     }
     // Gemini CLI reads GEMINI.md as its primary project context (it also reads
     // AGENTS.md, but GEMINI.md wins when both are present), so the rule lives there.
     if (tools.has('gemini')) {
-      templates.push(['GEMINI.md', instructionRule(root, identity)]);
+      templates.push(['GEMINI.md', instructionRule(root)]);
     }
   }
   // /ark-* skills for every detected tool that supports project-level commands.
@@ -316,10 +293,7 @@ export function runInstallAgentGates(args) {
   // left behind by an older Ark (see detectSkillGaps) without nagging about
   // user edits to the body.
   const version = arkPackageVersion();
-  const skills = skillTemplates(identity).map(([name, content]) => [
-    name,
-    stampSkill(content, version, identity),
-  ]);
+  const skills = skillTemplates().map(([name, content]) => [name, stampSkill(content, version)]);
   const skillPaths = new Set();
   for (const tool of tools) {
     const target = SKILL_TOOL_TARGETS[tool];
@@ -335,7 +309,7 @@ export function runInstallAgentGates(args) {
     writeTemplate(root, relativePath, content, args.force)
   );
 
-  console.log(`${identity.productName} agent gate templates:`);
+  console.log('Ark agent gate templates:');
   let staleSkipped = 0;
   for (const result of results) {
     const marker =
@@ -367,9 +341,7 @@ export function runInstallAgentGates(args) {
     console.log(
       `  ${staleSkipped} skill(s) are outdated but were left untouched. Refresh them with:`
     );
-    console.log(
-      `    ${arkCommand(root, identity.checkBin, '--install-agent-gates --skills-only --force')}`
-    );
+    console.log(`    ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --force')}`);
   }
 
   // --codex-home writes the canonical skills straight to $CODEX_HOME/prompts.
@@ -430,30 +402,22 @@ export function runInstallAgentGates(args) {
     !args.codexHome &&
     !process.env.CODEX_HOME;
   if (wantCodexWire && !skipHomeWire) {
-    codexMcp = wireCodexMcp(root, args.force, identity);
+    codexMcp = wireCodexMcp(root, args.force);
     console.log('');
     console.log(`Codex MCP registration (${codexMcp.file}):`);
     if (codexMcp.status === 'written-multi') {
       console.log(
-        `  ${'wrote'.padEnd(7)} [mcp_servers.${codexMcp.table}] (multi-project — primary [mcp_servers.${identity.mcpServerKey}] left unchanged; --force rebinds primary)`
+        `  ${'wrote'.padEnd(7)} [mcp_servers.${codexMcp.table}] (multi-project — primary [mcp_servers.ark] left unchanged; --force rebinds primary)`
       );
     } else if (codexMcp.status === 'skipped') {
-      console.log(
-        `  ${'skipped'.padEnd(7)} [mcp_servers.${identity.mcpServerKey}] already present (use --force to overwrite)`
-      );
+      console.log(`  ${'skipped'.padEnd(7)} [mcp_servers.ark] already present (use --force to overwrite)`);
     } else if (codexMcp.status === 'failed') {
-      console.log(
-        `  ${'FAILED'.padEnd(7)} [mcp_servers.${identity.mcpServerKey}] (${codexMcp.message})`
-      );
+      console.log(`  ${'FAILED'.padEnd(7)} [mcp_servers.ark] (${codexMcp.message})`);
     } else {
       const verb = codexMcp.status === 'updated' ? 'updated' : 'wrote';
-      console.log(
-        `  ${verb.padEnd(7)} [mcp_servers.${identity.mcpServerKey}] with absolute paths`
-      );
+      console.log(`  ${verb.padEnd(7)} [mcp_servers.ark] with absolute paths`);
       console.log('          RESTART Codex — it does not hot-load MCP servers.');
-      console.log(
-        `          Then expect: resource ${identity.manifestResource} + tools validate_code, ${identity.skillPrefix}_check, ${identity.skillPrefix}_coverage, ${identity.skillPrefix}_place.`
-      );
+      console.log('          Then expect: resource ark://manifest + tools validate_code, ark_check, ark_coverage, ark_place.');
     }
   } else if (skipHomeWire) {
     codexMcp = { status: 'skipped', file: codexConfigPath(), reason: 'temp-root' };
@@ -484,32 +448,22 @@ export function runInstallAgentGates(args) {
   console.log('');
   console.log('Next steps:');
   console.log('  1. Review the generated files and commit the ones that match your tools.');
-  console.log(`  2. Run: ${arkCheckCommand(root, identity)}`);
+  console.log(`  2. Run: ${arkCheckCommand(root)}`);
   if (!hasCheckScript) {
     console.log('  3. Add the package.json alias if you want `run check:architecture`:');
-    console.log(`     ${checkArchitectureScriptSnippet(root, identity)}`);
+    console.log(`     ${checkArchitectureScriptSnippet(root)}`);
   }
   if ((tools.has('codex') || args.codexHome)) {
     console.log('');
-    if (codexMcp?.reason === 'temp-root') {
-      console.log('  Codex: skipped home MCP registration for a temporary project root.');
-    } else if (codexMcp && codexMcp.status !== 'failed') {
-      console.log(
-        `  Codex: ${identity.mcpServerKey} MCP registered in ${codexMcp.file} — restart Codex so \`${identity.manifestResource}\` loads.`
-      );
+    if (codexMcp && codexMcp.status !== 'failed') {
+      console.log(`  Codex: ark MCP registered in ${codexMcp.file} — restart Codex so \`ark://manifest\` loads.`);
     }
     if (args.codexHome) {
-      console.log(
-        `  Codex: refreshed the /${identity.skillPrefix}-* skills in ${codexPromptsDir()} — Codex loads them from there.`
-      );
+      console.log(`  Codex: refreshed the /ark-* skills in ${codexPromptsDir()} — Codex loads them from there.`);
     } else if (skills.length > 0) {
       console.log('  Codex loads slash-command prompts from $CODEX_HOME/prompts (~/.codex/prompts),');
-      console.log(
-        `  not the repo. Install the /${identity.skillPrefix}-* skills there with:`
-      );
-      console.log(
-        `    ${arkCommand(root, identity.checkBin, '--install-agent-gates --codex-home')}`
-      );
+      console.log('  not the repo. Install the /ark-* skills there with:');
+      console.log(`    ${arkCommand(root, 'ark-check', '--install-agent-gates --codex-home')}`);
       console.log('  (writes to your home dir; agents driving this setup should offer to run it).');
     }
   }

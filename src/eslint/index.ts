@@ -1,9 +1,9 @@
 /**
- * structrail/eslint — editor-side architecture gate.
+ * arkgate/eslint — editor-side architecture gate.
  *
- * Layer / import / forbidden-globals rules load `structrail.config.json` from the linted
+ * Layer / import / forbidden-globals rules load `ark.config.json` from the linted
  * project (walk-up from the file) and use the same glob specificity + edge semantics
- * as structrail-check. Matching primitives come from the canonical
+ * as ark-check. Matching primitives come from the canonical
  * `src/domain/layerMatch.ts` (CLI loads the generated `bin/ark-layer-match.mjs`) —
  * no Kernel imports.
  */
@@ -85,7 +85,7 @@ type AstNode = {
   computed?: boolean;
 };
 
-type StructrailRule = {
+type ArkRule = {
   meta: {
     type: 'problem';
     docs: { description: string };
@@ -95,8 +95,8 @@ type StructrailRule = {
   create(context: RuleContext): RuleListener;
 };
 
-type StructrailEslintPlugin = {
-  rules: Record<string, StructrailRule>;
+type ArkEslintPlugin = {
+  rules: Record<string, ArkRule>;
   configs?: Record<string, unknown>;
 };
 
@@ -109,43 +109,31 @@ type LayerConfig = {
 
 type EdgeRule = { from: string; to: string; allowed?: boolean };
 
-type StructrailConfig = {
+type ArkConfig = {
   layers?: LayerConfig[];
   rules?: EdgeRule[];
 };
 
-// ── Config I/O (editor-only; matching primitives come from the generated layer matcher) ──
+// ── Config I/O (editor-only; matching primitives come from ark-layer-match.mjs) ──
 
 export function findConfigPath(startFile: string): string | null {
   if (!startFile || startFile === '<input>' || startFile.startsWith('stdin')) return null;
   let dir = path.dirname(path.resolve(startFile));
   for (;;) {
-    const canonical = path.join(dir, 'structrail.config.json');
-    // legacy-identity:start v3-compatibility removal=v4
-    const legacy = path.join(dir, 'ark.config.json');
-    const canonicalExists = fs.existsSync(canonical);
-    const legacyExists = fs.existsSync(legacy);
-    if (canonicalExists && legacyExists) {
-      throw new Error(
-        `Both structrail.config.json and ark.config.json exist in ${dir}; ` +
-          'configure one contract explicitly instead of relying on discovery.'
-      );
-    }
-    if (canonicalExists) return canonical;
-    if (legacyExists) return legacy;
-    // legacy-identity:end
+    const candidate = path.join(dir, 'ark.config.json');
+    if (fs.existsSync(candidate)) return candidate;
     const parent = path.dirname(dir);
     if (parent === dir) return null;
     dir = parent;
   }
 }
 
-const _configCache = new Map<string, StructrailConfig | null>();
+const _configCache = new Map<string, ArkConfig | null>();
 
-export function loadStructrailConfig(configPath: string): StructrailConfig | null {
+export function loadArkConfig(configPath: string): ArkConfig | null {
   if (_configCache.has(configPath)) return _configCache.get(configPath) ?? null;
   try {
-    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as StructrailConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as ArkConfig;
     _configCache.set(configPath, raw);
     return raw;
   } catch {
@@ -153,9 +141,6 @@ export function loadStructrailConfig(configPath: string): StructrailConfig | nul
     return null;
   }
 }
-
-/** @deprecated Use loadStructrailConfig. Removal target: v4. */
-export const loadArkConfig = loadStructrailConfig;
 
 /** Resolve relative import specifier to an absolute path candidate (TS-oriented). */
 export function resolveRelativeImport(fromFile: string, specifier: string): string | null {
@@ -270,7 +255,7 @@ function isPublishCall(node: AstNode): boolean {
   return calleePropertyName(node) === 'publish';
 }
 
-/** Heuristic fallback when no structrail.config.json (pre-contract projects). */
+/** Heuristic fallback when no ark.config.json (pre-contract projects). */
 function isDomainFileHeuristic(filename: string): boolean {
   const normalized = filename.split('\\').join('/').toLowerCase();
   return normalized.includes('/domain/') || normalized.endsWith('/domain.ts');
@@ -297,19 +282,19 @@ const DEFAULT_FORBIDDEN_GLOBALS = ['fetch', 'process', 'Date.now', 'Math.random'
 
 /**
  * Config-driven layer import boundary (primary editor gate).
- * Replaces path-token domain/infra heuristics when structrail.config.json is present.
+ * Replaces path-token domain/infra heuristics when ark.config.json is present.
  * Rule id kept as `no-domain-infra-imports` for recommended-config / upgrade stability.
  */
-export const noDomainInfraImports: StructrailRule = {
+export const noDomainInfraImports: ArkRule = {
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow imports that violate structrail.config.json layer rules (same contract as structrail-check). Falls back to domain→infra path heuristics when no config is found.',
+        'Disallow imports that violate ark.config.json layer rules (same contract as arkgate-check). Falls back to domain→infra path heuristics when no config is found.',
     },
     messages: {
       forbiddenImport:
-        'Architecture: {{fromLayer}} must not import {{toLayer}} (structrail.config.json). Specifier: {{specifier}}',
+        'Architecture: {{fromLayer}} must not import {{toLayer}} (ark.config.json). Specifier: {{specifier}}',
       forbiddenImportHeuristic:
         'Domain code must not import infrastructure, adapters, repositories, or database modules.',
     },
@@ -318,7 +303,7 @@ export const noDomainInfraImports: StructrailRule = {
   create(context) {
     const filename = lintedFilename(context);
     const configPath = findConfigPath(filename);
-    const config = configPath ? loadStructrailConfig(configPath) : null;
+    const config = configPath ? loadArkConfig(configPath) : null;
     const root = configPath ? path.dirname(configPath) : null;
 
     const check = (node: AstNode) => {
@@ -370,7 +355,7 @@ export const noDomainInfraImports: StructrailRule = {
   },
 };
 
-export const noRawEventPublish: StructrailRule = {
+export const noRawEventPublish: ArkRule = {
   meta: {
     type: 'problem',
     docs: {
@@ -379,7 +364,7 @@ export const noRawEventPublish: StructrailRule = {
     },
     messages: {
       rawPublish:
-        'Publish through a registered intent creator; raw event objects or intent strings bypass Structrail contracts.',
+        'Publish through a registered intent creator; raw event objects or intent strings bypass Ark contracts.',
     },
     schema: [],
   },
@@ -397,14 +382,14 @@ export const noRawEventPublish: StructrailRule = {
   },
 };
 
-export const requirePublishSource: StructrailRule = {
+export const requirePublishSource: ArkRule = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Require event bus publish calls to include source metadata.',
     },
     messages: {
-      missingSource: 'Strict Structrail publish calls must include metadata.source.',
+      missingSource: 'Strict Ark publish calls must include metadata.source.',
     },
     schema: [],
   },
@@ -423,16 +408,16 @@ export const requirePublishSource: StructrailRule = {
   },
 };
 
-export const noForbiddenGlobals: StructrailRule = {
+export const noForbiddenGlobals: ArkRule = {
   meta: {
     type: 'problem',
     docs: {
       description:
-        'Disallow ambient globals from the layer’s forbiddenGlobals in structrail.config.json (same purity surface as structrail-check). Option `globals` overrides. Without config, defaults apply only on domain-like paths.',
+        'Disallow ambient globals from the layer’s forbiddenGlobals in ark.config.json (same purity surface as arkgate-check). Option `globals` overrides. Without config, defaults apply only on domain-like paths.',
     },
     messages: {
       forbiddenGlobal:
-        'Ambient global "{{name}}" is forbidden in {{layer}} (structrail.config.json); inject the capability through a port instead.',
+        'Ambient global "{{name}}" is forbidden in {{layer}} (ark.config.json); inject the capability through a port instead.',
       forbiddenGlobalDefault:
         'Ambient global "{{name}}" is forbidden here; inject the capability through a port instead.',
     },
@@ -450,7 +435,7 @@ export const noForbiddenGlobals: StructrailRule = {
     const filename = lintedFilename(context);
     const option = context.options?.[0] as { globals?: string[] } | undefined;
     const configPath = findConfigPath(filename);
-    const config = configPath ? loadStructrailConfig(configPath) : null;
+    const config = configPath ? loadArkConfig(configPath) : null;
     const root = configPath ? path.dirname(configPath) : null;
 
     let globals: Set<string> | null = null;
@@ -541,20 +526,10 @@ const rules = {
   'no-forbidden-globals': noForbiddenGlobals,
 };
 
-const plugin: StructrailEslintPlugin = { rules };
+const plugin: ArkEslintPlugin = { rules };
 
 plugin.configs = {
   recommended: {
-    plugins: { structrail: plugin },
-    rules: {
-      'structrail/no-domain-infra-imports': 'error',
-      'structrail/no-raw-event-publish': 'error',
-      'structrail/require-publish-source': 'error',
-      'structrail/no-forbidden-globals': 'error',
-    },
-  },
-  // legacy-identity:start v3-compatibility removal=v4
-  'recommended-legacy': {
     plugins: { ark: plugin },
     rules: {
       'ark/no-domain-infra-imports': 'error',
@@ -563,7 +538,6 @@ plugin.configs = {
       'ark/no-forbidden-globals': 'error',
     },
   },
-  // legacy-identity:end
 };
 
 export { plugin };

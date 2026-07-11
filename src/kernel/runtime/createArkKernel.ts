@@ -4,10 +4,10 @@ import { createEventContractRegistry } from '../event-contracts';
 import { createDependencyGraph, syncRegistryToGraph } from '../graph';
 import { createIntentRegistry } from '../intent';
 import {
-  createArchitectureProfileFromStructrailConfig,
+  createArchitectureProfileFromArkConfig,
   elevenLayerProfile,
 } from '../layers';
-import { createStructrailManifest } from '../manifest';
+import { createArkManifest } from '../manifest';
 import { createMetadataRegistry } from '../metadata';
 import { createObservabilityReporter } from '../observability';
 import { InMemoryOutboxStore } from '../outbox';
@@ -18,10 +18,10 @@ import {
 import { createProjectionRegistry } from '../projections';
 import { createWorkflowEngine } from '../workflow';
 import type {
-  StructrailKernel,
-  StructrailKernelConfig,
-  CreateStructrailKernelFromConfigOptions,
-  CreateStructrailKernelOptions,
+  ArkKernel,
+  ArkKernelConfig,
+  CreateArkKernelFromConfigOptions,
+  CreateArkKernelOptions,
 } from './types';
 
 /**
@@ -35,12 +35,10 @@ let kernelSequence = 0;
 
 function nextKernelInstanceId(): string {
   kernelSequence += 1;
-  return `structrail-kernel-${Date.now()}-${kernelSequence}`;
+  return `ark-kernel-${Date.now()}-${kernelSequence}`;
 }
 
-export function createStructrailKernel(
-  options: CreateStructrailKernelOptions = {}
-): StructrailKernel {
+export function createArkKernel(options: CreateArkKernelOptions = {}): ArkKernel {
   const strict = options.strict ?? true;
   const instanceId = options.instanceId ?? nextKernelInstanceId();
   const profile = options.profile ?? elevenLayerProfile;
@@ -112,7 +110,7 @@ export function createStructrailKernel(
     syncGraph,
     manifest() {
       syncGraph();
-      return createStructrailManifest({
+      return createArkManifest({
         registry,
         policyEngine,
         metadata,
@@ -126,10 +124,10 @@ export function createStructrailKernel(
   };
 }
 
-export function createStrictStructrailKernel(
-  options: CreateStructrailKernelOptions = {}
-): StructrailKernel {
-  return createStructrailKernel({
+export function createStrictArkKernel(
+  options: CreateArkKernelOptions = {}
+): ArkKernel {
+  return createArkKernel({
     ...options,
     strict: true,
     strictEventContracts: options.strictEventContracts ?? true,
@@ -139,57 +137,44 @@ export function createStrictStructrailKernel(
 }
 
 function createOptionsFromConfig(
-  config: StructrailKernelConfig,
-  options: CreateStructrailKernelFromConfigOptions = {}
-): CreateStructrailKernelOptions {
+  config: ArkKernelConfig,
+  options: CreateArkKernelFromConfigOptions = {}
+): CreateArkKernelOptions {
   const { profileName, ...kernelOptions } = options;
   return {
     ...kernelOptions,
-    profile: createArchitectureProfileFromStructrailConfig(config, { name: profileName }),
+    profile: createArchitectureProfileFromArkConfig(config, { name: profileName }),
   };
 }
 
-export function createStructrailKernelFromConfig(
-  config: StructrailKernelConfig,
-  options: CreateStructrailKernelFromConfigOptions = {}
-): StructrailKernel {
-  return createStructrailKernel(createOptionsFromConfig(config, options));
+export function createArkKernelFromConfig(
+  config: ArkKernelConfig,
+  options: CreateArkKernelFromConfigOptions = {}
+): ArkKernel {
+  return createArkKernel(createOptionsFromConfig(config, options));
 }
 
-export function createStrictStructrailKernelFromConfig(
-  config: StructrailKernelConfig,
-  options: CreateStructrailKernelFromConfigOptions = {}
-): StructrailKernel {
-  return createStrictStructrailKernel(createOptionsFromConfig(config, options));
+export function createStrictArkKernelFromConfig(
+  config: ArkKernelConfig,
+  options: CreateArkKernelFromConfigOptions = {}
+): ArkKernel {
+  return createStrictArkKernel(createOptionsFromConfig(config, options));
 }
 
-export function createLenientStructrailKernelFromConfig(
-  config: StructrailKernelConfig,
-  options: CreateStructrailKernelFromConfigOptions = {}
-): StructrailKernel {
-  return createLenientStructrailKernel(createOptionsFromConfig(config, options));
+export function createLenientArkKernelFromConfig(
+  config: ArkKernelConfig,
+  options: CreateArkKernelFromConfigOptions = {}
+): ArkKernel {
+  return createLenientArkKernel(createOptionsFromConfig(config, options));
 }
 
-export function createLenientStructrailKernel(
-  options: CreateStructrailKernelOptions = {}
-): StructrailKernel {
-  return createStructrailKernel({
+export function createLenientArkKernel(
+  options: CreateArkKernelOptions = {}
+): ArkKernel {
+  return createArkKernel({
     ...options,
     strict: false,
     strictEventContracts: options.strictEventContracts ?? false,
     enforceObservedLayerFlow: options.enforceObservedLayerFlow ?? 'off',
   });
 }
-
-/** @deprecated Use createStructrailKernel. Removal target: v4. */
-export const createArkKernel = createStructrailKernel;
-/** @deprecated Use createStructrailKernelFromConfig. Removal target: v4. */
-export const createArkKernelFromConfig = createStructrailKernelFromConfig;
-/** @deprecated Use createStrictStructrailKernel. Removal target: v4. */
-export const createStrictArkKernel = createStrictStructrailKernel;
-/** @deprecated Use createStrictStructrailKernelFromConfig. Removal target: v4. */
-export const createStrictArkKernelFromConfig = createStrictStructrailKernelFromConfig;
-/** @deprecated Use createLenientStructrailKernel. Removal target: v4. */
-export const createLenientArkKernel = createLenientStructrailKernel;
-/** @deprecated Use createLenientStructrailKernelFromConfig. Removal target: v4. */
-export const createLenientArkKernelFromConfig = createLenientStructrailKernelFromConfig;

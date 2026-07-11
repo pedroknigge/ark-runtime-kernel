@@ -1,5 +1,5 @@
 /**
- * Structrail Dependency Graph module
+ * Ark Dependency Graph module
  */
 
 export * from './types';

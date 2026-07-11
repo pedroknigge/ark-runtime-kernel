@@ -18,28 +18,24 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { resolveEnvironmentValue } from '../bin/lib/product-identity.mjs';
 
 const root = process.cwd();
 
-function releaseEnvironment(env, suffix) {
-  return resolveEnvironmentValue(env, `STRUCTRAIL_${suffix}`, `ARK_${suffix}`).value;
-}
-
-function readPackageVersion(env = process.env) {
-  const override = releaseEnvironment(env, 'VERIFY_PACKAGE_VERSION');
-  if (override != null) return override;
+function readPackageVersion() {
+  if (process.env.ARK_VERIFY_PACKAGE_VERSION) {
+    return process.env.ARK_VERIFY_PACKAGE_VERSION;
+  }
   const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
   return pkg.version;
 }
 
 /** @param {NodeJS.ProcessEnv} [env] */
 export function resolveSignedTagPolicy(env = process.env) {
-  if (releaseEnvironment(env, 'ALLOW_UNSIGNED_RELEASE_TAG') === 'true') {
+  if (env.ARK_ALLOW_UNSIGNED_RELEASE_TAG === 'true') {
     return { allowUnsigned: true, requireSigned: false };
   }
-  if (releaseEnvironment(env, 'REQUIRE_SIGNED_RELEASE_TAG') === 'false') {
-    // Explicit compatibility opt-out; prefer STRUCTRAIL_ALLOW_UNSIGNED_RELEASE_TAG.
+  if (env.ARK_REQUIRE_SIGNED_RELEASE_TAG === 'false') {
+    // explicit legacy opt-out (prefer ARK_ALLOW_UNSIGNED_RELEASE_TAG)
     return { allowUnsigned: true, requireSigned: false };
   }
   // Default fail-closed: co-pilot releases should be signed.
@@ -69,11 +65,11 @@ function fail(message) {
 function handleUnsignedTag(message, policy) {
   if (!policy.allowUnsigned) {
     fail(
-      `${message}. Refusing unsigned release tag (set STRUCTRAIL_ALLOW_UNSIGNED_RELEASE_TAG=true to override).`
+      `${message}. Refusing unsigned release tag (set ARK_ALLOW_UNSIGNED_RELEASE_TAG=true to override).`
     );
   }
   console.warn(
-    `[verify-release-tag] ${message}; continuing because STRUCTRAIL_ALLOW_UNSIGNED_RELEASE_TAG=true`
+    `[verify-release-tag] ${message}; continuing because ARK_ALLOW_UNSIGNED_RELEASE_TAG=true`
   );
 }
 
@@ -100,8 +96,8 @@ async function verifyWithGitHub(tag, policy) {
   const token = process.env.GITHUB_TOKEN;
   if (!repo || !token) return false;
 
-  if (releaseEnvironment(process.env, 'VERIFY_FORCE_UNSIGNED') === 'true') {
-    handleUnsignedTag(`tag ${tag} forced unsigned (STRUCTRAIL_VERIFY_FORCE_UNSIGNED)`, policy);
+  if (process.env.ARK_VERIFY_FORCE_UNSIGNED === 'true') {
+    handleUnsignedTag(`tag ${tag} forced unsigned (ARK_VERIFY_FORCE_UNSIGNED)`, policy);
     return true;
   }
 
@@ -129,8 +125,8 @@ async function verifyWithGitHub(tag, policy) {
 }
 
 function verifyWithLocalGit(tag, policy) {
-  if (releaseEnvironment(process.env, 'VERIFY_FORCE_UNSIGNED') === 'true') {
-    handleUnsignedTag(`tag ${tag} forced unsigned (STRUCTRAIL_VERIFY_FORCE_UNSIGNED)`, policy);
+  if (process.env.ARK_VERIFY_FORCE_UNSIGNED === 'true') {
+    handleUnsignedTag(`tag ${tag} forced unsigned (ARK_VERIFY_FORCE_UNSIGNED)`, policy);
     return;
   }
 
@@ -160,7 +156,7 @@ export async function main(argv = process.argv, env = process.env) {
     env.GITHUB_REF_NAME ??
     env.GITHUB_REF?.replace(/^refs\/tags\//, '');
 
-  const packageVersion = readPackageVersion(env);
+  const packageVersion = env.ARK_VERIFY_PACKAGE_VERSION ?? readPackageVersion();
   const match = checkTagMatchesVersion({ tag, packageVersion });
   if (!match.ok) fail(match.message);
 
@@ -169,10 +165,8 @@ export async function main(argv = process.argv, env = process.env) {
     `[verify-release-tag] policy: requireSigned=${policy.requireSigned} allowUnsigned=${policy.allowUnsigned}`
   );
 
-  if (releaseEnvironment(env, 'VERIFY_SKIP_GIT') === 'true') {
-    console.log(
-      `[verify-release-tag] STRUCTRAIL_VERIFY_SKIP_GIT=true — version/tag match only for ${tag}`
-    );
+  if (env.ARK_VERIFY_SKIP_GIT === 'true') {
+    console.log(`[verify-release-tag] ARK_VERIFY_SKIP_GIT=true — version/tag match only for ${tag}`);
     return 0;
   }
 

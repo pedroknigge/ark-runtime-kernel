@@ -1,4 +1,4 @@
-# Tutorial: your first Structrail-governed project
+# Tutorial: your first Ark-governed project
 
 This tutorial walks one path end-to-end. You need Node 18+ and a new empty folder.
 
@@ -7,13 +7,13 @@ This tutorial walks one path end-to-end. You need Node 18+ and a new empty folde
 ```bash
 mkdir my-app && cd my-app
 npm init -y
-npm install -D structrail typescript
+npm install -D arkgate typescript
 ```
 
 ## 2. Discover your application shape
 
 ```bash
-npx structrail-check --recommend
+npx ark-check --recommend
 ```
 
 Read the **archetype** (application shape, not “Next.js” or “Prisma”), the **preset**,
@@ -23,8 +23,8 @@ may ask: “Will this save data?” and “Is this one app or several in one rep
 Optional machine-readable record:
 
 ```bash
-npx structrail-check --recommend --write-plan
-# -> structrail-adoption-plan.json (safe to commit as a team adoption record)
+npx ark-check --recommend --write-plan
+# -> ark-adoption-plan.json (safe to commit as a team adoption record)
 ```
 
 ## 3. Adopt the contract
@@ -32,14 +32,14 @@ npx structrail-check --recommend --write-plan
 Non-interactive (recommended for scripts):
 
 ```bash
-npx structrail init --archetype crud-product --yes
+npx ark init --archetype crud-product --yes
 ```
 
 Or apply an enthusiast policy pack directly:
 
 ```bash
-npx structrail-check --list-policy-packs
-npx structrail-check --apply-policy-pack enthusiast-hexagonal
+npx ark-check --list-policy-packs
+npx ark-check --apply-policy-pack enthusiast-hexagonal
 ```
 
 ## 4. Scaffold phase-1 folders
@@ -58,24 +58,24 @@ Or copy a [gallery starter](../enthusiast/how-to-gallery-starter.md) and run `np
 ## 5. Install agent gates
 
 ```bash
-npx structrail-check --install-agent-gates
+npx ark-check --install-agent-gates
 ```
 
-This installs `/structrail-architect`, `/structrail-place`, `/structrail-autopilot`, and the other `/structrail-*` skills for Claude, Cursor, Codex, Grok, and other detected hosts.
+This installs `/ark-architect`, `/ark-place`, `/ark-autopilot`, and the other `/ark-*` skills for Claude, Cursor, Codex, Grok, and other detected hosts.
 
 ## 6. Verify honestly
 
 ```bash
-npx structrail-check --doctor
-npx structrail-check --coverage
-npx structrail-check --root . --config structrail.config.json --strict-config
+npx ark-check --doctor
+npx ark-check --coverage
+npx ark-check --root . --config ark.config.json --strict-config
 ```
 
 Report `governed.percent` truthfully. An empty layer is fine; an ungoverned `lib/` folder is not.
 
 ## 7. Build a feature with the agent
 
-Invoke `/structrail-architect` once at the start, then `/structrail-place` for each new file. The agent
+Invoke `/ark-architect` once at the start, then `/ark-place` for each new file. The agent
 should place use cases in `application/`, ports in `domain/`, and never import the database
 into `domain/`.
 

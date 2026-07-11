@@ -68,7 +68,7 @@ export type RemediationVerdict = {
 };
 
 /** Minimal violation shape used by classify/enrich (CLI may attach extra fields). */
-export type StructrailViolationLike = {
+export type ArkViolationLike = {
   ruleId?: string;
   typeOnly?: boolean;
   sourcePureTypeModule?: boolean;
@@ -91,7 +91,7 @@ export type StructrailViolationLike = {
 
 export type FixClassEffort = 'small' | 'medium';
 
-export type EnrichedViolation<T extends StructrailViolationLike = StructrailViolationLike> = T & {
+export type EnrichedViolation<T extends ArkViolationLike = ArkViolationLike> = T & {
   fixClass: string;
   effort: FixClassEffort;
   enthusiastHint: string;
@@ -101,9 +101,7 @@ export type EnrichedViolation<T extends StructrailViolationLike = StructrailViol
  * Co-pilot work classifier — the TRUST BOUNDARY for auto-apply.
  * Biased toward 'judgment': false mechanical-safe is worse than an extra human approval.
  */
-export function classifyRemediation(
-  violation: StructrailViolationLike | null | undefined
-): RemediationVerdict {
+export function classifyRemediation(violation: ArkViolationLike | null | undefined): RemediationVerdict {
   const ruleId = violation?.ruleId;
   if (ruleId === 'LAYER_IMPORT_VIOLATION') {
     // Cross-slice peer isolation is always judgment (extract shared / events — not mechanical).
@@ -218,7 +216,7 @@ export function classifyRemediation(
 /**
  * Deterministic fix-class labels for JSON output (English, shared with skills/reports).
  */
-export function enrichViolationWithFixClass<T extends StructrailViolationLike>(
+export function enrichViolationWithFixClass<T extends ArkViolationLike>(
   violation: T
 ): EnrichedViolation<T> {
   const enriched = { ...violation } as EnrichedViolation<T>;
@@ -258,7 +256,7 @@ export function enrichViolationWithFixClass<T extends StructrailViolationLike>(
       enriched.fixClass = 'add-source-metadata';
       enriched.effort = 'small';
       enriched.enthusiastHint =
-        'Add metadata.source to the publish call so Structrail knows which layer is publishing the event.';
+        'Add metadata.source to the publish call so Ark knows which layer is publishing the event.';
       break;
     case 'PUBLISH_SOURCE_LAYER_MISMATCH':
       enriched.fixClass = 'fix-source-layer';
@@ -282,7 +280,7 @@ export function enrichViolationWithFixClass<T extends StructrailViolationLike>(
       enriched.fixClass = 'review-contract';
       enriched.effort = 'small';
       enriched.enthusiastHint =
-        'Read the violation message and the layer rules in structrail.config.json, then adjust imports or move code to the correct layer.';
+        'Read the violation message and the layer rules in ark.config.json, then adjust imports or move code to the correct layer.';
   }
   return enriched;
 }

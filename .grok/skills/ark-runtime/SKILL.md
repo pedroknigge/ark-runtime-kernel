@@ -1,0 +1,99 @@
+---
+name: ark-runtime
+description: Replace hand-rolled infra with the Ark runtime kernel — event bus, outbox, audit, sagas, projections, policies, NestJS. Finds candidates, wires one, verifies.
+arkVersion: 2.9.1
+---
+
+# /ark-runtime — Adopt the runtime kernel (opt-in features)
+
+`arkgate` is not just static checking: it ships a runtime kernel
+(`createArkKernel`) with an event bus, event contracts, outbox, audit trail,
+policy engine, workflow/saga coordination, projections, observability hooks,
+and NestJS adapters. This skill migrates hand-rolled versions of those to the
+kernel, one feature at a time.
+
+## Dual engine (mandatory)
+
+| Engine | Role |
+|--------|------|
+| **Deterministic** | CLI / MCP / contract sensors — exit codes, plan kinds, coverage numbers, install status |
+| **Exploratory** | You open **this** repo's real files and product surface before concluding |
+
+The CLI is a **sensor**, never the whole job. Claiming done without the exploratory bar for this skill is **incomplete**.
+
+
+## Subagent fan-out (optional, host-dependent)
+
+If the host supports **parallel subagents** and the task splits cleanly (e.g. multiple
+dirs to sample), fan out read-only scouts; otherwise **fall back to sequential**.
+Parent merges and still emits the **### Completion** contract. Never parallel-write
+the same files or weaken the gate.
+
+## Steps
+
+1. **Inventory** — grep the codebase for hand-rolled equivalents:
+   - event bus / emitter used for domain events (`EventEmitter`, homemade
+     pub/sub, ad-hoc handler registries)
+   - outbox tables or "save event + publish later" code
+   - audit/history logs written manually
+   - saga/workflow orchestration (multi-step processes with compensation)
+   - read-model/projection builders
+   - policy/authorization checks scattered across use cases
+   Also check whether `@nestjs/common` is present → the `arkgate/nestjs`
+   adapters apply.
+2. **Pick ONE target** — the smallest, most self-contained candidate (fewest
+   call sites). Migrating everything at once is how adoptions die. List the
+   rest as follow-ups in the report.
+3. **Migrate** — import from `arkgate` (root export) or
+   `arkgate/nestjs`, and read the package's `docs/agent-guide.md`
+   (in `node_modules/arkgate/docs/`) for the runtime API before
+   writing code. Wire the kernel at the composition root; keep the domain
+   ignorant of it (handlers/ports, not kernel imports inside domain code —
+   the write gate will enforce this anyway). Note: the kernel bounds in-memory
+   history by default (`maxHistorySize` 1000); mention this if the hand-rolled
+   version retained everything.
+4. **Delete the hand-rolled version** once call sites are moved — the point is
+   less code, not a second parallel system. Deleting code is a destructive move:
+   confirm with the user before removing the old implementation, and never delete
+   something the inventory only *suspects* is dead (a misclassified load-bearing
+   emitter must not be removed on a guess).
+
+## Critical handoffs
+
+- No static gates yet: **STOP — do not continue this skill as complete.** Run `/ark-architect` or `/ark-adopt` first.
+- Inventory finds nothing: stop; do not introduce kernel speculatively.
+
+## Operating rules
+
+- If the inventory finds NO hand-rolled equivalents, say so and stop — do not
+  introduce the runtime kernel speculatively. Static enforcement alone is a
+  complete, valid use of Ark.
+- Keep the migration diff reviewable: one feature per invocation.
+- Plain-language reporting: one sentence per concept ("outbox = events are
+  saved in the same transaction as your data, then published — so you never
+  publish something that didn't commit").
+
+## Related onboarding
+
+- Adopt static gates and application shape **first** (`/ark-architect`, `/ark-adopt`).
+- Runtime kernel is optional and separate from enthusiast onboarding.
+
+## Verify and report
+
+Run the project's tests plus `ark-check --root . --config ark.config.json
+--strict-config`. Report: what was migrated, lines deleted vs added, remaining
+candidates ranked, and any behavior differences (e.g. bounded history).
+
+## Completion contract (skill incomplete if missing)
+
+End with **exactly** these headings (markdown `###`):
+
+### Completion
+- **Sensor:** commands/tools run
+- **Opened:** real paths read (or `n/a` only if pure install/upgrade with no source analysis)
+- **Result:** one-line outcome
+- **Handoff:** `/ark-…` / CLI / `none`
+- **Incomplete?** `no` | `yes — <what is missing>`
+
+If a **STOP** handoff applies and you continued as if done, set **Incomplete?** to `yes`.
+**Skill incomplete if missing** any of the bullets above.

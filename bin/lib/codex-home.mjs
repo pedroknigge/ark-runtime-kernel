@@ -7,7 +7,6 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { execCommandParts } from '../ark-shared.mjs';
-import { ARK_GENERATION_IDENTITY } from './product-identity.mjs';
 
 export const PREFERRED_CODEX_MCP_BIN = 'arkgate-mcp';
 
@@ -66,7 +65,7 @@ export function extractCodexRootFromBlock(block) {
 export function listCodexArkServerTables(tomlText) {
   if (!tomlText || typeof tomlText !== 'string') return [];
   const out = [];
-  const headerRe = /\[mcp_servers\.((?:ark|structrail)(?:_[a-zA-Z0-9_-]*)?)\]/g;
+  const headerRe = /\[mcp_servers\.(ark(?:_[a-zA-Z0-9_-]*)?)\]/g;
   const headers = [];
   let hm;
   while ((hm = headerRe.exec(tomlText)) !== null) {
@@ -110,15 +109,15 @@ export function upsertCodexMcpTable(tomlText, tableName, block) {
 }
 
 /** Primary table entry or null. */
-export function codexPrimaryTable(tomlText, serverKey = 'ark') {
-  return listCodexArkServerTables(tomlText).find((t) => t.table === serverKey) ?? null;
+export function codexPrimaryTable(tomlText) {
+  return listCodexArkServerTables(tomlText).find((t) => t.table === 'ark') ?? null;
 }
 
 /** Secondary (non-primary) table whose --root is this project, if any. */
-export function codexScopedTableForRoot(tomlText, absRoot, serverKey = 'ark') {
+export function codexScopedTableForRoot(tomlText, absRoot) {
   const abs = path.resolve(absRoot);
   for (const entry of listCodexArkServerTables(tomlText)) {
-    if (entry.table === serverKey || !entry.table.startsWith(`${serverKey}_`)) continue;
+    if (entry.table === 'ark') continue;
     if (!entry.root) continue;
     try {
       if (path.resolve(entry.root) === abs) return entry.table;
@@ -134,27 +133,21 @@ export function extractCodexArkRootFromToml(tomlText) {
   return codexPrimaryTable(tomlText)?.root ?? null;
 }
 
-export function codexArkBlockHasPreferredBin(tomlText, identity = ARK_GENERATION_IDENTITY) {
-  const primary = codexPrimaryTable(tomlText, identity.mcpServerKey);
+export function codexArkBlockHasPreferredBin(tomlText) {
+  const primary = codexPrimaryTable(tomlText);
   if (!primary) return false;
-  const bins = [...primary.block.matchAll(/"(structrail-mcp|arkgate-mcp|ark-mcp)"/g)].map(
-    (m) => m[1]
-  );
+  const bins = [...primary.block.matchAll(/"(arkgate-mcp|ark-mcp)"/g)].map((m) => m[1]);
   if (bins.length > 1) return false;
-  return bins.length === 1 && bins[0] === identity.mcpBin;
+  return bins.length === 1 && bins[0] === PREFERRED_CODEX_MCP_BIN;
 }
 
 /**
  * True when primary is broken (temp root / dual bin) and should rewrite fail-closed.
  * Permanent different project roots are NOT broken — multi-project uses a secondary table.
  */
-export function codexArkBlockNeedsRewrite(
-  tomlText,
-  absRoot,
-  identity = ARK_GENERATION_IDENTITY
-) {
-  if (!tomlText || !tomlText.includes(`[mcp_servers.${identity.mcpServerKey}]`)) return true;
-  const rootArg = codexPrimaryTable(tomlText, identity.mcpServerKey)?.root ?? null;
+export function codexArkBlockNeedsRewrite(tomlText, absRoot) {
+  if (!tomlText || !tomlText.includes('[mcp_servers.ark]')) return true;
+  const rootArg = extractCodexArkRootFromToml(tomlText);
   if (!rootArg || isTempOrUpgradeRoot(rootArg)) return true;
   try {
     if (path.resolve(rootArg) !== path.resolve(absRoot)) {
@@ -164,7 +157,7 @@ export function codexArkBlockNeedsRewrite(
   } catch {
     return true;
   }
-  if (!codexArkBlockHasPreferredBin(tomlText, identity)) return true;
+  if (!codexArkBlockHasPreferredBin(tomlText)) return true;
   return false;
 }
 
@@ -181,13 +174,9 @@ export function codexArkBlockNeedsRewrite(
  *   gap: null | { id: string, severity: string, message: string, fixArgs: string }
  * }}
  */
-export function assessCodexHomeMcp(
-  tomlText,
-  absRoot,
-  identity = ARK_GENERATION_IDENTITY
-) {
+export function assessCodexHomeMcp(tomlText, absRoot) {
   const resolvedRoot = path.resolve(absRoot);
-  if (!tomlText || !tomlText.includes(`[mcp_servers.${identity.mcpServerKey}]`)) {
+  if (!tomlText || !tomlText.includes('[mcp_servers.ark]')) {
     return {
       root: null,
       tempPath: false,
@@ -199,7 +188,7 @@ export function assessCodexHomeMcp(
       gap: null,
     };
   }
-  const rootArg = codexPrimaryTable(tomlText, identity.mcpServerKey)?.root ?? null;
+  const rootArg = extractCodexArkRootFromToml(tomlText);
   const temp = isTempOrUpgradeRoot(rootArg);
   let wrongRoot = false;
   try {
@@ -207,12 +196,9 @@ export function assessCodexHomeMcp(
   } catch {
     wrongRoot = true;
   }
-  const preferredBin = codexArkBlockHasPreferredBin(tomlText, identity);
-  const needsRewrite = codexArkBlockNeedsRewrite(tomlText, resolvedRoot, identity);
-  const scopedTable =
-    wrongRoot && !temp
-      ? codexScopedTableForRoot(tomlText, resolvedRoot, identity.mcpServerKey)
-      : null;
+  const preferredBin = codexArkBlockHasPreferredBin(tomlText);
+  const needsRewrite = codexArkBlockNeedsRewrite(tomlText, resolvedRoot);
+  const scopedTable = wrongRoot && !temp ? codexScopedTableForRoot(tomlText, resolvedRoot) : null;
   const multiProject = Boolean(wrongRoot && !temp && !needsRewrite);
 
   let gap = null;
@@ -224,7 +210,7 @@ export function assessCodexHomeMcp(
         ? `Codex home MCP --root points at a temp/upgrade path (${rootArg})`
         : wrongRoot
           ? `Codex home MCP --root is not this project (${rootArg || 'missing'} ≠ ${resolvedRoot})`
-          : `Codex home MCP should use a single ${identity.mcpBin} bin with absolute project paths`,
+          : `Codex home MCP should use a single ${PREFERRED_CODEX_MCP_BIN} bin with absolute project paths`,
       fixArgs: '--install-agent-gates --codex-home --force',
     };
   } else if (multiProject) {
@@ -232,12 +218,12 @@ export function assessCodexHomeMcp(
       id: 'codex-home-multi-project',
       severity: scopedTable ? 'info' : 'warn',
       message: scopedTable
-        ? `Codex primary [mcp_servers.${identity.mcpServerKey}] is bound to another project (${rootArg}); ` +
+        ? `Codex primary [mcp_servers.ark] is bound to another project (${rootArg}); ` +
           `this project is registered as [mcp_servers.${scopedTable}]. ` +
           `Codex may still prefer the primary binding for ark://manifest — rebind if this repo should own it.`
         : `Codex home primary MCP --root is another permanent project ` +
           `(${rootArg || 'missing'} ≠ ${resolvedRoot}). ` +
-          `Install without --force adds a scoped [mcp_servers.${identity.mcpServerKey}_<slug>] table and leaves primary unchanged; ` +
+          `Install without --force adds a scoped [mcp_servers.ark_<slug>] table and leaves primary unchanged; ` +
           `--force rebinds primary to this project.`,
       fixArgs: scopedTable
         ? '--install-agent-gates --tools codex --force'
@@ -264,12 +250,12 @@ export function assessCodexHomeMcp(
  *
  * All mutations go through upsertCodexMcpTable (single table model).
  */
-export function wireCodexMcp(root, force, identity = ARK_GENERATION_IDENTITY) {
+export function wireCodexMcp(root, force) {
   const file = codexConfigPath();
   const esc = (s) => s.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const absRoot = path.resolve(root);
-  const absConfig = path.join(absRoot, identity.configName);
-  const { command, args } = execCommandParts(root, identity.mcpBin, [
+  const absConfig = path.join(absRoot, 'ark.config.json');
+  const { command, args } = execCommandParts(root, PREFERRED_CODEX_MCP_BIN, [
     '--root',
     esc(absRoot),
     '--config',
@@ -288,7 +274,7 @@ args = [${argsToml}]`;
     return { status: 'failed', file, message: error.message };
   }
 
-  const primary = codexPrimaryTable(existing, identity.mcpServerKey);
+  const primary = codexPrimaryTable(existing);
   const hasPrimary = Boolean(primary);
   const existingRoot = primary?.root ?? null;
   let differentProject = false;
@@ -297,7 +283,7 @@ args = [${argsToml}]`;
   } catch {
     differentProject = Boolean(existingRoot);
   }
-  const mustRewrite = hasPrimary && codexArkBlockNeedsRewrite(existing, absRoot, identity);
+  const mustRewrite = hasPrimary && codexArkBlockNeedsRewrite(existing, absRoot);
 
   const writeToml = (next) => {
     try {
@@ -311,13 +297,8 @@ args = [${argsToml}]`;
 
   // Multi-project: leave primary alone; upsert scoped secondary for this root.
   if (hasPrimary && differentProject && !force && !mustRewrite) {
-    const existingScoped = codexScopedTableForRoot(
-      existing,
-      absRoot,
-      identity.mcpServerKey
-    );
-    const table =
-      existingScoped || `${identity.mcpServerKey}_${codexProjectSlug(absRoot)}`;
+    const existingScoped = codexScopedTableForRoot(existing, absRoot);
+    const table = existingScoped || `ark_${codexProjectSlug(absRoot)}`;
     const next = upsertCodexMcpTable(existing, table, makeBlock(table));
     const err = writeToml(next);
     if (err) return err;
@@ -328,11 +309,7 @@ args = [${argsToml}]`;
     return { status: 'skipped', file };
   }
 
-  const next = upsertCodexMcpTable(
-    existing,
-    identity.mcpServerKey,
-    makeBlock(identity.mcpServerKey)
-  );
+  const next = upsertCodexMcpTable(existing, 'ark', makeBlock('ark'));
   const err = writeToml(next);
   if (err) return err;
   return {

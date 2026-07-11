@@ -1,5 +1,5 @@
 /**
- * Core domain primitives for Structrail.
+ * Core domain primitives for Ark.
  * These types are the foundation for all governance concepts.
  */
 
@@ -14,7 +14,7 @@
  * - Reporting.* for read models and projections
  * - Metadata.* for extensibility contracts
  * - Security.* / Audit.* / Observability.* for cross-cutting kernel concerns
- * - Kernel.* for Structrail-owned governance signals
+ * - Kernel.* for Ark-owned governance signals
  */
 export type IntentName =
   | `Domain.${string}`

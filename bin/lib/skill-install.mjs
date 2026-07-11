@@ -5,11 +5,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { codexPromptsDir } from './codex-home.mjs';
 import { __packageRoot, readJson } from './gate-files.mjs';
-import {
-  ARK_GENERATION_IDENTITY,
-  generationIdentityForRoot,
-  resolveEnvironmentValue,
-} from './product-identity.mjs';
 
 export function normalizeToolsList(tools) {
   if (tools == null) return [];
@@ -36,17 +31,14 @@ function envTruthy(v) {
 
 /**
  * Best-effort active agent host for this process (session host).
- * Prefer STRUCTRAIL_ACTIVE_HOST (or the v3 ARK_ACTIVE_HOST alias) when set.
- * Do NOT treat CODEX_HOME alone as Codex —
+ * Prefer ARK_ACTIVE_HOST when set. Do NOT treat CODEX_HOME alone as Codex —
  * that dir exists for anyone who installed Codex, even when running Grok/Claude.
  *
  * @param {NodeJS.ProcessEnv} [env]
  * @returns {string|null} tool id (claude|cursor|codex|grok|…) or null if unknown
  */
 export function detectActiveAgentHost(env = process.env) {
-  const explicit = String(
-    resolveEnvironmentValue(env, 'STRUCTRAIL_ACTIVE_HOST', 'ARK_ACTIVE_HOST').value ?? ''
-  )
+  const explicit = String(env.ARK_ACTIVE_HOST || '')
     .trim()
     .toLowerCase();
   if (explicit) return explicit;
@@ -180,20 +172,19 @@ export function arkPackageVersion() {
 
 // Insert `arkVersion: <v>` into a skill's YAML frontmatter (before its closing
 // `---`). No frontmatter → returned unchanged. Idempotent for a given version.
-export function stampSkill(content, version, identity = ARK_GENERATION_IDENTITY) {
+export function stampSkill(content, version) {
   if (!version) return content;
   const lines = content.split('\n');
   if (lines[0] !== '---') return content;
   const closeIdx = lines.indexOf('---', 1);
   if (closeIdx === -1) return content;
-  const versionLine = new RegExp(`^${identity.skillVersionKey}:`);
   const existing = lines.findIndex(
-    (line, i) => i > 0 && i < closeIdx && versionLine.test(line)
+    (line, i) => i > 0 && i < closeIdx && /^arkVersion:/.test(line)
   );
   if (existing !== -1) {
-    lines[existing] = `${identity.skillVersionKey}: ${version}`;
+    lines[existing] = `arkVersion: ${version}`;
   } else {
-    lines.splice(closeIdx, 0, `${identity.skillVersionKey}: ${version}`);
+    lines.splice(closeIdx, 0, `arkVersion: ${version}`);
   }
   return lines.join('\n');
 }
@@ -207,7 +198,7 @@ export function installedSkillVersion(filePath) {
   } catch {
     return null;
   }
-  const match = content.match(/^(?:structrailVersion|arkVersion):\s*(.+)$/m);
+  const match = content.match(/^arkVersion:\s*(.+)$/m);
   return match ? match[1].trim() : null;
 }
 
@@ -226,35 +217,7 @@ export function isVersionOlder(a, b) {
   return false;
 }
 
-function legacySkillTemplate(content) {
-  return content
-    .replace(/structrail\.config\.json/g, 'ark.config.json')
-    .replace(/structrail:\/\//g, 'ark://')
-    .replace(/\bstructrail_(?=[a-z0-9])/g, 'ark_')
-    .replace(/\/structrail-/g, '/ark-')
-    .replace(/(?<!\.)\bstructrail-(?=[a-z0-9])/g, 'ark-')
-    .replace(/node_modules\/structrail/g, 'node_modules/arkgate')
-    .replace(/(['"])structrail(?=\/|['"])/g, '$1arkgate')
-    .replace(
-      /(\b(?:npm|pnpm|yarn)\s+(?:install|add|view|uninstall)(?:\s+-D)?\s+)structrail\b/g,
-      '$1arkgate'
-    )
-    .replace(/\bstructrail(?=\s+(?:start|init|upgrade)\b)/g, 'ark')
-    .replace(/\bstructrail\b/g, 'ark')
-    .replace(/\bStructrail\b/g, 'ArkGate');
-}
-
-function legacySkillNotice(content, legacyName, canonicalName) {
-  const notice =
-    `> **Deprecated v3 compatibility alias.** \`/${legacyName}\` maps to ` +
-    `\`/${canonicalName}\`. It remains supported through v3; removal target: v4.\n`;
-  const frontmatterEnd = content.indexOf('\n---', 4);
-  if (frontmatterEnd === -1) return `${notice}\n${content}`;
-  const bodyStart = frontmatterEnd + 4;
-  return `${content.slice(0, bodyStart)}\n\n${notice}${content.slice(bodyStart)}`;
-}
-
-export function skillTemplates(identity = ARK_GENERATION_IDENTITY) {
+export function skillTemplates() {
   const dir = path.join(__packageRoot, 'templates', 'skills');
   // A missing/mispackaged templates dir would otherwise install zero skills with
   // exit 0 — warn so a packaging regression (e.g. "templates" dropped from the
@@ -264,7 +227,7 @@ export function skillTemplates(identity = ARK_GENERATION_IDENTITY) {
     entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch {
     console.error(
-      `Warning: skill templates directory not found (${dir}); no /${identity.skillPrefix}-* skills installed.`
+      `Warning: skill templates directory not found (${dir}); no /ark-* skills installed.`
     );
     return [];
   }
@@ -272,21 +235,12 @@ export function skillTemplates(identity = ARK_GENERATION_IDENTITY) {
     .filter((entry) => entry.isFile() && /^[a-z0-9-]+\.md$/.test(entry.name))
     .map((entry) => entry.name)
     .sort()
-    .map((name) => {
-      const sourceName = path.basename(name, '.md');
-      const source = fs.readFileSync(path.join(dir, name), 'utf8');
-      if (identity.primary) return [sourceName, source];
-      const legacyName = sourceName.replace(/^structrail-/, `${identity.skillPrefix}-`);
-      return [
-        legacyName,
-        legacySkillNotice(legacySkillTemplate(source), legacyName, sourceName),
-      ];
-    });
+    .map((name) => [path.basename(name, '.md'), fs.readFileSync(path.join(dir, name), 'utf8')]);
 }
 
 // Skill names only, silent on a missing templates dir — for the freshness
 // advisory below, which must not print packaging warnings on every check run.
-export function skillTemplateNames(identity = ARK_GENERATION_IDENTITY) {
+export function skillTemplateNames() {
   const dir = path.join(__packageRoot, 'templates', 'skills');
   let entries;
   try {
@@ -296,12 +250,7 @@ export function skillTemplateNames(identity = ARK_GENERATION_IDENTITY) {
   }
   return entries
     .filter((entry) => entry.isFile() && /^[a-z0-9-]+\.md$/.test(entry.name))
-    .map((entry) => path.basename(entry.name, '.md'))
-    .map((name) =>
-      identity.primary
-        ? name
-        : name.replace(/^structrail-/, `${identity.skillPrefix}-`)
-    );
+    .map((entry) => path.basename(entry.name, '.md'));
 }
 
 // A normal ark-check run is the reliable discovery point for new /ark-* skills.
@@ -312,10 +261,10 @@ export function skillTemplateNames(identity = ARK_GENERATION_IDENTITY) {
 // skills this version ships, surface it here so agents and CI actually notice.
 // Advisory only — never affects the exit code. Copilot has no reliable directory
 // signal, so it is not auto-detected (explicit --tools only), matching resolveTools.
-export function detectCodexHomeGap(root, identity = generationIdentityForRoot(root)) {
+export function detectCodexHomeGap(root) {
   if (!fs.existsSync(path.join(root, 'AGENTS.md'))) return null;
   if (fs.existsSync(path.join(root, 'templates', 'skills'))) return null;
-  const skillNames = skillTemplateNames(identity);
+  const skillNames = skillTemplateNames();
   if (skillNames.length === 0) return null;
   const dir = codexPromptsDir();
   if (!fs.existsSync(dir)) return null;
@@ -333,12 +282,12 @@ export function detectCodexHomeGap(root, identity = generationIdentityForRoot(ro
   return missing > 0 || stale > 0 ? { missing, stale } : null;
 }
 
-export function detectSkillGaps(root, identity = generationIdentityForRoot(root)) {
+export function detectSkillGaps(root) {
   if (!fs.existsSync(path.join(root, 'AGENTS.md'))) return [];
   // The Ark source tree keeps the skill templates at templates/skills/ — it's the
   // producer, not a consumer, so it must not nag itself to "install" its own skills.
   if (fs.existsSync(path.join(root, 'templates', 'skills'))) return [];
-  const skillNames = skillTemplateNames(identity);
+  const skillNames = skillTemplateNames();
   if (skillNames.length === 0) return [];
   const detected = [];
   if (fs.existsSync(path.join(root, '.claude'))) detected.push('claude');

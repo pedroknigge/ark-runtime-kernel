@@ -30,9 +30,6 @@ jobs:
       - name: JavaScript syntax (bin/scripts/eval)
         run: npm run check:js
 
-      - name: Legacy identity ratchet
-        run: npm run check:identity
-
       # R1: bin/ark-layer-match.mjs must be regenerated from src/domain/layerMatch.ts
       - name: Layer-match derived artifact (drift guard)
         run: npm run check:layer-match
@@ -48,11 +45,11 @@ jobs:
       - name: Build
         run: npm run build
 
-      # Mandatory architecture gate: structrail-check exits non-zero on any layer violation,
+      # Mandatory architecture gate: ark-check exits non-zero on any layer violation,
       # which fails the job and blocks the merge. --strict-config also fails the job on
       # governance-coverage warnings (e.g. unclassified source files), so the config can
       # never silently rot below 100% coverage of src.
-      - name: Architecture gate (structrail-check)
+      - name: Architecture gate (ark-check)
         run: npm run check:architecture
 
   node-compat:
@@ -71,9 +68,9 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run check:js
-      - run: node bin/structrail-check.mjs --version
+      - run: node bin/ark-check.mjs --version
 
-  # Consumer TypeScript matrix: structrail-check --plan against TS 5 / 6 / 7 installed in a
+  # Consumer TypeScript matrix: ark-check --plan against TS 5 / 6 / 7 installed in a
   # throwaway fixture (tests/fixtures/ts-consumer). Ensures gate load + resolve work
   # while the ecosystem moves to TypeScript 7 (native). See docs/typescript-support.md.
   ts-compat:
@@ -93,5 +90,5 @@ jobs:
 
       - run: npm ci
 
-      - name: structrail-check --plan on consumer fixture (typescript@${{ matrix.typescript }})
+      - name: ark-check --plan on consumer fixture (typescript@${{ matrix.typescript }})
         run: node scripts/ts-compat-matrix.mjs ${{ matrix.typescript }}

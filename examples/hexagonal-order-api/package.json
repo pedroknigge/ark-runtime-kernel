@@ -1,15 +1,15 @@
 {
-  "name": "structrail-example-hexagonal-order-api",
+  "name": "ark-example-hexagonal-order-api",
   "private": true,
   "version": "1.0.0",
   "type": "module",
   "scripts": {
     "start": "tsx src/main.ts",
-    "check": "structrail-check --root . --config structrail.config.json --strict-config",
+    "check": "ark-check --root . --config ark.config.json --strict-config",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "structrail": "file:../.."
+    "arkgate": "file:../.."
   },
   "devDependencies": {
     "tsx": "^4.19.0",

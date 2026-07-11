@@ -1,5 +1,5 @@
 /**
- * Structrail Event Bus module
+ * Ark Event Bus module
  * Publish/subscribe for Domain Events with history and metadata support.
  */
 

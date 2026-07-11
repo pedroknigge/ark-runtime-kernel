@@ -1,7 +1,7 @@
-# Structrail internal roadmap — truth, focus, proof
+# ArkGate internal roadmap — truth, focus, proof
 
 - **Status date:** 2026-07-11
-- **Scope:** canonical implementation queue for the Structrail library repository
+- **Scope:** canonical implementation queue for the ArkGate library repository
 - **Rule:** one active item at a time; do not start an item until all dependencies are `done`
 
 This roadmap supersedes the former “Trust 95+” estimate and its active Q-track. Shipped work is
@@ -12,7 +12,7 @@ product is release-ready.
 
 ## Product mandate
 
-Structrail exists to prevent architecture-invalid TypeScript changes with low friction and
+ArkGate exists to prevent architecture-invalid TypeScript changes with low friction and
 verifiable coverage.
 
 ```text
@@ -112,7 +112,6 @@ Run for every implementation item unless the item is documentation/decision-only
 npm run typecheck
 npm run test:confidence
 npm run check:js
-npm run check:identity
 npm run check:layer-match
 npm run check:cli-pure
 npm run check:module-budgets
@@ -139,8 +138,8 @@ Stop the queue and add a new stabilization item before continuing when any of th
 - A package/release check cannot be reproduced from a clean checkout.
 
 While any `RB-*` blocker is open, allow only canary releases on a non-`latest` dist-tag and emergency
-P0/security patches. Do not publish a normal stable feature release until `S01`–`S07`, `S07-M1`,
-and `O03` are `done`.
+P0/security patches. Do not publish a normal stable feature release until `S01`–`S07` and `O03` are
+`done`.
 
 ---
 
@@ -154,26 +153,24 @@ and `O03` are `done`.
 | 4 | `S04` | `done` | M | `S03` | Every supported host-only install produces a valid CI/write contract |
 | 5 | `S05` | `done` | M | `S04` | All confirmed scanner false positives and bypasses are closed |
 | 6 | `S06` | `done` | S | `S03`–`S05` | README, docs, doctor, and site use one truthful support matrix |
-| 7 | `S07` | `done` | S | `S06` | Structrail is the decided identity before the public core API is stabilized |
-| 8 | `S07-M1` | `doing` | L | `S07` | Local acceptance is green; M0/M6 cutover and final re-audit remain |
-| 9 | `C01` | `todo` | M | `S07-M1` | `structrail.config.json` has a versioned JSON Schema and migrations |
-| 10 | `C02` | `todo` | M | `C01` | A stable analysis IR and programmatic API are specified |
-| 11 | `C03` | `todo` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
-| 12 | `C04` | `todo` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
-| 13 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
-| 14 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
-| 15 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
-| 16 | `O02` | `todo` | M | `O01` | `structrail start` previews all mutations and measured coverage before apply |
-| 17 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
-| 18 | `O04` | `todo` | M | `O03` | Clean-room onboarding remains green for every supported host profile |
-| 19 | `V01` | `todo` | L | `C05`, `O04` | Cold, warm, and incremental performance have real CI budgets |
-| 20 | `V02` | `todo` | M | `C04` | Mutation, property, and fuzz tests defend critical boundaries |
-| 21 | `V03` | `todo` | L | `O04`, `V01`, `V02` | External adoption is reproduced on at least 12 pinned repositories |
-| 22 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
-| 23 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
+| 7 | `S07` | `done` | S | `S06` | ArkGate is retained as the canonical product identity |
+| 8 | `C01` | `todo` | M | `S07` | `ark.config.json` has a versioned JSON Schema and migrations |
+| 9 | `C02` | `todo` | M | `C01` | A stable analysis IR and programmatic API are specified |
+| 10 | `C03` | `todo` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
+| 11 | `C04` | `todo` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
+| 12 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
+| 13 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
+| 14 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
+| 15 | `O02` | `todo` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
+| 16 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
+| 17 | `O04` | `todo` | M | `O03` | Clean-room onboarding remains green for every supported host profile |
+| 18 | `V01` | `todo` | L | `C05`, `O04` | Cold, warm, and incremental performance have real CI budgets |
+| 19 | `V02` | `todo` | M | `C04` | Mutation, property, and fuzz tests defend critical boundaries |
+| 20 | `V03` | `todo` | L | `O04`, `V01`, `V02` | External adoption is reproduced on at least 12 pinned repositories |
+| 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
+| 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** complete the human-authorized M0/M6 identity cutover, then repeat the clean acceptance
-audit on that cutover commit. Do not start the Phase C schema before `S07-M1` is `done`.
+**Next:** `C01`. Version and validate `ark.config.json` through one shared contract loader.
 
 ---
 
@@ -459,65 +456,22 @@ package allowlist/dry-run, and the production security audit pass (0 vulnerabili
 
 **Verify:** documentation review plus package/domain availability evidence. No release is required.
 
-**Decision (2026-07-11):** adopt **Structrail** and `structrail`; do not retain ArkGate as the
-primary identity. [ADR 0001](docs/adr/0001-product-identity-structrail.md) records the owner, final
-decision, five-candidate package/repository/domain/search/basic-mark screen, evidence links, and
-rejected retain-name option. The point-in-time leading-candidate checks found the bare `structrail`
-npm name, exact GitHub identity, and `.com`/`.dev` RDAP records unclaimed; this is availability
-evidence, not a reservation or legal clearance. The direct Archgate category collision and multiple
-unrelated ArkGate uses make differentiation insufficient. The
-[compatibility migration plan](docs/migrations/arkgate-to-structrail.md) inventories every public
-identity category, targets v3 compatibility with removal no earlier than v4, and creates `S07-M1`
-as a hard dependency of `C01`.
-
-### S07-M1 — Migrate ArkGate to Structrail with compatibility
-
-- **Status:** `doing`
-- **Depends on:** `S07`
-- **Plan:** [ArkGate to Structrail migration](docs/migrations/arkgate-to-structrail.md)
-
-**Implementation**
-
-1. Recheck the external identity before local work. Reservation and legal clearance block public
-   metadata/cutover and the final `done` state, but not red fixtures or locally reversible code.
-   Stop and supersede ADR 0001 if a prerequisite fails before cutover.
-2. Commit failing installed-package fixtures for every current public identity and every target
-   Structrail surface.
-3. Make Structrail primary across package, bins, config, environment, MCP, skills, and local
-   repository surfaces without redesigning unrelated product behavior. Repository/website cutover
-   remains gated by M0/M6.
-4. Publish or prepare the `arkgate@3` compatibility package and retain legacy names for all of v3.
-5. Ratchet new public names so ArkGate identifiers can exist only in explicit compatibility,
-   migration, history, fixture, or negative-test locations.
-
-**Acceptance**
-
-- New output and Phase C plans use only the Structrail identity.
-- Clean npm, pnpm, and yarn fixtures prove both the primary package and every v2 compatibility path.
-- Canonical and legacy paths produce identical enforcement verdicts.
-- No config/environment conflict is resolved silently.
-- External domain, npm, GitHub, website, registry, and redirect evidence is recorded before cutover.
-- Common merge gate, package/type compatibility, security, and clean-checkout checks pass.
-
-**Verify:** follow the `S07-M1` acceptance gate and ordered M0–M7 checklist in the migration plan.
-
-**Local evidence (2026-07-11, `6df6716`):** the
-[clean local acceptance audit](docs/migrations/arkgate-to-structrail.md#local-acceptance-audit--2026-07-11)
-passes from a fresh archive checkout: 782/782 tests, 91.79% statements / 85.23% branches / 94.98%
-functions / 91.79% lines, 97.20% mutation, all nine npm/pnpm/Yarn package combinations, a
-132-file dry-run tarball, TypeScript 5.9.3/6.0.3/7.0.2, architecture and generated-parity gates,
-and 0 production vulnerabilities. `S07-M1` remains `doing`: M0 reservation/legal evidence and the
-explicitly authorized M6 public cutover are not complete, and the same audit must be repeated on
-the final cutover commit.
+**Decision (2026-07-11):** retain **ArkGate** as the canonical product and `arkgate` as the npm
+package. [ADR 0001](docs/adr/0001-product-identity-arkgate.md) records the owner decision, migration
+cost, canonical surface table, existing package/repository/site evidence, and the explicit
+positioning boundary from the unrelated Archgate CLI. The unpublished local rename experiment was
+reversed without changing GitHub, npm, or `arkgate.online`. Phase C therefore continues with
+`ark.config.json`, `Ark*` APIs, `ARK_*` environment variables, `ark://` MCP resources, and the
+existing command/skill names.
 
 ---
 
 ## Phase C — create one product core
 
-### C01 — Version and validate `structrail.config.json`
+### C01 — Version and validate `ark.config.json`
 
 - **Status:** `todo`
-- **Depends on:** `S07-M1`
+- **Depends on:** `S07`
 
 **Implementation**
 
@@ -882,30 +836,29 @@ the new exit evidence.
   Codex multi-project handling, runtime decomposition/honesty, and product site.
 - Track P: architecture preset and peer-isolation work.
 
-### Identity transition decided by S07
+### Canonical product identity
 
-| Surface | Working-tree primary | External state pending M6 | v3 compatibility |
-|---|---|---|---|
-| Product | Structrail | — | ArkGate deprecated |
-| npm | `structrail@3` manifest prepared | publish only after package smoke | `arkgate@3` wrapper |
-| Bins | `structrail*` | publish only after package smoke | six old bins via wrapper |
-| Config | `structrail.config.json` | — | legacy loader through v3 |
-| MCP | `structrail://...`, `structrail_*` | registry registration pending | aliases through v3 |
-| Website | no Structrail domain advertised | reservation/legal + redirects pending | existing URLs redirect in M6 |
-| Repository | local product surfaces renamed | GitHub rename pending | GitHub redirect in M6 |
+| Surface | Current value |
+|---|---|
+| Product | ArkGate |
+| npm | `arkgate` |
+| Preferred bins | `arkgate`, `arkgate-check`, `arkgate-mcp` |
+| Compatibility bins | `ark`, `ark-check`, `ark-mcp` |
+| Config | `ark.config.json` |
+| Website | [arkgate.online](https://www.arkgate.online/) |
+| Repository | [pedroknigge/arkgate](https://github.com/pedroknigge/arkgate) |
 
-[ADR 0001](docs/adr/0001-product-identity-structrail.md) fixes the target identity. Local package,
-docs, examples, gates, and Phase C plans now use Structrail; explicit compatibility/history locations
-retain v2 names. External names and redirects remain unchanged until M0/M6 evidence is complete.
+S07 retains this identity. Any future proposal to rename it requires a new ADR and must not be
+folded into Phase C implementation work.
 
 ---
 
 ## Next implementation session
 
 ```text
-Item: S07-M1 — Migrate ArkGate to Structrail with compatibility
-Current result: local migration, v4-bounded ratchet, and clean local acceptance audit green at 6df6716
-Next: record M0 reservation/legal proof, authorize and execute M6, then re-run the audit on cutover HEAD
-Primary plan: docs/migrations/arkgate-to-structrail.md
-Required finish: public identity cut over + external evidence + all v2 paths/common/package gates green
+Item: C01 — Version and validate ark.config.json
+First result: add failing schema/loader fixtures for every shipped config and prior supported version
+Then: implement one versioned schema, deterministic migrations, and one loader shared by all adapters
+Primary files: config loader, packaged schema, CLI/MCP/ESLint adapters, config fixtures
+Required finish: presets/examples validate + invalid paths fail precisely + common/package gates green
 ```

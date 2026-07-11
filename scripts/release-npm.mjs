@@ -64,7 +64,6 @@ try {
 run('npm run typecheck');
 run('npm run test:confidence');
 run('npm run security:audit');
-run('npm run check:identity');
 run('npm run check:architecture');
 
 if (!dry && allowLocalPublish) {

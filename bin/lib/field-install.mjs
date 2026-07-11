@@ -140,11 +140,11 @@ export function syncBaselineIntoCheckSurfaces(root, opts = {}) {
 }
 
 /**
- * Pin the requested package in package.json devDependencies (no package manager network call).
+ * Pin `arkgate` in package.json devDependencies (no package manager network call).
  *
  * @returns {{ changed: boolean, reason: string, version?: string }}
  */
-export function pinProductDevDependency(root, packageName, opts = {}) {
+export function pinArkgateDevDependency(root, opts = {}) {
   const pkgPath = path.join(root, 'package.json');
   if (!fs.existsSync(pkgPath)) {
     return { changed: false, reason: 'no-package-json' };
@@ -160,11 +160,11 @@ export function pinProductDevDependency(root, packageName, opts = {}) {
     pkg.devDependencies && typeof pkg.devDependencies === 'object'
       ? { ...pkg.devDependencies }
       : {};
-  if (typeof deps[packageName] === 'string' || typeof dev[packageName] === 'string') {
+  if (typeof deps.arkgate === 'string' || typeof dev.arkgate === 'string') {
     return {
       changed: false,
       reason: 'already-present',
-      version: deps[packageName] || dev[packageName],
+      version: deps.arkgate || dev.arkgate,
     };
   }
   const shipped = arkPackageVersion();
@@ -174,7 +174,7 @@ export function pinProductDevDependency(root, packageName, opts = {}) {
       : shipped
         ? `^${shipped}`
         : 'latest';
-  dev[packageName] = version;
+  dev.arkgate = version;
   if (opts.write !== false) {
     fs.writeFileSync(
       pkgPath,
@@ -182,11 +182,6 @@ export function pinProductDevDependency(root, packageName, opts = {}) {
     );
   }
   return { changed: true, reason: 'added', version };
-}
-
-/** v3 compatibility helper retained for existing internal callers and tests. */
-export function pinArkgateDevDependency(root, opts = {}) {
-  return pinProductDevDependency(root, 'arkgate', opts);
 }
 
 /**

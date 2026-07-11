@@ -672,7 +672,7 @@ jobs:
     const skillNames = fs
       .readdirSync(path.resolve('templates/skills'))
       .filter((file) => file.endsWith('.md'))
-      .map((file) => file.replace(/\.md$/, '').replace(/^structrail-/, 'ark-'));
+      .map((file) => file.replace(/\.md$/, ''));
     expect(skillNames).toContain('ark-coverage');
     expect(skillNames.length).toBeGreaterThanOrEqual(8);
 
@@ -1000,14 +1000,10 @@ describe('ark init', () => {
     let out = '';
     let status = 0;
     try {
-      out = execFileSync(
-        'node',
-        [path.resolve('bin/ark.mjs'), 'start', '--yes', '--no-install', '--root', root],
-        {
-          encoding: 'utf8',
-          stdio: 'pipe',
-        }
-      );
+      out = execFileSync('node', [path.resolve('bin/ark.mjs'), 'start', '--yes', '--root', root], {
+        encoding: 'utf8',
+        stdio: 'pipe',
+      });
     } catch (error) {
       const e = error as { status: number; stdout: string };
       out = e.stdout ?? '';
@@ -1046,14 +1042,10 @@ describe('ark init', () => {
     for (let i = 0; i < 160; i += 1) {
       fs.writeFileSync(path.join(root, `src/app/p${i}.tsx`), `export const a${i} = ${i};\n`);
     }
-    const out = execFileSync(
-      'node',
-      [path.resolve('bin/ark.mjs'), 'start', '--yes', '--no-install', '--root', root],
-      {
-        encoding: 'utf8',
-        stdio: 'pipe',
-      }
-    );
+    const out = execFileSync('node', [path.resolve('bin/ark.mjs'), 'start', '--yes', '--root', root], {
+      encoding: 'utf8',
+      stdio: 'pipe',
+    });
     expect(out).toContain('established codebase');
     expect(out).toContain('ADOPT');
   });

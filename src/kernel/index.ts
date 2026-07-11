@@ -1,5 +1,5 @@
 /**
- * Structrail Kernel — internal governance primitives.
+ * Ark Kernel — internal governance primitives.
  * Public surface is re-exported from ../index.ts
  */
 

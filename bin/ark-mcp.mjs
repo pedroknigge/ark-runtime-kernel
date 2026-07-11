@@ -58,62 +58,34 @@ import {
 import { createImportTargetResolver } from './lib/import-resolve.mjs';
 import { validateWithAutoPatch, resolveImportFileAbs } from './lib/auto-patch.mjs';
 import { composePrepareWrite } from './lib/prepare-write.mjs';
-import {
-  generationIdentity,
-  isStructrailInvocation,
-  resolveBooleanEnvironment,
-  resolveConfigIdentity,
-} from './lib/product-identity.mjs';
 
-const invocationIdentity = generationIdentity(isStructrailInvocation());
-const arkCheckBin = fileURLToPath(
-  new URL(`./${invocationIdentity.checkBin}.mjs`, import.meta.url)
-);
-
-function cliVersion() {
-  try {
-    const pkg = JSON.parse(
-      fs.readFileSync(fileURLToPath(new URL('../package.json', import.meta.url)), 'utf8')
-    );
-    return typeof pkg.version === 'string' ? pkg.version : 'unknown';
-  } catch {
-    return 'unknown';
-  }
-}
-
-function usage() {
-  const identity = invocationIdentity;
-  return `Usage: ${identity.mcpBin} [--root <dir>] [--config ${identity.configName}] [--manifest <manifest.json>]
-       ${identity.mcpBin} --hook [--hook-repair] [--root <dir>] [--config ${identity.configName}]
-       ${identity.mcpBin} --session-context [--root <dir>] [--config ${identity.configName}]
-
-${identity.productName} MCP server over stdio. Canonical resource: ${identity.manifestResource}.
-Use --hook for one-shot write validation or --session-context for contract injection.`;
-}
+const arkCheckBin = fileURLToPath(new URL('./ark-check.mjs', import.meta.url));
 
 /**
  * W4 — opt-in hook repair payload.
  * True when CLI `--hook-repair` or env ARK_HOOK_REPAIR is 1/true/yes.
  * Default remains hard block with prose violations only (no machine-readable patch).
  */
+function envTruthy(name) {
+  const v = process.env[name];
+  if (v == null || v === '') return false;
+  return /^(1|true|yes|on)$/i.test(String(v).trim());
+}
+
 function parseArgs(argv) {
   const args = {
     root: process.cwd(),
-    config: undefined,
+    config: 'ark.config.json',
     configExplicit: false,
     manifest: undefined,
     hook: false,
     /** When true with --hook: emit ARK_REPAIR_JSON / ARK_AUTOPATCH_JSON (never silent write). */
     hookRepair: false,
     sessionContext: false,
-    help: false,
-    version: false,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const a = argv[i];
     if (a === '--hook') args.hook = true;
-    else if (a === '--help' || a === '-h') args.help = true;
-    else if (a === '--version' || a === '-V') args.version = true;
     else if (a === '--hook-repair') {
       args.hook = true;
       args.hookRepair = true;
@@ -124,16 +96,10 @@ function parseArgs(argv) {
       args.configExplicit = true;
     } else if (a === '--manifest') args.manifest = argv[++i];
   }
-  const repairEnvironment = resolveBooleanEnvironment(
-    process.env,
-    'STRUCTRAIL_HOOK_REPAIR',
-    'ARK_HOOK_REPAIR'
-  );
-  // Canonical value wins when both generations are present.
-  if (repairEnvironment.value) {
+  // Env can enable repair without rewriting host templates (ARK_HOOK_REPAIR=1).
+  if (envTruthy('ARK_HOOK_REPAIR')) {
     args.hookRepair = true;
   }
-  args.repairEnvironment = repairEnvironment;
   return args;
 }
 
@@ -168,14 +134,14 @@ async function loadArk() {
   const url = new URL('../dist/index.js', import.meta.url);
   if (!fs.existsSync(url)) {
     throw new Error(
-      `${invocationIdentity.mcpBin} requires the built library at dist/index.js. Run "npm run build" first.`
+      'ark-mcp requires the built library at dist/index.js. Run "npm run build" first.'
     );
   }
   try {
     return await import(url.href);
   } catch (err) {
     throw new Error(
-      `${invocationIdentity.mcpBin} failed to load dist/index.js (rebuild with "npm run build"): ${
+      `ark-mcp failed to load dist/index.js (rebuild with "npm run build"): ${
         err instanceof Error ? err.message : String(err)
       }`
     );
@@ -342,14 +308,13 @@ function runHook(gate, config, args, ts) {
   // Default remains hard block with prose only — hosts that cannot re-inject stay clean.
   const repair = Boolean(args.hookRepair);
   const message = [
-    `${invocationIdentity.productName} architecture gate blocked this write to ${rel}${layer ? ` (layer: ${layer})` : ''}:`,
+    `Ark architecture gate blocked this write to ${rel}${layer ? ` (layer: ${layer})` : ''}:`,
     ...lines,
     ...(suggestions.length > 0 ? ['Fix:', ...suggestions.map((s) => `  ${s}`)] : []),
     ...(autoPatch && repair
       ? [
           `autoPatch available (${autoPatch.remediationKind}, confidence ${autoPatch.confidence}): ` +
-            'apply the patched source from STRUCTRAIL_AUTOPATCH_JSON / ' +
-            'STRUCTRAIL_REPAIR_JSON on stderr (ARK_* aliases are also emitted)' +
+            'apply the patched source from ARK_AUTOPATCH_JSON / ARK_REPAIR_JSON on stderr' +
             (grokStyle ? ' (or autoPatch in the deny JSON on stdout)' : '') +
             ' instead of re-drafting. Gate still denies this write (never silent apply).',
         ]
@@ -357,11 +322,11 @@ function runHook(gate, config, args, ts) {
     ...(autoPatch && !repair
       ? [
           `Mechanical-safe autoPatch is available (${autoPatch.remediationKind}). ` +
-            'Enable repair payload with STRUCTRAIL_HOOK_REPAIR=1 or --hook-repair to receive ' +
+            'Enable repair payload with ARK_HOOK_REPAIR=1 or --hook-repair to receive ' +
             'machine-readable source (still hard-blocks; host re-injects).',
         ]
       : []),
-    `Fix the violations and retry. The architecture contract is available as the ${invocationIdentity.manifestResource} MCP resource.`,
+    'Fix the violations and retry. The architecture contract is available as the ark://manifest MCP resource.',
   ].join('\n');
   process.stderr.write(message + '\n');
 
@@ -383,10 +348,8 @@ function runHook(gate, config, args, ts) {
           }
         : { autoPatch: null }),
     };
-    process.stderr.write(`STRUCTRAIL_REPAIR_JSON:${JSON.stringify(repairPayload)}\n`);
     process.stderr.write(`ARK_REPAIR_JSON:${JSON.stringify(repairPayload)}\n`);
     if (autoPatch) {
-      process.stderr.write(`STRUCTRAIL_AUTOPATCH_JSON:${JSON.stringify(autoPatch)}\n`);
       process.stderr.write(`ARK_AUTOPATCH_JSON:${JSON.stringify(autoPatch)}\n`);
     }
   }
@@ -416,17 +379,14 @@ function runArkCheckJsonFromRoot(root, config, extraArgs, manifest) {
   if (result.error) {
     return {
       data: null,
-      raw: `${invocationIdentity.checkBin} failed to execute: ${result.error.message}`,
+      raw: `ark-check failed to execute: ${result.error.message}`,
     };
   }
   const stdout = result.stdout ?? '';
   try {
     return { data: JSON.parse(stdout), raw: stdout };
   } catch {
-    return {
-      data: null,
-      raw: stdout || result.stderr || `${invocationIdentity.checkBin} produced no output`,
-    };
+    return { data: null, raw: stdout || result.stderr || 'ark-check produced no output' };
   }
 }
 
@@ -436,9 +396,7 @@ function runArkCheckJsonFromRoot(root, config, extraArgs, manifest) {
  * and never exits non-zero for missing optional inputs (e.g. no baseline file).
  */
 function printSessionContext(config, profile, forbiddenGlobals, args, configPath) {
-  const lines = [
-    `${invocationIdentity.productName} architecture contract governs this project (${invocationIdentity.configName} is authoritative).`,
-  ];
+  const lines = ['Ark architecture contract governs this project (ark.config.json is authoritative).'];
 
   const configLayers = Array.isArray(config.layers) ? config.layers : [];
   if (configLayers.length > 0) {
@@ -456,7 +414,7 @@ function printSessionContext(config, profile, forbiddenGlobals, args, configPath
 
   const denied = (profile.rules ?? []).filter((rule) => !rule.allowed).length;
   lines.push(
-    `Rules: ${denied} denied layer edge(s). Full contract: ${invocationIdentity.manifestResource} MCP resource.`
+    `Rules: ${denied} denied layer edge(s). Full contract: ark://manifest MCP resource.`
   );
 
   // Advisory output: a malformed baseline must not abort the summary.
@@ -473,19 +431,15 @@ function printSessionContext(config, profile, forbiddenGlobals, args, configPath
   }
 
   lines.push(
-    `After edits run: ${arkCommand(args.root, invocationIdentity.checkBin, `--root . --config ${invocationIdentity.configName} --strict-config`)}`
+    `After edits run: ${arkCommand(args.root, 'ark-check', '--root . --config ark.config.json --strict-config')}`
   );
-  lines.push(
-    `If ${invocationIdentity.productName} reports violations, fix the architecture instead of weakening the gate.`
-  );
+  lines.push('If Ark reports violations, fix the architecture instead of weakening the gate.');
 
   const { data: coverage } = runArkCheckJsonFromRoot(args.root, args.config, ['--coverage'], undefined);
   const governedPercent = coverage?.coverage?.governed?.percent ?? coverage?.governed?.percent;
   if (shouldShowNewHereNudge(args.root, configPath, governedPercent, false)) {
     lines.push('');
-    lines.push(
-      `New to ${invocationIdentity.productName}? Run /${invocationIdentity.skillPrefix}-architect or: ${invocationIdentity.checkBin} --recommend`
-    );
+    lines.push('New to Ark? Run /ark-architect or: ark-check --recommend');
   }
 
   process.stdout.write(`${lines.join('\n')}\n`);
@@ -493,33 +447,6 @@ function printSessionContext(config, profile, forbiddenGlobals, args, configPath
 
 async function main() {
   const args = parseArgs(process.argv);
-  if (args.version) {
-    process.stdout.write(`${cliVersion()}\n`);
-    return;
-  }
-  if (args.help) {
-    process.stdout.write(`${usage()}\n`);
-    return;
-  }
-  const primaryInvocation = invocationIdentity.primary;
-  const configIdentity = resolveConfigIdentity({
-    root: args.root,
-    requested: args.config,
-    explicit: args.configExplicit,
-    primary: primaryInvocation,
-  });
-  if (configIdentity.error) throw new Error(configIdentity.message);
-  args.config = configIdentity.config;
-  if (primaryInvocation) {
-    for (const deprecation of configIdentity.deprecations) {
-      process.stderr.write(`warning ${deprecation.code} ${deprecation.message}\n`);
-    }
-    if (args.repairEnvironment.conflict) {
-      process.stderr.write(
-        'warning environment-conflict STRUCTRAIL_HOOK_REPAIR overrides ARK_HOOK_REPAIR.\n'
-      );
-    }
-  }
   const configPath = resolveInRoot(args.root, args.config);
 
   // SessionStart contract injection is only meaningful in Ark-governed projects. Bail
@@ -540,7 +467,7 @@ async function main() {
     };
   if (!config.layers || config.layers.length === 0) {
     process.stderr.write(
-      `[${invocationIdentity.mcpBin}] warning: no layers configured — file→layer inference from config patterns ` +
+      '[ark-mcp] warning: no layers configured — file→layer inference from config patterns ' +
         'is unavailable, so layer-reference checks run only when the caller passes an explicit ' +
         '"layer" (checked against the default 11-layer profile).\n'
     );
@@ -586,7 +513,7 @@ async function main() {
         ? layersWithPrefixes.map((layer) => ({ name: layer.name, prefixes: layer.intentPrefixes }))
         : DEFAULT_INTENT_PREFIXES.map((d) => ({ name: d.layer, prefixes: d.prefixes }));
     profile = ark.createArchitectureProfile({
-      name: `${invocationIdentity.fileStem}.config`,
+      name: 'ark.config',
       layers: profileLayers,
       rules: config.rules ?? DEFAULT_RULES,
     });
@@ -653,10 +580,10 @@ async function main() {
     return;
   }
 
-  const SERVER_INFO = { name: primaryInvocation ? 'structrail' : 'arkgate', version: ark.version };
+  const SERVER_INFO = { name: 'arkgate', version: ark.version };
   const DEFAULT_PROTOCOL = '2024-11-05';
 
-  const LEGACY_TOOLS = [
+  const TOOLS = [
     {
       name: 'validate_code',
       description:
@@ -784,35 +711,10 @@ async function main() {
     },
   ];
 
-  const canonicalizeTool = (tool) =>
-    JSON.parse(
-      JSON.stringify(tool)
-        .replace(/\bArkGate\b/g, 'Structrail')
-        .replace(/\bArk\b/g, 'Structrail')
-        .replace(/ark\.config\.json/g, 'structrail.config.json')
-        .replace(/\bark-check\b/g, 'structrail-check')
-        .replace(/\bark_(?=[a-z0-9])/g, 'structrail_')
-    );
-  const canonicalToolSet = LEGACY_TOOLS.map(canonicalizeTool);
-  const canonicalTools = canonicalToolSet.slice(1);
-  const legacyTools = LEGACY_TOOLS.slice(1).map((tool) => ({
-    ...tool,
-    description: `Deprecated ArkGate alias; use ${tool.name.replace(/^ark_/, 'structrail_')}. ${tool.description}`,
-  }));
-  const TOOLS = [canonicalToolSet[0], ...canonicalTools, ...legacyTools];
-
   const RESOURCES = [
     {
-      uri: 'structrail://manifest',
-      name: 'Structrail architectural contract',
-      description:
-        'The architecture agents must obey before generating code: layers and layer rules ' +
-        '(plus the full project manifest when --manifest is provided).',
-      mimeType: 'application/json',
-    },
-    {
       uri: 'ark://manifest',
-      name: 'Ark architectural contract (deprecated alias)',
+      name: 'Ark architectural contract',
       description:
         'The architecture agents must obey before generating code: layers and layer rules ' +
         '(plus the full project manifest when --manifest is provided).',
@@ -887,7 +789,7 @@ async function main() {
               suggestedLayersNote:
                 'Layers from the default 11-layer profile this project has not declared. ' +
                 'When creating a NEW kind of code that fits one of these, place it in a ' +
-                `conventional directory and add the layer to ${invocationIdentity.configName} instead of ` +
+                'conventional directory and add the layer to ark.config.json instead of ' +
                 'inventing an ungoverned location.',
             }
           : {}),
@@ -956,12 +858,7 @@ async function main() {
     if (useBaseline) extra.push('--baseline');
     const { data, raw } = runArkCheckJson(extra);
     if (!data) {
-      return {
-        content: [
-          { type: 'text', text: `${invocationIdentity.checkBin} produced no JSON:\n${raw}` },
-        ],
-        isError: true,
-      };
+      return { content: [{ type: 'text', text: `ark-check produced no JSON:\n${raw}` }], isError: true };
     }
     return {
       content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
@@ -973,12 +870,7 @@ async function main() {
     const { data, raw } = runArkCheckJson(['--coverage']);
     if (!data) {
       return {
-        content: [
-          {
-            type: 'text',
-            text: `${invocationIdentity.checkBin} --coverage produced no JSON:\n${raw}`,
-          },
-        ],
+        content: [{ type: 'text', text: `ark-check --coverage produced no JSON:\n${raw}` }],
         isError: true,
       };
     }
@@ -989,12 +881,7 @@ async function main() {
     const { data, raw } = runArkCheckJson(['--recommend']);
     if (!data) {
       return {
-        content: [
-          {
-            type: 'text',
-            text: `${invocationIdentity.checkBin} --recommend produced no JSON:\n${raw}`,
-          },
-        ],
+        content: [{ type: 'text', text: `ark-check --recommend produced no JSON:\n${raw}` }],
         isError: true,
       };
     }
@@ -1043,12 +930,12 @@ async function main() {
         layer: null,
         governed: noLayers,
         message: noLayers
-          ? `This project declares no path-based layers in ${invocationIdentity.configName}, so a ` +
+          ? 'This project declares no path-based layers in ark.config.json, so a ' +
             'layer cannot be inferred from the path. The gate still enforces the ' +
-            `default 11-layer profile by intent-name prefix — read ${invocationIdentity.manifestResource} ` +
+            'default 11-layer profile by intent-name prefix — read ark://manifest ' +
             'for the layers and validate the actual snippet with validate_code.'
           : 'No layer pattern matches this path — code here is UNGOVERNED (no import ' +
-            `rules enforced). Place it under a directory a layer in ${invocationIdentity.configName} ` +
+            'rules enforced). Place it under a directory a layer in ark.config.json ' +
             'matches, or add a layer. See suggestedLayers for conventional homes.',
         suggestedLayers: suggestedLayers(),
       };
@@ -1111,7 +998,7 @@ async function main() {
     const placement = placeResult(filePath, description);
     if (placement.error) {
       return {
-        content: [{ type: 'text', text: `prepare_write: ${placement.error}` }],
+        content: [{ type: 'text', text: `ark_prepare_write: ${placement.error}` }],
         isError: true,
       };
     }
@@ -1166,7 +1053,7 @@ async function main() {
                     : tsPackages.length > 0
                       ? tsPackages
                       : ['src'],
-                next: `npx ${invocationIdentity.checkBin} --adopt-contract --write`,
+                next: 'npx ark-check --adopt-contract --write',
               },
               null,
               2
@@ -1185,12 +1072,6 @@ async function main() {
 
   const TOOL_HANDLERS = {
     validate_code: runValidate,
-    structrail_check: runCheckTool,
-    structrail_coverage: runCoverageTool,
-    structrail_place: runPlace,
-    structrail_prepare_write: runPrepareWrite,
-    structrail_recommend: runRecommendTool,
-    structrail_suggest_include: runSuggestIncludeTool,
     ark_check: runCheckTool,
     ark_coverage: runCoverageTool,
     ark_place: runPlace,
@@ -1237,12 +1118,12 @@ async function main() {
         reply(id, { resources: RESOURCES });
         return;
       case 'resources/read':
-        if (params?.uri !== 'structrail://manifest' && params?.uri !== 'ark://manifest') {
+        if (params?.uri !== 'ark://manifest') {
           fail(id, -32602, `Unknown resource: ${params?.uri}`);
           return;
         }
         reply(id, {
-          contents: [{ uri: params.uri, mimeType: 'application/json', text: manifestText() }],
+          contents: [{ uri: 'ark://manifest', mimeType: 'application/json', text: manifestText() }],
         });
         return;
       default:

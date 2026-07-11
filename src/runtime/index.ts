@@ -1,14 +1,12 @@
 /**
- * Preferred package entry for the **optional** Structrail runtime kernel.
+ * Preferred package entry for the **optional** ArkGate runtime kernel.
  *
  * ```ts
- * import { createStrictStructrailKernelFromConfig } from 'structrail/runtime';
+ * import { createStrictArkKernelFromConfig } from 'arkgate/runtime';
  * ```
  *
  * Architecture gates (CLI / MCP / eslint) do **not** require this entry.
- * legacy-identity:start v3-compatibility removal=v4
- * The `arkgate` compatibility package still re-exports the same symbols for v3;
- * legacy-identity:end
+ * The root package `arkgate` still re-exports the same symbols for compatibility;
  * prefer this subpath for new code. See `docs/package-surface.md`.
  *
  * @packageDocumentation

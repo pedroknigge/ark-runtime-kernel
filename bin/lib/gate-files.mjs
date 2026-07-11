@@ -4,7 +4,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { generationIdentityForRoot } from './product-identity.mjs';
 
 export const __packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const __arkCheckCli = path.join(__packageRoot, 'bin', 'ark-check.mjs');
@@ -119,6 +118,8 @@ export const REQUIRED_GATE_FILES = [
   'AGENTS.md',
   '.mcp.json',
 ];
+const REQUIRED_GATE_WORKFLOW = '.github/workflows/*.yml running ark-check';
+
 export function hasArkWorkflow(root) {
   const workflowsDir = path.join(root, '.github', 'workflows');
   if (!fs.existsSync(workflowsDir)) return false;
@@ -130,9 +131,8 @@ export function hasArkWorkflow(root) {
         const content = fs.readFileSync(path.join(workflowsDir, file), 'utf8');
         return (
           /\bark-check\b/.test(content) ||
-          /\bstructrail-check\b/.test(content) ||
           /\bcheck:architecture\b/.test(content) ||
-          /\buses\s*:\s*['"]?[^'"\s#]+\/(?:arkgate|structrail)@/i.test(content)
+          /\buses\s*:\s*['"]?[^'"\s#]+\/arkgate@/i.test(content)
         );
       } catch {
         return false;
@@ -141,13 +141,10 @@ export function hasArkWorkflow(root) {
 }
 
 export function missingGates(root) {
-  const identity = generationIdentityForRoot(root);
   const missing = REQUIRED_GATE_FILES.filter(
     (relativePath) => !fs.existsSync(path.join(root, relativePath))
   );
-  if (!hasArkWorkflow(root)) {
-    missing.push(`.github/workflows/*.yml running ${identity.checkBin}`);
-  }
+  if (!hasArkWorkflow(root)) missing.push(REQUIRED_GATE_WORKFLOW);
   return missing;
 }
 
@@ -163,7 +160,7 @@ export function ensureDirForFile(file) {
 export function isArkAgentsContent(text) {
   if (typeof text !== 'string' || !text.trim()) return false;
   const head = text.trimStart().slice(0, 120);
-  return /^#\s*(?:Ark(?:Gate)?|Structrail)\s+Enforcement\b/.test(head);
+  return /^#\s*Ark(Gate)?\s+Enforcement\b/.test(head);
 }
 
 /**
@@ -196,8 +193,8 @@ export function writeTemplate(root, relativePath, content, force) {
       // Never clobber a project-owned AGENTS.md — even with --force.
       // If Ark section not present yet, merge once; subsequent runs leave it alone.
       const hasArkSection =
-        /#\s*(?:Ark(?:Gate)?|Structrail)\s+Enforcement\b/.test(existing) ||
-        /(?:ark|structrail)\.config\.json is authoritative/i.test(existing);
+        /#\s*Ark(Gate)?\s+Enforcement\b/.test(existing) ||
+        /ark\.config\.json is authoritative/i.test(existing);
       if (force && isArkAgentsContent(content) && !hasArkSection) {
         try {
           const merged = `${existing.replace(/\s*$/, '')}\n\n---\n\n${content}`;

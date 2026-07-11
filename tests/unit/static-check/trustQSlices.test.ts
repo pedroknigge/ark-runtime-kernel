@@ -64,19 +64,14 @@ describe('Q6 module budgets (scripts/check-module-budgets.mjs)', () => {
 });
 
 describe('Q6 surface parity (preferred bins + skills)', () => {
-  it('uses Structrail primary bins while the explicit v3 compatibility surface stays intact', () => {
+  it('hook templates and package bins agree on arkgate-* product names', () => {
     const hooks = fs.readFileSync(path.join(REPO, 'bin/lib/hook-templates.mjs'), 'utf8');
     const pkg = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8'));
-    const legacy = JSON.parse(
-      fs.readFileSync(path.join(REPO, 'compat/arkgate/package.json'), 'utf8')
-    );
-    expect(pkg.bin['structrail-check']).toBe('bin/structrail-check.mjs');
-    expect(pkg.bin['structrail-mcp']).toBe('bin/structrail-mcp.mjs');
-    expect(legacy.bin['arkgate-check']).toBe('bin/arkgate-check.mjs');
-    expect(legacy.bin['arkgate-mcp']).toBe('bin/arkgate-mcp.mjs');
-    expect(hooks).toMatch(/PREFERRED_MCP_BIN\s*=\s*['"]structrail-mcp['"]/);
+    expect(pkg.bin['arkgate-check']).toBe('bin/ark-check.mjs');
+    expect(pkg.bin['arkgate-mcp']).toBe('bin/ark-mcp.mjs');
+    expect(hooks).toMatch(/PREFERRED_MCP_BIN\s*=\s*['"]arkgate-mcp['"]/);
     // Skills template list includes upgrade
-    expect(fs.existsSync(path.join(REPO, 'templates/skills/structrail-upgrade.md'))).toBe(true);
+    expect(fs.existsSync(path.join(REPO, 'templates/skills/ark-upgrade.md'))).toBe(true);
   });
 });
 
@@ -92,10 +87,10 @@ describe('Q9 package files + threat model', () => {
     expect(report.ok).toBe(true);
   });
 
-  it('primary pre-commit template exists and invokes structrail-check', () => {
-    const p = path.join(REPO, 'templates/hooks/pre-commit-structrail');
+  it('pre-commit template exists and mentions ark-check', () => {
+    const p = path.join(REPO, 'templates/hooks/pre-commit-ark');
     expect(fs.existsSync(p)).toBe(true);
     const text = fs.readFileSync(p, 'utf8');
-    expect(text).toMatch(/structrail-check|check:architecture/);
+    expect(text).toMatch(/ark-check|arkgate-check|check:architecture/);
   });
 });

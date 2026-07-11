@@ -21,18 +21,6 @@ describe('shouldOpenHtmlReport', () => {
     expect(shouldOpenHtmlReport({ env: { ARK_NO_OPEN_REPORT: '1' }, isTty: true })).toBe(false);
   });
 
-  it('accepts STRUCTRAIL_NO_OPEN_REPORT and gives it precedence over the v3 alias', () => {
-    expect(
-      shouldOpenHtmlReport({ env: { STRUCTRAIL_NO_OPEN_REPORT: '1' }, isTty: true })
-    ).toBe(false);
-    expect(
-      shouldOpenHtmlReport({
-        env: { STRUCTRAIL_NO_OPEN_REPORT: '0', ARK_NO_OPEN_REPORT: '1' },
-        isTty: true,
-      })
-    ).toBe(true);
-  });
-
   it('skips non-TTY unless forced', () => {
     expect(shouldOpenHtmlReport({ env: {}, isTty: false })).toBe(false);
     expect(shouldOpenHtmlReport({ force: true, env: { CI: 'true' }, isTty: false })).toBe(true);

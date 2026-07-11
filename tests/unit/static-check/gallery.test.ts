@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const REPO = path.resolve(import.meta.dirname, '../../..');
-const STRUCTRAIL_CHECK = path.join(REPO, 'bin/structrail-check.mjs');
+const ARK_CHECK = path.join(REPO, 'bin/ark-check.mjs');
 const EXAMPLES = path.join(REPO, 'examples');
 
 const GALLERY_STARTERS = [
@@ -20,7 +20,7 @@ type CheckJson = { ok: boolean; violations: unknown[]; warnings: unknown[] };
 function runStrictCheck(root: string): CheckJson {
   const stdout = execFileSync(
     'node',
-    [STRUCTRAIL_CHECK, '--root', root, '--config', 'structrail.config.json', '--strict-config', '--json'],
+    [ARK_CHECK, '--root', root, '--config', 'ark.config.json', '--strict-config', '--json'],
     { encoding: 'utf8' }
   );
   return JSON.parse(stdout) as CheckJson;
@@ -39,9 +39,9 @@ function copyDir(src: string, dst: string) {
 
 describe('Phase D — example gallery starters', () => {
   for (const starter of GALLERY_STARTERS) {
-    it(`${starter.dir} passes structrail-check --strict-config`, () => {
+    it(`${starter.dir} passes ark-check --strict-config`, () => {
       const root = path.join(EXAMPLES, starter.dir);
-      expect(fs.existsSync(path.join(root, 'structrail.config.json'))).toBe(true);
+      expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(true);
       expect(fs.existsSync(path.join(root, 'README.md'))).toBe(true);
 
       const result = runStrictCheck(root);
@@ -58,33 +58,28 @@ describe('Phase D — example gallery starters', () => {
         devDependencies?: Record<string, string>;
       };
       expect(pkg.scripts.check).toBe(
-        'structrail-check --root . --config structrail.config.json --strict-config'
+        'ark-check --root . --config ark.config.json --strict-config'
       );
       expect(pkg.scripts.check).not.toContain('../..');
-      expect(pkg.devDependencies?.['structrail']).toBeDefined();
+      expect(pkg.devDependencies?.['arkgate']).toBeDefined();
     });
   }
 
   it('crud-product-starter npm run check works when copied and installed', () => {
     const src = path.join(EXAMPLES, 'crud-product-starter');
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'structrail-gallery-copy-'));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-gallery-copy-'));
     copyDir(src, tmp);
 
     const pkgPath = path.join(tmp, 'package.json');
     const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as {
       devDependencies: Record<string, string>;
     };
-    pkg.devDependencies['structrail'] = `file:${REPO}`;
-    pkg.devDependencies.typescript = `file:${path.join(REPO, 'node_modules', 'typescript')}`;
+    pkg.devDependencies['arkgate'] = `file:${REPO}`;
     fs.writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
 
-    execSync('npm install --ignore-scripts --offline --no-audit --no-fund', {
-      cwd: tmp,
-      stdio: 'pipe',
-      env: { ...process.env, npm_config_cache: path.join(tmp, '.npm-cache') },
-    });
+    execSync('npm install --ignore-scripts', { cwd: tmp, stdio: 'pipe' });
     const out = execSync('npm run check', { cwd: tmp, encoding: 'utf8' });
-    expect(out).toContain('Structrail check passed');
+    expect(out).toContain('Ark check passed');
   }, 60_000);
 
   it('gallery README indexes every starter archetype', () => {

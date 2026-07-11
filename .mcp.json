@@ -1,14 +1,14 @@
 {
   "mcpServers": {
-    "structrail": {
+    "ark": {
       "type": "stdio",
       "command": "node",
       "args": [
-        "bin/structrail-mcp.mjs",
+        "bin/ark-mcp.mjs",
         "--root",
         ".",
         "--config",
-        "structrail.config.json"
+        "ark.config.json"
       ]
     }
   }

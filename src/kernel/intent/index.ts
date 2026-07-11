@@ -1,5 +1,5 @@
 /**
- * Structrail Intent module
+ * Ark Intent module
  * Semantic naming and relationship declaration for architectural governance.
  */
 

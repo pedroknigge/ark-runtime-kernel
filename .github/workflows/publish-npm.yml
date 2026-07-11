@@ -78,7 +78,6 @@ jobs:
             npm run typecheck
             npm run test:confidence
             npm run security:audit
-            npm run check:identity
             npm run check:architecture
             npm publish --access public --provenance
           else

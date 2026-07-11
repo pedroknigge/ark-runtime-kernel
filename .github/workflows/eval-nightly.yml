@@ -18,7 +18,7 @@ jobs:
 
       - run: npm ci
 
-      - name: Eval corpus (static labels + structrail-check)
+      - name: Eval corpus (static labels + ark-check)
         run: npm run eval:corpus
 
       - name: Comparative eval (static oracle)
@@ -44,9 +44,7 @@ jobs:
       - run: npm ci
 
       - name: Live agent eval (optional — needs claude on PATH)
-        # legacy-identity:start v3-compatibility removal=v4
-        if: ${{ vars.STRUCTRAIL_RUN_LIVE_AGENT_EVAL == 'true' || (vars.STRUCTRAIL_RUN_LIVE_AGENT_EVAL == '' && vars.ARK_RUN_LIVE_AGENT_EVAL == 'true') }}
-        # legacy-identity:end
+        if: ${{ vars.ARK_RUN_LIVE_AGENT_EVAL == 'true' }}
         run: node eval/run.mjs
         env:
-          STRUCTRAIL_EVAL_CASE: enthusiast-greenfield-crud
+          ARK_EVAL_CASE: enthusiast-greenfield-crud

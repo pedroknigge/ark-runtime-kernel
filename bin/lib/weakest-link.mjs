@@ -6,14 +6,11 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { arkCommand } from '../ark-shared.mjs';
-import { generationIdentityForRoot } from './product-identity.mjs';
 
 const PRECOMMIT_MARKERS = [
-  'structrail-check',
   'ark-check',
   'arkgate-check',
   'check:architecture',
-  'pre-commit-structrail',
   'pre-commit-ark',
 ];
 
@@ -25,7 +22,6 @@ export function detectPreCommitArk(root) {
   const candidates = [
     path.join(root, '.git', 'hooks', 'pre-commit'),
     path.join(root, '.husky', 'pre-commit'),
-    path.join(root, 'templates', 'hooks', 'pre-commit-structrail'),
     path.join(root, 'templates', 'hooks', 'pre-commit-ark'),
   ];
   let present = false;
@@ -89,7 +85,6 @@ export function detectCiEnforcement(root) {
       continue;
     }
     const mentionsArk =
-      /\bstructrail-check\b/.test(text) ||
       /\barkgate-check\b/.test(text) ||
       /\bark-check\b/.test(text) ||
       /check:architecture/.test(text) ||
@@ -100,10 +95,7 @@ export function detectCiEnforcement(root) {
       if (/--strict\b/.test(text) || /check:architecture/.test(text)) {
         out.hasStrictFlag = true;
       }
-      if (
-        /architecture|structrail-check|ark-check|arkgate-check/i.test(f) ||
-        /name:\s*.*(?:structrail|ark)/i.test(text)
-      ) {
+      if (/architecture|ark-check|arkgate-check/i.test(f) || /name:\s*.*ark/i.test(text)) {
         out.hasArchitectureJobName = true;
       }
     }
@@ -134,9 +126,7 @@ export function jobIdsThatRunArkCheck(root) {
     } catch {
       continue;
     }
-    if (!/\bstructrail-check\b|\barkgate-check\b|\bark-check\b|check:architecture/.test(text)) {
-      continue;
-    }
+    if (!/\barkgate-check\b|\bark-check\b|check:architecture/.test(text)) continue;
     const jobsIdx = text.search(/^jobs:\s*$/m);
     if (jobsIdx < 0) continue;
     const jobsSection = text.slice(jobsIdx);
@@ -147,7 +137,7 @@ export function jobIdsThatRunArkCheck(root) {
       const start = matches[i].index ?? 0;
       const end = i + 1 < matches.length ? (matches[i + 1].index ?? jobsSection.length) : jobsSection.length;
       const body = jobsSection.slice(start, end);
-      if (/\bstructrail-check\b|\barkgate-check\b|\bark-check\b|check:architecture/.test(body)) {
+      if (/\barkgate-check\b|\bark-check\b|check:architecture/.test(body)) {
         ids.add(jobId);
       }
     }
@@ -162,9 +152,7 @@ export function jobIdsThatRunArkCheck(root) {
  */
 export function isArkRequiredStatusCheck(root, requiredNames) {
   if (!Array.isArray(requiredNames) || requiredNames.length === 0) return false;
-  if (requiredNames.some((n) => /structrail|ark|architecture|arkgate/i.test(String(n)))) {
-    return true;
-  }
+  if (requiredNames.some((n) => /ark|architecture|arkgate/i.test(String(n)))) return true;
   const jobIds = jobIdsThatRunArkCheck(root);
   return requiredNames.some((n) => jobIds.has(String(n)));
 }
@@ -175,14 +163,11 @@ export function isArkRequiredStatusCheck(root, requiredNames) {
  * @param {{ adopted?: boolean, isProducer?: boolean }} [opts]
  */
 export function detectConfigGateDrift(root, opts = {}) {
-  const identity = generationIdentityForRoot(root);
   const adopted =
     opts.adopted ?? fs.existsSync(path.join(root, 'AGENTS.md'));
   const isProducer =
     opts.isProducer ?? fs.existsSync(path.join(root, 'templates', 'skills'));
-  const hasConfig =
-    fs.existsSync(path.join(root, 'structrail.config.json')) ||
-    fs.existsSync(path.join(root, 'ark.config.json'));
+  const hasConfig = fs.existsSync(path.join(root, 'ark.config.json'));
   const hasAgents = fs.existsSync(path.join(root, 'AGENTS.md'));
   let hasCheckScript = false;
   try {
@@ -196,8 +181,8 @@ export function detectConfigGateDrift(root, opts = {}) {
     issues.push({
       id: 'config-drift-agents-without-config',
       severity: 'warn',
-      message: `AGENTS.md present but ${identity.configName} missing — gates cannot enforce the contract`,
-      fix: arkCommand(root, identity.cliBin, 'init'),
+      message: 'AGENTS.md present but ark.config.json missing — gates cannot enforce the contract',
+      fix: arkCommand(root, 'ark', 'init'),
     });
   }
   if (hasConfig && !hasCheckScript && !isProducer) {
@@ -205,16 +190,16 @@ export function detectConfigGateDrift(root, opts = {}) {
       id: 'config-drift-no-check-script',
       severity: 'warn',
       message:
-        `${identity.configName} exists but package.json has no check:architecture script (CI/local parity drift)`,
-      fix: arkCommand(root, identity.checkBin, '--install-agent-gates'),
+        'ark.config.json exists but package.json has no check:architecture script (CI/local parity drift)',
+      fix: arkCommand(root, 'ark-check', '--install-agent-gates'),
     });
   }
   if (hasConfig && !hasAgents && !isProducer) {
     issues.push({
       id: 'config-drift-config-without-agents',
       severity: 'info',
-      message: `${identity.configName} without AGENTS.md — agent hosts may not see the write-gate contract`,
-      fix: arkCommand(root, identity.checkBin, '--install-agent-gates'),
+      message: 'ark.config.json without AGENTS.md — agent hosts may not see the write-gate contract',
+      fix: arkCommand(root, 'ark-check', '--install-agent-gates'),
     });
   }
   return { hasConfig, hasAgents, hasCheckScript, issues };
@@ -326,7 +311,6 @@ export function reportGithubBranchProtection(opts = {}) {
  * @param {{ adopted?: boolean, isProducer?: boolean, includeGithub?: boolean }} [opts]
  */
 export function collectWeakestLinkGaps(root, opts = {}) {
-  const identity = generationIdentityForRoot(root);
   const adopted =
     opts.adopted ?? fs.existsSync(path.join(root, 'AGENTS.md'));
   const isProducer =
@@ -336,8 +320,7 @@ export function collectWeakestLinkGaps(root, opts = {}) {
   const ci = detectCiEnforcement(root);
   const pre = detectPreCommitArk(root);
   const drift = detectConfigGateDrift(root, { adopted, isProducer });
-  const templateName = `pre-commit-${identity.fileStem}`;
-  const templatePreCommit = path.join(root, 'templates', 'hooks', templateName);
+  const templatePreCommit = path.join(root, 'templates', 'hooks', 'pre-commit-ark');
   const shipsPreCommitTemplate =
     isProducer && fs.existsSync(templatePreCommit);
 
@@ -346,15 +329,15 @@ export function collectWeakestLinkGaps(root, opts = {}) {
       id: 'enforcement-ci-missing',
       severity: 'warn',
       message: 'No .github/workflows directory — CI architecture gate cannot be required on merge',
-      fix: arkCommand(root, identity.checkBin, '--install-agent-gates'),
+      fix: arkCommand(root, 'ark-check', '--install-agent-gates'),
     });
   } else if (adopted && !isProducer && ci.hasWorkflowsDir && !ci.hasArkCheckWorkflow) {
     gaps.push({
       id: 'enforcement-ci-no-ark-check',
       severity: 'warn',
       message:
-        `CI workflows exist but none run ${identity.checkBin} / check:architecture`,
-      fix: arkCommand(root, identity.checkBin, '--install-agent-gates'),
+        'CI workflows exist but none run ark-check / arkgate-check / check:architecture',
+      fix: arkCommand(root, 'ark-check', '--install-agent-gates'),
     });
   } else if (
     adopted &&
@@ -375,17 +358,17 @@ export function collectWeakestLinkGaps(root, opts = {}) {
     gaps.push(issue);
   }
 
-  // Human-edit path: recommend pre-commit when an adopted consumer has no gate-aware hook.
+  // Human-edit path: recommend pre-commit when adopted consumer has no ark-aware hook
   if (adopted && !isProducer && !pre.arkAware) {
     gaps.push({
       id: 'enforcement-pre-commit-missing',
       severity: 'info',
       message: pre.present
-        ? `pre-commit hook exists but does not run ${identity.productName} architecture check (human disk edits can bypass agent gates)`
-        : `No ${identity.productName}-aware pre-commit hook — human edits can land without the write gate; install maintained template`,
-      fix: shipsPreCommitTemplate || fs.existsSync(path.join(process.cwd(), 'templates', 'hooks', templateName))
-        ? `Install: cp templates/hooks/${templateName} .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit (or husky equivalent)`
-        : `Copy ${templateName} from the ${identity.packageName} package templates/hooks/ into .git/hooks/pre-commit`,
+        ? 'pre-commit hook exists but does not run Ark architecture check (human disk edits can bypass agent gates)'
+        : 'No ark-aware pre-commit hook — human edits can land without the write gate; install maintained template',
+      fix: shipsPreCommitTemplate || fs.existsSync(path.join(process.cwd(), 'templates', 'hooks', 'pre-commit-ark'))
+        ? 'Install: cp templates/hooks/pre-commit-ark .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit (or husky equivalent)'
+        : 'Copy pre-commit-ark from the arkgate package templates/hooks/ into .git/hooks/pre-commit',
     });
   }
 
@@ -394,8 +377,8 @@ export function collectWeakestLinkGaps(root, opts = {}) {
     gaps.push({
       id: 'enforcement-pre-commit-template-missing',
       severity: 'warn',
-      message: `Producer package missing templates/hooks/${templateName} (human-edit path)`,
-      fix: `Add templates/hooks/${templateName} to the package`,
+      message: 'Producer package missing templates/hooks/pre-commit-ark (Q3 human-edit path)',
+      fix: 'Add templates/hooks/pre-commit-ark to the package',
     });
   }
 
@@ -407,7 +390,7 @@ export function collectWeakestLinkGaps(root, opts = {}) {
         id: 'enforcement-branch-unprotected',
         severity: 'warn',
         message: 'Default branch has no GitHub branch protection (architecture check cannot be required)',
-        fix: `Enable branch protection and require the architecture / ${identity.checkBin} status check`,
+        fix: 'Enable branch protection and require the architecture / ark-check status check',
       });
     } else if (
       github.available &&

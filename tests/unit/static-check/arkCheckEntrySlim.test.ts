@@ -30,12 +30,12 @@ function lineCount(rel: string): number {
 }
 
 describe('ark-check entry slim-down (R3)', () => {
-  it('the primary bin points at the Structrail wrapper and keeps the slim implementation', () => {
+  it('package bins still point at bin/ark-check.mjs', () => {
     const pkg = JSON.parse(
       fs.readFileSync(path.join(root, 'package.json'), 'utf8')
     ) as { bin: Record<string, string> };
-    expect(pkg.bin['structrail-check']).toBe('bin/structrail-check.mjs');
-    expect(fs.existsSync(path.join(root, 'bin/structrail-check.mjs'))).toBe(true);
+    expect(pkg.bin['arkgate-check']).toBe('bin/ark-check.mjs');
+    expect(pkg.bin['ark-check']).toBe('bin/ark-check.mjs');
     expect(fs.existsSync(entry)).toBe(true);
   });
 
@@ -62,20 +62,13 @@ describe('ark-check entry slim-down (R3)', () => {
     }
   });
 
-  it('real structrail-check still passes on this repo (orchestration wires the scan)', () => {
+  it('real ark-check still passes on this repo (orchestration wires the scan)', () => {
     const result = spawnSync(
       process.execPath,
-      [
-        path.join(root, 'bin/structrail-check.mjs'),
-        '--root',
-        root,
-        '--config',
-        'structrail.config.json',
-        '--strict-config',
-      ],
+      [entry, '--root', root, '--config', 'ark.config.json', '--strict-config'],
       { cwd: root, encoding: 'utf8' }
     );
     expect(result.status, result.stderr || result.stdout).toBe(0);
-    expect(result.stdout + result.stderr).toMatch(/Structrail check passed/);
+    expect(result.stdout + result.stderr).toMatch(/Ark check passed/);
   });
 });

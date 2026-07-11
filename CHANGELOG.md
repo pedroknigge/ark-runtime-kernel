@@ -1,15 +1,11 @@
 # Changelog
 
-All notable changes to Structrail (`structrail`; formerly ArkGate / `arkgate` and
-`ark-runtime-kernel`) are documented here.
+All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here.
 
 ## Unreleased
 
 ### Fixed
 
-- **Identity ratchet on exported trees:** `check:identity` now excludes the git-ignored Stryker
-  mutation report even when the audited tree has no `.git` metadata. A regression fixture proves
-  the post-mutation gate does not treat generated JSON as a product surface.
 - **Workflow retry boundary:** `RetryPolicy` now retries only `step.execute` failures and
   timeouts. A snapshot-store or completion-audit failure after a successful effect is terminal,
   enters compensation, and never executes the completed effect again.
@@ -21,20 +17,6 @@ All notable changes to Structrail (`structrail`; formerly ArkGate / `arkgate` an
   is reviewed in `dynamicImportAllowlist`). The scan cache is versioned past the old semantics.
 
 ### Added
-
-- **Structrail v3 identity:** `structrail` is now the primary package with `structrail`,
-  `structrail-check`, and `structrail-mcp`; new configs, environment variables, MCP resources/tools,
-  skills, examples, reports, and evaluation output use Structrail names. The deprecated
-  `arkgate@3` wrapper retains all v2 imports and six legacy bins through v3. Config/environment/MCP
-  aliases remain conflict-aware, and `structrail migrate-config` is preview-first and idempotent.
-- **Cross-package-manager compatibility matrix:** clean local-tarball installs cover npm, pnpm,
-  and Yarn across primary-only, compatibility-only, and combined consumers, including all four
-  import subpaths and every public bin.
-- **Legacy identity ratchet:** `npm run check:identity` rejects unapproved ArkGate-era names on
-  current public surfaces. Compatibility blocks, aliases, fixtures, and internal v3 artifacts are
-  reviewable through one allowlist and share the removal target `v4`; migration/history and the
-  M6-gated external repository metadata remain separate categories. CI and both npm publish paths
-  run the same check, and the rename adds no telemetry.
 
 - **Active-host enforcement capabilities:** doctor and adoption checks now project
   `hard-write`, `advisory-write`, `merge-gate`, and `repair-payload` from the active host only,
@@ -67,6 +49,9 @@ All notable changes to Structrail (`structrail`; formerly ArkGate / `arkgate` an
 
 ### Changed
 
+- **Product identity retained:** ArkGate, `arkgate`, the `arkgate*` / `ark*` commands,
+  `ark.config.json`, `ark://`, `ARK_*`, the existing GitHub repository, and `arkgate.online` remain
+  canonical. The unpublished local rename experiment was reversed before any external cutover.
 - **Truthful host support matrix and runtime status:** one capability-backed matrix now drives
   README and generated `AGENTS.md` guarantees for Claude, Grok, Cursor, and Codex. Doctor exposes
   both the supported host profile and repository evidence; public docs distinguish hard local

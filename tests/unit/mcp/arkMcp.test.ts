@@ -8,7 +8,6 @@ import { withDistLock } from '../../helpers/distLock';
 const root = process.cwd();
 let mcpRuntimeDir: string | undefined;
 let mcpBin = path.join(root, 'bin', 'ark-mcp.mjs');
-let primaryMcpBin = path.join(root, 'bin', 'structrail-mcp.mjs');
 
 function prepareMcpRuntime() {
   if (mcpRuntimeDir) return;
@@ -23,7 +22,6 @@ function prepareMcpRuntime() {
     fs.cpSync(path.join(root, 'dist'), path.join(mcpRuntimeDir, 'dist'), { recursive: true });
   });
   mcpBin = path.join(mcpRuntimeDir!, 'bin', 'ark-mcp.mjs');
-  primaryMcpBin = path.join(mcpRuntimeDir!, 'bin', 'structrail-mcp.mjs');
 }
 
 afterAll(() => {
@@ -38,8 +36,8 @@ afterAll(() => {
  * ("core"/"app") and a custom rule, to prove the write-path gate enforces the project's
  * profile + rules (not the built-in elevenLayerProfile) and resolves nested paths.
  */
-function createClient(root: string, extraArgs: string[] = [], executable = mcpBin) {
-  const proc = spawn('node', [executable, '--root', root, ...extraArgs], {
+function createClient(root: string, extraArgs: string[] = []) {
+  const proc = spawn('node', [mcpBin, '--root', root, ...extraArgs], {
     stdio: ['pipe', 'pipe', 'pipe'],
   }) as ChildProcessWithoutNullStreams;
 
@@ -454,15 +452,10 @@ describe('ark-mcp server (write-path gate)', () => {
  * violations on stderr blocks the write, exit 0 allows it. Plumbing failures must
  * fail open (never block the agent on gate errors).
  */
-function runHook(
-  root: string,
-  payload: unknown,
-  env?: NodeJS.ProcessEnv,
-  executable = mcpBin
-) {
+function runHook(root: string, payload: unknown, env?: NodeJS.ProcessEnv) {
   const result = spawnSync(
     'node',
-    [executable, '--hook', '--root', root],
+    [mcpBin, '--hook', '--root', root],
     {
       input: typeof payload === 'string' ? payload : JSON.stringify(payload),
       encoding: 'utf8',
@@ -471,125 +464,6 @@ function runHook(
   );
   return { status: result.status, stderr: result.stderr, stdout: result.stdout };
 }
-
-describe('Structrail MCP identity with ArkGate aliases', () => {
-  let projectRoot: string;
-  let client: ReturnType<typeof createClient>;
-
-  beforeAll(() => {
-    prepareMcpRuntime();
-    projectRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'structrail-mcp-identity-'));
-    fs.mkdirSync(path.join(projectRoot, 'src/domain'), { recursive: true });
-    fs.writeFileSync(path.join(projectRoot, 'src/domain/order.ts'), 'export const order = 1;\n');
-    fs.writeFileSync(
-      path.join(projectRoot, 'structrail.config.json'),
-      JSON.stringify({
-        include: ['src'],
-        layers: [
-          {
-            name: 'DomainModel',
-            patterns: ['src/domain/**'],
-            forbiddenGlobals: ['fetch'],
-          },
-        ],
-        rules: [],
-      })
-    );
-    client = createClient(projectRoot, [], primaryMcpBin);
-  }, 120000);
-
-  afterAll(() => {
-    client?.close();
-    fs.rmSync(projectRoot, { recursive: true, force: true });
-  });
-
-  it('uses the Structrail server identity and lists canonical plus legacy names', async () => {
-    const initialized = await client.request('initialize', { protocolVersion: '2024-11-05' });
-    expect(initialized.result.serverInfo.name).toBe('structrail');
-
-    const tools = await client.request('tools/list');
-    const names = tools.result.tools.map((tool: { name: string }) => tool.name);
-    expect(names).toEqual(
-      expect.arrayContaining([
-        'validate_code',
-        'structrail_check',
-        'structrail_coverage',
-        'structrail_place',
-        'structrail_prepare_write',
-        'ark_check',
-        'ark_coverage',
-        'ark_place',
-        'ark_prepare_write',
-      ])
-    );
-    const canonicalTools = tools.result.tools.filter(
-      (tool: { name: string }) =>
-        tool.name === 'validate_code' || tool.name.startsWith('structrail_')
-    );
-    for (const tool of canonicalTools) {
-      expect(JSON.stringify(tool), tool.name).not.toMatch(
-        /\bArkGate\b|\bArk\b|ark\.config\.json|\bark-check\b|\bark_[a-z]/
-      );
-    }
-    const legacyTools = tools.result.tools.filter((tool: { name: string }) =>
-      tool.name.startsWith('ark_')
-    );
-    for (const tool of legacyTools) {
-      expect(tool.description, tool.name).toContain('Deprecated ArkGate alias');
-      expect(tool.description, tool.name).toContain(
-        tool.name.replace(/^ark_/, 'structrail_')
-      );
-    }
-
-    const resources = await client.request('resources/list');
-    expect(resources.result.resources.map((resource: { uri: string }) => resource.uri)).toEqual([
-      'structrail://manifest',
-      'ark://manifest',
-    ]);
-    expect(resources.result.resources[0].name).toContain('Structrail');
-    expect(resources.result.resources[1].name).toContain('deprecated alias');
-  });
-
-  it('keeps canonical and legacy resource/tool verdicts identical', async () => {
-    const canonicalResource = await client.request('resources/read', {
-      uri: 'structrail://manifest',
-    });
-    const legacyResource = await client.request('resources/read', { uri: 'ark://manifest' });
-    expect(JSON.parse(canonicalResource.result.contents[0].text)).toEqual(
-      JSON.parse(legacyResource.result.contents[0].text)
-    );
-
-    const canonicalCoverage = await client.request('tools/call', {
-      name: 'structrail_coverage',
-      arguments: {},
-    });
-    const legacyCoverage = await client.request('tools/call', {
-      name: 'ark_coverage',
-      arguments: {},
-    });
-    expect(JSON.parse(canonicalCoverage.result.content[0].text)).toEqual(
-      JSON.parse(legacyCoverage.result.content[0].text)
-    );
-  });
-
-  it('accepts STRUCTRAIL_HOOK_REPAIR and emits both protocol prefixes', () => {
-    const result = runHook(
-      projectRoot,
-      {
-        tool_name: 'Write',
-        tool_input: {
-          file_path: path.join(projectRoot, 'src/domain/customer.ts'),
-          content: 'export const customer = fetch("/customer");\n',
-        },
-      },
-      { STRUCTRAIL_HOOK_REPAIR: '1' },
-      primaryMcpBin
-    );
-    expect(result.status).toBe(2);
-    expect(result.stderr).toContain('STRUCTRAIL_REPAIR_JSON:');
-    expect(result.stderr).toContain('ARK_REPAIR_JSON:');
-  });
-});
 
 describe('ark-mcp --hook (PreToolUse gate)', () => {
   let root: string;
@@ -1011,12 +885,6 @@ describe('ark-mcp read-side tools (ark_check / ark_coverage / ark_place)', () =>
     const res = await client.request('tools/list');
     expect(res.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'validate_code',
-      'structrail_check',
-      'structrail_coverage',
-      'structrail_place',
-      'structrail_prepare_write',
-      'structrail_recommend',
-      'structrail_suggest_include',
       'ark_check',
       'ark_coverage',
       'ark_place',

@@ -45,8 +45,8 @@ export interface CreateArchitectureProfileOptions {
   rules?: ArchitectureRule[];
 }
 
-export interface CreateArchitectureProfileFromStructrailConfigOptions {
-  /** Runtime profile name. Default: config.name or "structrail.config.json". */
+export interface CreateArchitectureProfileFromArkConfigOptions {
+  /** Runtime profile name. Default: config.name or "ark.config.json". */
   name?: string;
 }
 
@@ -69,28 +69,18 @@ export interface ArchitectureLayerConfig {
   optional?: boolean;
 }
 
-export interface StructrailCheckConfig {
+export interface ArkCheckConfig {
   name?: string;
   include: string[];
   layers: ArchitectureLayerConfig[];
   rules?: ArchitectureRule[];
 }
 
-export interface CreateElevenLayerStructrailConfigOptions {
+export interface CreateElevenLayerArkConfigOptions {
   /** Source root used in generated file patterns. Default: "src". */
   rootDir?: string;
-  /** Include entries for structrail-check. Default: [rootDir]. */
+  /** Include entries for ark-check. Default: [rootDir]. */
   include?: string[];
   /** Mark generated layers optional. Default: true. */
   optionalLayers?: boolean;
 }
-
-/** @deprecated Use CreateArchitectureProfileFromStructrailConfigOptions. Removal target: v4. */
-export type CreateArchitectureProfileFromArkConfigOptions =
-  CreateArchitectureProfileFromStructrailConfigOptions;
-
-/** @deprecated Use StructrailCheckConfig. Removal target: v4. */
-export type ArkCheckConfig = StructrailCheckConfig;
-
-/** @deprecated Use CreateElevenLayerStructrailConfigOptions. Removal target: v4. */
-export type CreateElevenLayerArkConfigOptions = CreateElevenLayerStructrailConfigOptions;

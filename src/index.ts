@@ -1,13 +1,11 @@
 /**
- * Structrail — Architecture guardrails for AI TypeScript
+ * ArkGate — Architecture Co-pilot for AI TypeScript
  *
  * Zero-dependency write gate + CI gate + co-pilot (plan / goal / loop) for
  * TypeScript repos and agents. Optional runtime kernel is not the product.
- * legacy-identity:start v3-compatibility removal=v4
- * npm package: `structrail` (`arkgate` is the deprecated v3 compatibility package).
- * legacy-identity:end
+ * npm package: `arkgate` (formerly `ark-runtime-kernel`).
  *
- * **Runtime kernel (opt-in):** prefer `import { … } from 'structrail/runtime'`.
+ * **Runtime kernel (opt-in):** prefer `import { … } from 'arkgate/runtime'`.
  * This root barrel still re-exports kernel symbols for compatibility within
  * this major — see `docs/package-surface.md`.
  *
@@ -144,13 +142,6 @@ export {
 // =============================================================================
 
 export {
-  createStructrailTestHarness,
-  type StructrailTestHarness,
-  type StructrailTestSnapshot,
-} from './kernel/testing';
-
-/** @deprecated Use the Structrail-named testing exports. Removal target: v4. */
-export {
   createArkTestHarness,
   type ArkTestHarness,
   type ArkTestSnapshot,
@@ -191,25 +182,16 @@ export {
 
 export {
   createArchitectureProfile,
-  createArchitectureProfileFromStructrailConfig,
-  createElevenLayerStructrailConfig,
+  createArchitectureProfileFromArkConfig,
+  createElevenLayerArkConfig,
   elevenLayerProfile,
   type ArchitectureLayer,
   type ArchitectureLayerConfig,
   type ArchitectureProfile,
   type ArchitectureRule,
-  type StructrailCheckConfig,
-  type CreateArchitectureProfileFromStructrailConfigOptions,
-  type CreateArchitectureProfileOptions,
-  type CreateElevenLayerStructrailConfigOptions,
-} from './kernel/layers';
-
-/** @deprecated Use the Structrail-named config exports. Removal target: v4. */
-export {
-  createArchitectureProfileFromArkConfig,
-  createElevenLayerArkConfig,
   type ArkCheckConfig,
   type CreateArchitectureProfileFromArkConfigOptions,
+  type CreateArchitectureProfileOptions,
   type CreateElevenLayerArkConfigOptions,
 } from './kernel/layers';
 
@@ -271,24 +253,9 @@ export {
 } from './kernel/projections';
 
 // =============================================================================
-// Structrail Manifest (machine-readable contract export)
+// Ark Manifest (machine-readable contract export)
 // =============================================================================
 
-export {
-  createStructrailManifest,
-  type StructrailManifest,
-  type StructrailManifestData,
-  type StructrailManifestIntent,
-  type StructrailManifestPolicy,
-  type StructrailManifestGraph,
-  type StructrailManifestEntityLink,
-  type StructrailManifestArchitecture,
-  type StructrailManifestProjection,
-  type CreateStructrailManifestOptions,
-  MANIFEST_SCHEMA_VERSION,
-} from './kernel/manifest';
-
-/** @deprecated Use the Structrail-named manifest exports. Removal target: v4. */
 export {
   createArkManifest,
   type ArkManifest,
@@ -300,6 +267,7 @@ export {
   type ArkManifestArchitecture,
   type ArkManifestProjection,
   type CreateArkManifestOptions,
+  MANIFEST_SCHEMA_VERSION,
 } from './kernel/manifest';
 
 // =============================================================================
@@ -325,25 +293,11 @@ export {
 } from './kernel/workflow';
 
 // =============================================================================
-// Optional Structrail Kernel Runtime
+// Strict Ark Kernel Runtime
 // =============================================================================
 
 export {
   DEFAULT_MAX_HISTORY_SIZE,
-  createStructrailKernel,
-  createStructrailKernelFromConfig,
-  createLenientStructrailKernel,
-  createLenientStructrailKernelFromConfig,
-  createStrictStructrailKernel,
-  createStrictStructrailKernelFromConfig,
-  type StructrailKernelConfig,
-  type StructrailKernel,
-  type CreateStructrailKernelFromConfigOptions,
-  type CreateStructrailKernelOptions,
-} from './kernel/runtime';
-
-/** @deprecated Use the Structrail-named runtime exports. Removal target: v4. */
-export {
   createArkKernel,
   createArkKernelFromConfig,
   createLenientArkKernel,

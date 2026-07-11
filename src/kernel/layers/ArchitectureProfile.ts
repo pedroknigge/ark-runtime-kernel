@@ -2,9 +2,9 @@ import type {
   ArchitectureLayer,
   ArchitectureProfile,
   ArchitectureRule,
-  StructrailCheckConfig,
-  CreateArchitectureProfileFromStructrailConfigOptions,
-  CreateElevenLayerStructrailConfigOptions,
+  ArkCheckConfig,
+  CreateArchitectureProfileFromArkConfigOptions,
+  CreateElevenLayerArkConfigOptions,
   CreateArchitectureProfileOptions,
 } from './types';
 
@@ -70,12 +70,12 @@ export function createArchitectureProfile(
   };
 }
 
-export function createArchitectureProfileFromStructrailConfig(
-  config: StructrailCheckConfig,
-  options: CreateArchitectureProfileFromStructrailConfigOptions = {}
+export function createArchitectureProfileFromArkConfig(
+  config: ArkCheckConfig,
+  options: CreateArchitectureProfileFromArkConfigOptions = {}
 ): ArchitectureProfile {
   return createArchitectureProfile({
-    name: options.name ?? config.name ?? 'structrail.config.json',
+    name: options.name ?? config.name ?? 'ark.config.json',
     layers: config.layers.map((layer, index) => ({
       name: layer.name,
       prefixes: layer.intentPrefixes ?? [],
@@ -150,7 +150,7 @@ const elevenLayerProfileLayers: ArchitectureLayer[] = [
   {
     name: 'Kernel',
     prefixes: ['Kernel'],
-    description: 'Structrail-owned governance and kernel signals.',
+    description: 'Ark-owned governance and kernel signals.',
     order: 11,
   },
 ];
@@ -164,7 +164,7 @@ const elevenLayerAllowedFlows: Array<Pick<ArchitectureRule, 'from' | 'to'>> = [
 ];
 
 export const elevenLayerProfile = createArchitectureProfile({
-  name: 'Structrail 11-layer Hexagonal Event-Driven Profile',
+  name: 'Ark 11-layer Hexagonal Event-Driven Profile',
   layers: elevenLayerProfileLayers,
   rules: createStrictDenyRules(
     elevenLayerProfileLayers,
@@ -191,9 +191,9 @@ const defaultElevenLayerDirectories: Record<string, string[]> = {
   Kernel: ['kernel'],
 };
 
-export function createElevenLayerStructrailConfig(
-  options: CreateElevenLayerStructrailConfigOptions = {}
-): StructrailCheckConfig {
+export function createElevenLayerArkConfig(
+  options: CreateElevenLayerArkConfigOptions = {}
+): ArkCheckConfig {
   const rootDir = options.rootDir ?? 'src';
   const optional = options.optionalLayers ?? true;
   const prefix = rootDir === '.' ? '' : `${rootDir}/`;
@@ -211,10 +211,3 @@ export function createElevenLayerStructrailConfig(
     rules: [...elevenLayerProfile.rules],
   };
 }
-
-/** @deprecated Use createArchitectureProfileFromStructrailConfig. Removal target: v4. */
-export const createArchitectureProfileFromArkConfig =
-  createArchitectureProfileFromStructrailConfig;
-
-/** @deprecated Use createElevenLayerStructrailConfig. Removal target: v4. */
-export const createElevenLayerArkConfig = createElevenLayerStructrailConfig;

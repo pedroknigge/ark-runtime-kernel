@@ -6,6 +6,7 @@ import path from 'node:path';
 
 const repo = process.cwd();
 const cli = path.join(repo, 'bin', 'structrail.mjs');
+const checkCli = path.join(repo, 'bin', 'structrail-check.mjs');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'structrail-cli-identity-'));
 
 afterAll(() => {
@@ -28,6 +29,13 @@ function run(root: string, args: string[]) {
     cwd: repo,
     encoding: 'utf8',
     env: { ...process.env, CODEX_HOME: path.join(root, 'codex-home') },
+  });
+}
+
+function runCheck(root: string, args: string[]) {
+  return spawnSync(process.execPath, [checkCli, '--root', root, '--no-cache', ...args], {
+    cwd: repo,
+    encoding: 'utf8',
   });
 }
 
@@ -156,5 +164,44 @@ describe('Structrail CLI identity', () => {
     expect(result.stderr).toContain('Both structrail.config.json and ark.config.json exist');
     expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(true);
     expect(fs.existsSync(path.join(root, 'structrail.config.json'))).toBe(true);
+  });
+
+  it('uses only canonical identity in normal check, plan, doctor, and coverage output', () => {
+    const root = project('check-output');
+    fs.writeFileSync(
+      path.join(root, 'structrail.config.json'),
+      `${JSON.stringify(
+        {
+          include: ['src'],
+          layers: [{ name: 'Application', patterns: ['src/**'] }],
+          rules: [],
+        },
+        null,
+        2
+      )}\n`
+    );
+
+    const help = runCheck(root, ['--help']);
+    expect(help.status, help.stderr).toBe(0);
+    expect(help.stdout).toContain('Usage: structrail-check');
+    expect(help.stdout).toContain('product name Structrail');
+    expect(help.stdout).toContain('structrail.config.json');
+
+    const cases = [
+      { args: ['--plan'], heading: 'Structrail plan' },
+      { args: ['--doctor'], heading: 'Structrail doctor' },
+      { args: ['--coverage'], heading: 'Structrail coverage' },
+      { args: [], heading: 'Structrail check passed' },
+    ];
+    const legacySurface =
+      /\bArkGate\b|\bArk\b|ark\.config\.json|\barkgate-(?:check|mcp)\b|\bark-(?:check|mcp)\b|\/ark-[a-z]/;
+
+    for (const entry of cases) {
+      const result = runCheck(root, entry.args);
+      expect(result.status, result.stderr).toBe(0);
+      const output = `${result.stdout}\n${result.stderr}`;
+      expect(output).toContain(entry.heading);
+      expect(output).not.toMatch(legacySurface);
+    }
   });
 });

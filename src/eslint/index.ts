@@ -543,6 +543,15 @@ const plugin: ArkEslintPlugin = { rules };
 
 plugin.configs = {
   recommended: {
+    plugins: { structrail: plugin },
+    rules: {
+      'structrail/no-domain-infra-imports': 'error',
+      'structrail/no-raw-event-publish': 'error',
+      'structrail/require-publish-source': 'error',
+      'structrail/no-forbidden-globals': 'error',
+    },
+  },
+  'recommended-legacy': {
     plugins: { ark: plugin },
     rules: {
       'ark/no-domain-infra-imports': 'error',

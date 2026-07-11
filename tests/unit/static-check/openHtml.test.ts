@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { openHtmlInBrowser, shouldOpenHtmlReport } from '../../../bin/lib/open-html.mjs';
 
 describe('shouldOpenHtmlReport', () => {
@@ -67,5 +68,35 @@ describe('openHtmlInBrowser', () => {
     });
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('missing-file');
+  });
+
+  it('does not invoke a shell for Windows paths containing metacharacters', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-open-html-'));
+    const file = path.join(dir, 'report & whoami.html');
+    fs.writeFileSync(file, '<html></html>\n');
+    const calls: { cmd: string; args: string[]; options: { shell?: boolean } }[] = [];
+    const fakeSpawn = (cmd: string, args: string[], options: { shell?: boolean }) => {
+      calls.push({ cmd, args, options });
+      return {
+        on() {
+          return this;
+        },
+        unref() {},
+      };
+    };
+
+    const result = openHtmlInBrowser(file, {
+      platform: 'win32',
+      spawn: fakeSpawn as never,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].cmd).toBe('rundll32.exe');
+    expect(calls[0].args).toEqual([
+      'url.dll,FileProtocolHandler',
+      pathToFileURL(path.resolve(file)).href,
+    ]);
+    expect(calls[0].options.shell).toBe(false);
   });
 });

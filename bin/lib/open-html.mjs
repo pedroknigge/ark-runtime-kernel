@@ -5,6 +5,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 /**
  * Whether report generation should open the browser.
@@ -49,9 +50,8 @@ export function openHtmlInBrowser(filePath, opts = {}) {
     command = 'open';
     args = [abs];
   } else if (platform === 'win32') {
-    // `start` is a cmd built-in; empty title arg is required when the path has spaces.
-    command = 'cmd';
-    args = ['/c', 'start', '', abs];
+    command = 'rundll32.exe';
+    args = ['url.dll,FileProtocolHandler', pathToFileURL(abs).href];
   } else {
     command = 'xdg-open';
     args = [abs];
@@ -62,6 +62,7 @@ export function openHtmlInBrowser(filePath, opts = {}) {
       detached: true,
       stdio: 'ignore',
       windowsHide: true,
+      shell: false,
     });
     child.on('error', () => {
       /* browser missing (e.g. headless Linux) — ignore */

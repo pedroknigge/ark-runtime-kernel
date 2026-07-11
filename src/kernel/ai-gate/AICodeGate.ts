@@ -556,7 +556,7 @@ function analyzePublishAst<Context>(
 
       if (tsIsArkPublishCandidate(ts, node) && !tsPublishHasSource(ts, node)) {
         violations.push(
-          violation('PUBLISH_MISSING_SOURCE', 'Strict Ark publish calls must include metadata.source.', {
+          violation('PUBLISH_MISSING_SOURCE', 'Strict Structrail publish calls must include metadata.source.', {
             line: lineForNode(node),
             filePath,
           })

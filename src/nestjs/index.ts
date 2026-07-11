@@ -1,21 +1,21 @@
 /**
- * NestJS adapter for ArkGate.
+ * NestJS adapter for Structrail.
  *
  * ```ts
- * import { ArkModule, InjectArk } from 'arkgate/nestjs';
- * import type { ArkKernel } from 'arkgate/runtime';
+ * import { StructrailModule, InjectStructrail } from 'structrail/nestjs';
+ * import type { StructrailKernel } from 'structrail/runtime';
  *
- * @Module({ imports: [ArkModule.forRoot()] })
+ * @Module({ imports: [StructrailModule.forRoot()] })
  * export class AppModule {}
  *
  * @Injectable()
  * export class PlaceOrderService {
- *   constructor(@InjectArk() private readonly ark: ArkKernel) {}
+ *   constructor(@InjectStructrail() private readonly structrail: StructrailKernel) {}
  * }
  * ```
  *
  * `@nestjs/common` is an optional peer dependency: this entry point is only
- * loaded when you import `arkgate/nestjs`.
+ * loaded when you import `structrail/nestjs`.
  */
 import { Inject, Module } from '@nestjs/common';
 import type {
@@ -23,55 +23,77 @@ import type {
   InjectionToken,
   OptionalFactoryDependency,
 } from '@nestjs/common';
-import { createArkKernel } from '../kernel/runtime/createArkKernel';
-import type { ArkKernel } from '../kernel/runtime/types';
-import type { CreateArkKernelOptions } from '../kernel/runtime/types';
+import { createStructrailKernel } from '../kernel/runtime/createArkKernel';
+import type { StructrailKernel } from '../kernel/runtime/types';
+import type { CreateStructrailKernelOptions } from '../kernel/runtime/types';
 
-/** Injection token for the Ark kernel instance. */
-export const ARK_KERNEL = Symbol('ARK_KERNEL');
+/** Injection token for the Structrail kernel instance. */
+export const STRUCTRAIL_KERNEL = Symbol('STRUCTRAIL_KERNEL');
 
-/** Constructor-parameter decorator that injects the Ark kernel. */
-export const InjectArk = (): ParameterDecorator => Inject(ARK_KERNEL);
+/** @deprecated Use STRUCTRAIL_KERNEL. Removal target: v4. */
+export const ARK_KERNEL = STRUCTRAIL_KERNEL;
 
-export interface ArkModuleAsyncOptions {
+/** Constructor-parameter decorator that injects the Structrail kernel. */
+export const InjectStructrail = (): ParameterDecorator => Inject(STRUCTRAIL_KERNEL);
+
+/** @deprecated Use InjectStructrail. Removal target: v4. */
+export const InjectArk = InjectStructrail;
+
+export interface StructrailModuleAsyncOptions {
   /** Factory that builds (or resolves) the kernel; supports Nest DI via `inject`. */
-  useFactory: (...deps: never[]) => ArkKernel | Promise<ArkKernel>;
+  useFactory: (...deps: never[]) => StructrailKernel | Promise<StructrailKernel>;
   inject?: Array<InjectionToken | OptionalFactoryDependency>;
 }
 
+/** @deprecated Use StructrailModuleAsyncOptions. Removal target: v4. */
+export type ArkModuleAsyncOptions = StructrailModuleAsyncOptions;
+
 @Module({})
-export class ArkModule {
+export class StructrailModule {
   /**
-   * Registers a global Ark kernel. Pass an existing kernel to share one across
+   * Registers a global Structrail kernel. Pass an existing kernel to share one across
    * processes/tests, or options to create a fresh strict kernel.
    */
-  static forRoot(kernelOrOptions?: ArkKernel | CreateArkKernelOptions): DynamicModule {
+  static forRoot(
+    kernelOrOptions?: StructrailKernel | CreateStructrailKernelOptions
+  ): DynamicModule {
     const kernel =
       kernelOrOptions && 'registry' in kernelOrOptions
         ? kernelOrOptions
-        : createArkKernel(kernelOrOptions);
+        : createStructrailKernel(kernelOrOptions);
     return {
-      module: ArkModule,
+      module: StructrailModule,
       global: true,
-      providers: [{ provide: ARK_KERNEL, useValue: kernel }],
-      exports: [ARK_KERNEL],
+      providers: [{ provide: STRUCTRAIL_KERNEL, useValue: kernel }],
+      exports: [STRUCTRAIL_KERNEL],
     };
   }
 
-  static forRootAsync(options: ArkModuleAsyncOptions): DynamicModule {
+  static forRootAsync(options: StructrailModuleAsyncOptions): DynamicModule {
     return {
-      module: ArkModule,
+      module: StructrailModule,
       global: true,
       providers: [
         {
-          provide: ARK_KERNEL,
+          provide: STRUCTRAIL_KERNEL,
           useFactory: options.useFactory,
           inject: options.inject ?? [],
         },
       ],
-      exports: [ARK_KERNEL],
+      exports: [STRUCTRAIL_KERNEL],
     };
   }
 }
 
-export type { ArkKernel, CreateArkKernelOptions };
+/** @deprecated Use StructrailModule. Removal target: v4. */
+export const ArkModule = StructrailModule;
+/** @deprecated Use StructrailModule. Removal target: v4. */
+export type ArkModule = StructrailModule;
+export type {
+  StructrailKernel,
+  CreateStructrailKernelOptions,
+};
+/** @deprecated Use StructrailKernel. Removal target: v4. */
+export type ArkKernel = StructrailKernel;
+/** @deprecated Use CreateStructrailKernelOptions. Removal target: v4. */
+export type CreateArkKernelOptions = CreateStructrailKernelOptions;

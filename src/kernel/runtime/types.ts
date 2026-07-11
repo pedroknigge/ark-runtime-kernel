@@ -2,8 +2,8 @@ import type { AuditTrail } from '../audit';
 import type { DependencyGraph } from '../graph';
 import type { EventContractRegistry } from '../event-contracts';
 import type { IntentRegistry } from '../intent';
-import type { ArchitectureProfile, ArkCheckConfig } from '../layers';
-import type { ArkManifest } from '../manifest';
+import type { ArchitectureProfile, StructrailCheckConfig } from '../layers';
+import type { StructrailManifest } from '../manifest';
 import type { MetadataRegistry } from '../metadata';
 import type { ObservabilityReporter } from '../observability';
 import type { Policy, PolicyEngine } from '../policy';
@@ -14,7 +14,7 @@ import type { IntentName } from '../../domain/types';
 import type { OutboxStore } from '../outbox';
 import type { WorkflowEngine } from '../workflow';
 
-export interface ArkKernel {
+export interface StructrailKernel {
   instanceId: string;
   profile: ArchitectureProfile;
   registry: IntentRegistry;
@@ -32,12 +32,12 @@ export interface ArkKernel {
     source: N | IntentCreator<N, P>
   ): EventPublisher;
   syncGraph(): void;
-  manifest(): ArkManifest;
+  manifest(): StructrailManifest;
 }
 
-export interface CreateArkKernelOptions {
+export interface CreateStructrailKernelOptions {
   /**
-   * When true (default), createArkKernel uses the hardened runtime defaults:
+   * When true (default), createStructrailKernel uses the hardened runtime defaults:
    * strict event contracts and hard observed-layer enforcement.
    * Set to false only for explicit migration/legacy paths.
    */
@@ -66,10 +66,19 @@ export interface CreateArkKernelOptions {
   instanceId?: string;
 }
 
-export interface CreateArkKernelFromConfigOptions
-  extends Omit<CreateArkKernelOptions, 'profile'> {
-  /** Runtime profile name. Default: config.name or "ark.config.json". */
+export interface CreateStructrailKernelFromConfigOptions
+  extends Omit<CreateStructrailKernelOptions, 'profile'> {
+  /** Runtime profile name. Default: config.name or "structrail.config.json". */
   profileName?: string;
 }
 
-export type ArkKernelConfig = ArkCheckConfig;
+export type StructrailKernelConfig = StructrailCheckConfig;
+
+/** @deprecated Use StructrailKernel. Removal target: v4. */
+export type ArkKernel = StructrailKernel;
+/** @deprecated Use CreateStructrailKernelOptions. Removal target: v4. */
+export type CreateArkKernelOptions = CreateStructrailKernelOptions;
+/** @deprecated Use CreateStructrailKernelFromConfigOptions. Removal target: v4. */
+export type CreateArkKernelFromConfigOptions = CreateStructrailKernelFromConfigOptions;
+/** @deprecated Use StructrailKernelConfig. Removal target: v4. */
+export type ArkKernelConfig = StructrailKernelConfig;

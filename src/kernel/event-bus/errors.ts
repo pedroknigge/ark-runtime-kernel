@@ -58,7 +58,7 @@ export class UnknownEventSourceError extends Error {
     super(
       source
         ? `Event "${intentName}" metadata.source "${source}" is not registered. Register the producer intent or publish from a known source.`
-        : `Event "${intentName}" must include metadata.source. Strict Ark uses source to enforce observed layer flow.`
+        : `Event "${intentName}" must include metadata.source. Strict Structrail uses source to enforce observed layer flow.`
     );
     this.name = 'UnknownEventSourceError';
     this.intentName = intentName;

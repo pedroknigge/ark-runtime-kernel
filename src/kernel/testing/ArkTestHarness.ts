@@ -1,11 +1,13 @@
-import type { ArkKernel } from '../runtime';
-import type { ArkTestHarness, ArkTestSnapshot } from './types';
+import type { StructrailKernel } from '../runtime';
+import type { StructrailTestHarness, StructrailTestSnapshot } from './types';
 import type { AuditQuery, AuditRecord } from '../audit';
 import type { DomainEvent } from '../../domain/types';
 import type { OutboxRecord, OutboxStatus } from '../outbox';
 import type { TraceRecord, TraceRecordType } from '../event-bus';
 
-export function createArkTestHarness(kernel: ArkKernel): ArkTestHarness {
+export function createStructrailTestHarness(
+  kernel: StructrailKernel
+): StructrailTestHarness {
   return {
     events(intent?: string): DomainEvent[] {
       return kernel.eventBus
@@ -33,7 +35,7 @@ export function createArkTestHarness(kernel: ArkKernel): ArkTestHarness {
       return kernel.observability.report();
     },
 
-    async snapshot(): Promise<ArkTestSnapshot> {
+    async snapshot(): Promise<StructrailTestSnapshot> {
       return {
         events: this.events(),
         traces: this.traces(),
@@ -51,3 +53,6 @@ export function createArkTestHarness(kernel: ArkKernel): ArkTestHarness {
     },
   };
 }
+
+/** @deprecated Use createStructrailTestHarness. Removal target: v4. */
+export const createArkTestHarness = createStructrailTestHarness;

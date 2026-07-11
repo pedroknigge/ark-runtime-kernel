@@ -1,3 +1,8 @@
 export * from './types';
 export { MANIFEST_SCHEMA_VERSION } from './constants';
-export { createArkManifest, type CreateArkManifestOptions } from './createArkManifest';
+export {
+  createStructrailManifest,
+  type CreateStructrailManifestOptions,
+  createArkManifest,
+  type CreateArkManifestOptions,
+} from './createArkManifest';

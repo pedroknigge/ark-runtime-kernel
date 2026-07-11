@@ -14,7 +14,7 @@
  * - Reporting.* for read models and projections
  * - Metadata.* for extensibility contracts
  * - Security.* / Audit.* / Observability.* for cross-cutting kernel concerns
- * - Kernel.* for Ark-owned governance signals
+ * - Kernel.* for Structrail-owned governance signals
  */
 export type IntentName =
   | `Domain.${string}`

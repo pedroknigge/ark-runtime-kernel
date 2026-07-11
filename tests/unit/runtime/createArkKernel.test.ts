@@ -112,7 +112,7 @@ describe('createArkKernel presets', () => {
       { strictEventContracts: false }
     );
 
-    expect(ark.profile.name).toBe('ark.config.json');
+    expect(ark.profile.name).toBe('structrail.config.json');
     expect(ark.profile.resolveLayer('Domain.Order.Placed')).toBe('DomainModel');
     expect(ark.profile.resolveLayer('Application.PlaceOrder')).toBe(
       'ApplicationOrchestration'

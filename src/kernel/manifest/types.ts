@@ -11,13 +11,13 @@ import type { EventContract } from '../event-contracts';
 import type { ObservabilityDriftReport } from '../observability';
 import type { PolicyEnforcementMode } from '../policy';
 
-export interface ArkManifestIntent {
+export interface StructrailManifestIntent {
   name: string;
   dependencies: string[];
   productions: string[];
 }
 
-export interface ArkManifestPolicy {
+export interface StructrailManifestPolicy {
   /** Stable slug for agents (derived from policy name). */
   id: string;
   name: string;
@@ -32,49 +32,66 @@ export interface ArkManifestPolicy {
   replacedBy?: string;
 }
 
-export interface ArkManifestEntityLink {
+export interface StructrailManifestEntityLink {
   entity: string;
   emits?: string[];
   consumes?: string[];
 }
 
-export interface ArkManifestGraph {
+export interface StructrailManifestGraph {
   nodes: GraphNode[];
   edges: GraphEdge[];
 }
 
-export interface ArkManifestArchitecture {
+export interface StructrailManifestArchitecture {
   profile: string;
   layers: ArchitectureLayer[];
   rules: ArchitectureRule[];
 }
 
-export interface ArkManifestProjection {
+export interface StructrailManifestProjection {
   name: string;
   sourceIntents: string[];
   checkpoint?: ProjectionCheckpoint;
 }
 
-export interface ArkManifestData {
+export interface StructrailManifestData {
   /** Manifest schema version for agent/tooling compatibility. */
   schemaVersion: string;
   version: string;
   exportedAt: string;
-  intents: ArkManifestIntent[];
+  intents: StructrailManifestIntent[];
   relationships: IntentRelationship[];
-  policies: ArkManifestPolicy[];
+  policies: StructrailManifestPolicy[];
   entities: EntityMeta[];
-  graph: ArkManifestGraph;
-  architecture?: ArkManifestArchitecture;
-  projections: ArkManifestProjection[];
+  graph: StructrailManifestGraph;
+  architecture?: StructrailManifestArchitecture;
+  projections: StructrailManifestProjection[];
   eventContracts: EventContract[];
   observability?: ObservabilityDriftReport;
   /** Cross-registry links for agent contract discovery. */
   links: {
-    entityIntents: ArkManifestEntityLink[];
+    entityIntents: StructrailManifestEntityLink[];
   };
 }
 
-export interface ArkManifest {
-  toJSON(): ArkManifestData;
+export interface StructrailManifest {
+  toJSON(): StructrailManifestData;
 }
+
+/** @deprecated Use StructrailManifestIntent. Removal target: v4. */
+export type ArkManifestIntent = StructrailManifestIntent;
+/** @deprecated Use StructrailManifestPolicy. Removal target: v4. */
+export type ArkManifestPolicy = StructrailManifestPolicy;
+/** @deprecated Use StructrailManifestEntityLink. Removal target: v4. */
+export type ArkManifestEntityLink = StructrailManifestEntityLink;
+/** @deprecated Use StructrailManifestGraph. Removal target: v4. */
+export type ArkManifestGraph = StructrailManifestGraph;
+/** @deprecated Use StructrailManifestArchitecture. Removal target: v4. */
+export type ArkManifestArchitecture = StructrailManifestArchitecture;
+/** @deprecated Use StructrailManifestProjection. Removal target: v4. */
+export type ArkManifestProjection = StructrailManifestProjection;
+/** @deprecated Use StructrailManifestData. Removal target: v4. */
+export type ArkManifestData = StructrailManifestData;
+/** @deprecated Use StructrailManifest. Removal target: v4. */
+export type ArkManifest = StructrailManifest;

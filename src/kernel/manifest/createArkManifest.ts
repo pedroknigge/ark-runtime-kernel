@@ -10,7 +10,7 @@ import type { EventContractRegistry } from '../event-contracts';
 import type { ArchitectureProfile } from '../layers';
 import type { ObservabilityReporter } from '../observability';
 import type { ProjectionRegistry } from '../projections';
-import type { ArkManifest, ArkManifestData } from './types';
+import type { StructrailManifest, StructrailManifestData } from './types';
 import { version } from '../../version';
 import { MANIFEST_SCHEMA_VERSION } from './constants';
 
@@ -21,7 +21,7 @@ function policyId(name: string): string {
     .replace(/^-|-$/g, '');
 }
 
-export interface CreateArkManifestOptions {
+export interface CreateStructrailManifestOptions {
   registry?: IntentRegistry;
   policyEngine?: PolicyEngine;
   metadata?: MetadataRegistry;
@@ -32,10 +32,10 @@ export interface CreateArkManifestOptions {
   observability?: ObservabilityReporter;
 }
 
-class ArkManifestImpl implements ArkManifest {
-  constructor(private readonly data: ArkManifestData) {}
+class StructrailManifestImpl implements StructrailManifest {
+  constructor(private readonly data: StructrailManifestData) {}
 
-  toJSON(): ArkManifestData {
+  toJSON(): StructrailManifestData {
     return { ...this.data };
   }
 }
@@ -44,9 +44,9 @@ class ArkManifestImpl implements ArkManifest {
  * Create a machine-readable snapshot of the current architectural contract.
  * Intended for AI agents, codegen tools, and documentation generators.
  */
-export function createArkManifest(
-  options: CreateArkManifestOptions = {}
-): ArkManifest {
+export function createStructrailManifest(
+  options: CreateStructrailManifestOptions = {}
+): StructrailManifest {
   const registry = options.registry;
   const policyEngine = options.policyEngine;
   const metadata = options.metadata;
@@ -88,7 +88,7 @@ export function createArkManifest(
 
   const graphData = graph
     ? graph.toJSON()
-    : { nodes: [] as ArkManifestData['graph']['nodes'], edges: [] as ArkManifestData['graph']['edges'] };
+    : { nodes: [] as StructrailManifestData['graph']['nodes'], edges: [] as StructrailManifestData['graph']['edges'] };
 
   const entityIntents = entities
     .filter((e) => (e.emits?.length ?? 0) > 0 || (e.consumes?.length ?? 0) > 0)
@@ -106,7 +106,7 @@ export function createArkManifest(
       }))
     : [];
 
-  const data: ArkManifestData = {
+  const data: StructrailManifestData = {
     schemaVersion: MANIFEST_SCHEMA_VERSION,
     version,
     exportedAt: new Date().toISOString(),
@@ -128,5 +128,11 @@ export function createArkManifest(
     links: { entityIntents },
   };
 
-  return new ArkManifestImpl(data);
+  return new StructrailManifestImpl(data);
 }
+
+/** @deprecated Use CreateStructrailManifestOptions. Removal target: v4. */
+export type CreateArkManifestOptions = CreateStructrailManifestOptions;
+
+/** @deprecated Use createStructrailManifest. Removal target: v4. */
+export const createArkManifest = createStructrailManifest;

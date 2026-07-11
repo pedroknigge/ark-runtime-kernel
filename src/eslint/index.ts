@@ -109,7 +109,7 @@ type LayerConfig = {
 
 type EdgeRule = { from: string; to: string; allowed?: boolean };
 
-type ArkConfig = {
+type StructrailConfig = {
   layers?: LayerConfig[];
   rules?: EdgeRule[];
 };
@@ -138,12 +138,12 @@ export function findConfigPath(startFile: string): string | null {
   }
 }
 
-const _configCache = new Map<string, ArkConfig | null>();
+const _configCache = new Map<string, StructrailConfig | null>();
 
-export function loadArkConfig(configPath: string): ArkConfig | null {
+export function loadStructrailConfig(configPath: string): StructrailConfig | null {
   if (_configCache.has(configPath)) return _configCache.get(configPath) ?? null;
   try {
-    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as ArkConfig;
+    const raw = JSON.parse(fs.readFileSync(configPath, 'utf8')) as StructrailConfig;
     _configCache.set(configPath, raw);
     return raw;
   } catch {
@@ -151,6 +151,9 @@ export function loadArkConfig(configPath: string): ArkConfig | null {
     return null;
   }
 }
+
+/** @deprecated Use loadStructrailConfig. Removal target: v4. */
+export const loadArkConfig = loadStructrailConfig;
 
 /** Resolve relative import specifier to an absolute path candidate (TS-oriented). */
 export function resolveRelativeImport(fromFile: string, specifier: string): string | null {
@@ -313,7 +316,7 @@ export const noDomainInfraImports: ArkRule = {
   create(context) {
     const filename = lintedFilename(context);
     const configPath = findConfigPath(filename);
-    const config = configPath ? loadArkConfig(configPath) : null;
+    const config = configPath ? loadStructrailConfig(configPath) : null;
     const root = configPath ? path.dirname(configPath) : null;
 
     const check = (node: AstNode) => {
@@ -399,7 +402,7 @@ export const requirePublishSource: ArkRule = {
       description: 'Require event bus publish calls to include source metadata.',
     },
     messages: {
-      missingSource: 'Strict Ark publish calls must include metadata.source.',
+      missingSource: 'Strict Structrail publish calls must include metadata.source.',
     },
     schema: [],
   },
@@ -445,7 +448,7 @@ export const noForbiddenGlobals: ArkRule = {
     const filename = lintedFilename(context);
     const option = context.options?.[0] as { globals?: string[] } | undefined;
     const configPath = findConfigPath(filename);
-    const config = configPath ? loadArkConfig(configPath) : null;
+    const config = configPath ? loadStructrailConfig(configPath) : null;
     const root = configPath ? path.dirname(configPath) : null;
 
     let globals: Set<string> | null = null;

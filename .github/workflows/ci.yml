@@ -61,6 +61,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Gate/runtime package isolation smoke
+        run: npm run test:package-isolation
+
       # Mandatory architecture gate: ark-check exits non-zero on any layer violation,
       # which fails the job and blocks the merge. --strict-config also fails the job on
       # governance-coverage warnings (e.g. unclassified source files), so the config can

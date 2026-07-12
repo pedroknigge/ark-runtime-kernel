@@ -501,6 +501,26 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
     expect(result.stderr).toContain('mayImportInfrastructure');
   });
 
+  it('blocks every invalid file in a Codex apply_patch payload', () => {
+    const result = runHook(root, {
+      tool_name: 'apply_patch',
+      tool_input: {
+        patch: `*** Begin Patch
+*** Add File: src/domain/customer.ts
++import { PrismaClient } from 'prisma';
++export const repo = new PrismaClient();
+*** Add File: src/domain/order-repo.ts
++import { PrismaClient } from 'prisma';
++export const orders = new PrismaClient();
+*** End Patch`,
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('src/domain/customer.ts');
+    expect(result.stderr).toContain('src/domain/order-repo.ts');
+    expect(result.stderr).toContain('FORBIDDEN_IMPORT');
+  });
+
   it('W4: default --hook is reject-only (no ARK_AUTOPATCH_JSON); still exit 2', () => {
     const apRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-reject-'));
     try {

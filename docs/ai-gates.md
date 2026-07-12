@@ -3,7 +3,8 @@
 **ArkGate** (`arkgate`) is the architecture co-pilot for AI TypeScript (write gate · CI · plan/loop).
 On Claude Code and Grok Build, an installed and trusted PreToolUse hook can block matched writes
 before they land on disk. Cursor and OpenAI Codex use advisory MCP validation at write time; CI is
-their hard repository check. See the
+their hard repository check. Codex 0.123+ dispatches hooks for its native `apply_patch` handler,
+but Code Mode hosts can execute deferred nested writes without that project hook event. See the
 [canonical host support matrix](../README.md#host-enforcement-support) before installing.
 
 Everything below uses the same `ark.config.json` as `arkgate-check` / `ark-check` (CI) — one
@@ -35,7 +36,7 @@ npx arkgate-check --install-agent-gates
 ```
 
 The command writes templates for `.mcp.json`, Claude hooks, Cursor MCP/rules,
-GitHub Actions, `AGENTS.md`, a Codex TOML snippet under `docs/`, and (when
+GitHub Actions, `AGENTS.md`, Codex `.codex/hooks.json` plus a TOML snippet under `docs/`, and (when
 selected) Grok Build project files under `.grok/`. It skips existing files unless
 you pass `--force`, so review and commit only the templates that match your project.
 
@@ -89,7 +90,7 @@ When no mechanical-safe patch applies, `autoPatch` is `null` (host still re-reas
 `ark_prepare_write` / judgment). Grok deny JSON also includes `autoPatch` + `"repair": true`
 when repair mode is on.
 
-`--install-agent-gates` writes Claude/Grok PreToolUse commands with `--hook-repair` enabled.
+`--install-agent-gates` writes Claude/Grok/Codex PreToolUse commands with `--hook-repair` enabled.
 Reject-only installs: drop `--hook-repair` (or unset `ARK_HOOK_REPAIR`).
 
 Add to your project's `.claude/settings.json`:
@@ -231,6 +232,23 @@ through. It blocks the merge only when that status is required by repository pol
 
 Recommended for Ark projects.
 
+Codex 0.123+ dispatches `PreToolUse` for the native `apply_patch` handler. Ark installs
+`.codex/hooks.json` with `ApplyPatch|apply_patch|Write|Edit|MultiEdit` aliases and reconstructs
+every added or updated file in a multi-file patch before allowing it. The hook root uses
+`${CODEX_PROJECT_DIR:-${PWD:-.}}`; it must not use Claude-only `CLAUDE_PROJECT_DIR`.
+
+This hook is best-effort in Codex Code Mode: some hosts execute deferred nested `apply_patch`
+calls without dispatching the project `PreToolUse` event. ArkGate therefore does not treat the
+presence of `.codex/hooks.json` as a universal hard-write guarantee; MCP remains advisory and the
+required CI status is the hard repository boundary.
+
+```bash
+npx ark-check --install-agent-gates --tools codex
+```
+
+The generated hook includes `--hook-repair`, so a rejected patch carries the same structured
+repair envelope as Claude and Grok. Codex still needs hook trust enabled for the project.
+
 Unlike Claude/Cursor (project-local MCP files), **Codex loads MCP servers only from
 `$CODEX_HOME/config.toml`** (default `~/.codex/config.toml`) — a **global** home file.
 Hand-editing with relative `--root .` is wrong: Codex does not use the project as cwd, so
@@ -253,9 +271,8 @@ args = ["arkgate-mcp", "--root", "/absolute/path/to/project", "--config", "/abso
 Then **restart Codex** — it does not hot-load MCP servers. Expect resource `ark://manifest`
 and tools `validate_code`, `ark_check`, `ark_coverage`, `ark_place`.
 
-Same model as Cursor for enforcement: advisory MCP for discovery/validation and `ark-check` as
-the hard CI check. It becomes a merge block only when the status is required. Register the MCP
-server as soon as the repo is adopted.
+Codex uses the best-effort local patch hook plus advisory MCP for discovery/validation and
+`ark-check` as the hard merge backstop. Register all three as soon as the repo is adopted.
 
 ### Multi-project Codex (home config last-wins)
 
@@ -357,10 +374,11 @@ write). Keep `ark-check` in CI and require its status when it must block merges.
 
 ## Any other agent runtime with shell hooks
 
-If your runtime can run a shell command before file writes and pass the tool payload on stdin (Claude Code or Grok PreToolUse contracts), `ark-mcp --hook` works as-is. The contract:
+If your runtime can run a shell command before file writes and pass the tool payload on stdin, `ark-mcp --hook` works as-is. The contract:
 
 - stdin (Claude): JSON `{ "tool_name": "Write|Edit|MultiEdit", "tool_input": { "file_path": ..., ... } }`
 - stdin (Grok): JSON `{ "toolName": "write|search_replace|…", "toolInput": { "file_path": ..., ... } }` (also accepts Claude names)
+- stdin (Codex): JSON `{ "tool_name": "apply_patch", "tool_input": { "patch": "*** Begin Patch…" } }`
 - exit `0` → allow; exit `2` → block, human-readable violations on stderr
 - Grok payloads also get `{ "decision": "deny", "reason": "…" }` on stdout when blocked
 - plumbing problems (no stdin, non-source files, files outside `--root`) never block

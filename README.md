@@ -23,7 +23,8 @@ and makes sure a “green” check means something real.
 If you remember nothing else:
 
 ```text
-1.  npx arkgate start          ← walk tree → contract → **day-zero origin** → gates
+1.  npx arkgate start          ← read-only preview: files + commands + projected coverage
+    npx arkgate start --apply  ← apply exactly the previewed mutations
 2.  /ark-autopilot             ← explore first, dual plan, safe fixes, leave gates on
 3.  npx arkgate-check --doctor ← “where am I?” anytime (one status screen)
 ```
@@ -110,7 +111,8 @@ Full checklist (CI, MCP, Codex, imports): **[docs/migrate-from-ark-runtime-kerne
 
 ```bash
 npm install -D arkgate typescript
-npx arkgate start                 # contract → day-zero origin → gates + plan
+npx arkgate start                 # read-only preview: exact mutations + projected coverage
+npx arkgate start --apply         # apply the previewed contract → origin → gates plan
 # in agent:
 #   /ark-autopilot
 npx arkgate-check --doctor        # status light + next action
@@ -242,7 +244,8 @@ ark.config.json
 ## Common commands
 
 ```bash
-npx arkgate start                         # guided setup: contract → origin → gates → plan
+npx arkgate start                         # guided read-only preview
+npx arkgate start --apply                 # apply the previewed contract → origin → gates plan
 npx arkgate-check --doctor                # health + Adoption gaps (not just fitness)
 npx arkgate-check --doctor --json         # machine-readable doctor.adoption
 npx arkgate-check --strict                # fail-closed CI + installed-gate/safety checks

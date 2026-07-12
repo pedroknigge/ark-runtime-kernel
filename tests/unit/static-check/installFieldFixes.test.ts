@@ -62,7 +62,7 @@ describe('ark start non-TTY without --yes', () => {
     // --no-install avoids network; non-TTY is default for spawn without stdio inherit TTY
     const result = spawnSync(
       process.execPath,
-      [path.resolve('bin/ark.mjs'), 'start', '--root', root, '--no-install', '--no-strict'],
+      [path.resolve('bin/ark.mjs'), 'start', '--apply', '--root', root, '--no-install', '--no-strict'],
       {
         encoding: 'utf8',
         env: { ...process.env, // force non-TTY semantics even if somehow attached
@@ -264,7 +264,7 @@ describe('pinArkgateDevDependency + start --no-install', () => {
     // Full start with --no-install must not throw and leave gates
     const result = spawnSync(
       process.execPath,
-      [path.resolve('bin/ark.mjs'), 'start', '--root', root, '--no-install', '--no-strict'],
+      [path.resolve('bin/ark.mjs'), 'start', '--apply', '--root', root, '--no-install', '--no-strict'],
       { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
     );
     expect(result.status).toBe(0);

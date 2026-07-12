@@ -20,6 +20,7 @@ import {
 import {
   PREFERRED_MCP_BIN,
   claudeSettings,
+  codexHooks,
   grokHooks,
   grokProjectConfig,
 } from './hook-templates.mjs';
@@ -258,6 +259,7 @@ export function runInstallAgentGates(args) {
       templates.push(['.claude/settings.json', claudeSettings(root)]);
     }
     if (tools.has('codex')) {
+      templates.push(['.codex/hooks.json', codexHooks(root)]);
       templates.push(['docs/ark-codex-config.toml', codexTomlSnippet(root)]);
     }
     if (tools.has('grok')) {

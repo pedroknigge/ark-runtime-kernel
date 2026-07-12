@@ -1,5 +1,5 @@
 /**
- * Host hook / MCP project templates for agent-gate install (Claude, Grok).
+ * Host hook / MCP project templates for agent-gate install (Claude, Grok, Codex).
  * Kept out of agent-gates.mjs so install orchestration stays scannable (explore gap #5).
  */
 import { execCommandParts, execRunner } from '../ark-shared.mjs';
@@ -33,6 +33,38 @@ export function claudeSettings(root) {
               // W4: --hook-repair emits ARK_REPAIR_JSON / ARK_AUTOPATCH_JSON on deny
               // (still exit 2 — never silent write). Omit --hook-repair for reject-only prose.
               command: `${runner} ${PREFERRED_MCP_BIN} --hook --hook-repair --root "$CLAUDE_PROJECT_DIR" --config ark.config.json`,
+            },
+          ],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
+export function codexHooks(root) {
+  const runner = execRunner(root);
+  const codexRoot = '${CODEX_PROJECT_DIR:-${PWD:-.}}';
+  return `${JSON.stringify({
+    hooks: {
+      SessionStart: [
+        {
+          hooks: [
+            {
+              type: 'command',
+              timeout: 30,
+              command: `${runner} ${PREFERRED_MCP_BIN} --session-context --root "${codexRoot}" --config ark.config.json`,
+            },
+          ],
+        },
+      ],
+      PreToolUse: [
+        {
+          matcher: 'ApplyPatch|apply_patch|Write|Edit|MultiEdit',
+          hooks: [
+            {
+              type: 'command',
+              timeout: 30,
+              command: `${runner} ${PREFERRED_MCP_BIN} --hook --hook-repair --root "${codexRoot}" --config ark.config.json`,
             },
           ],
         },

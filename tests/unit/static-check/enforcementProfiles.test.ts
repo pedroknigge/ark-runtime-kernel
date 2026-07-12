@@ -30,7 +30,7 @@ describe('enforcement profile policy', () => {
         hookPath: '.grok/hooks/ark-write-gate.json',
       },
       cursor: { hardWrite: false, advisoryWrite: true, hookPath: null },
-      codex: { hardWrite: false, advisoryWrite: true, hookPath: null },
+      codex: { hardWrite: false, advisoryWrite: true, hookPath: '.codex/hooks.json' },
     });
   });
 

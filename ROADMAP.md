@@ -160,7 +160,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 10 | `C03` | `done` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
 | 11 | `C04` | `done` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
 | 12 | `C05` | `done` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
-| 13 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
+| 13 | `C06` | `done` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
 | 14 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
 | 15 | `O02` | `todo` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
 | 16 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
@@ -171,7 +171,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
 | 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `C06`. Isolate the experimental runtime from the gate product.
+**Next:** `O01`. Replace framework guessing with source/graph-first discovery.
 
 ---
 
@@ -621,7 +621,7 @@ compatibility. Full coverage passed 875 tests with 85.60% branches; mutation pas
 
 ### C06 â€” Isolate runtime from the gate product
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `C05`
 
 **Implementation**
@@ -634,6 +634,15 @@ compatibility. Full coverage passed 875 tests with 85.60% branches; mutation pas
 - Define workflow recovery, optimistic versioning, leases, and idempotency before any production
   durability claim.
 - Ensure gate-only consumers do not install or bundle runtime code.
+
+**Evidence:** ADR 0004 selects a separate `@arkgate/runtime` 0.x package published only under the
+`experimental` tag. ArkGate `3.0.0-beta.0` builds its stable root from `src/gate.ts`; the root
+tarball has no runtime or NestJS bundles, while deprecated `arkgate/runtime` and `arkgate/nestjs`
+paths are forwarding shims scheduled for removal in ArkGate 4. The preferred non-transactional
+API is `InMemoryEventBuffer`; old outbox names remain deprecated aliases. Recovery, optimistic
+versioning, lease, idempotency, atomic-handoff, and fault-matrix requirements are explicit in ADR
+0004 and production hardening docs. Gate-only tests passed without a runtime build, and the offline
+package smoke installed and imported `arkgate` and `@arkgate/runtime` independently.
 
 **Acceptance**
 
@@ -904,9 +913,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: C06 â€” Isolate runtime from the gate product
-First result: record the package split and compatibility window in an ADR
-Then: remove runtime code from the root gate bundle and expose an explicitly experimental package
-Primary files: package exports, tsup entries, runtime compatibility shim, package smoke tests, docs
-Required finish: gate-only installs contain no runtime bundle and runtime installs verify independently
+Item: O01 â€” Replace framework guessing with source/graph-first discovery
+First result: inventory discovery decisions still based on framework names or directory folklore
+Then: derive candidates from imports, ownership, and contract coverage with explicit confidence
+Primary files: discovery helpers, recommend/adopt flows, fixtures, and reference docs
+Required finish: framework identity is supporting evidence, never the primary architecture decision
 ```

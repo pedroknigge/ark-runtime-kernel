@@ -20,6 +20,10 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   GitHub Action now expose the same `ark.analysis-result` v1 diagnostics. A generated JSON Schema,
   committed compatibility fixture, exact golden corpus, and mandatory CI parity job prevent
   adapter drift; source-policy decisions no longer live privately inside ESLint.
+- **Runtime package isolation:** the next-major `arkgate` root now contains only gate APIs. The
+  optional runtime and NestJS adapter build independently as experimental `@arkgate/runtime`;
+  deprecated subpath shims contain no implementation. The non-atomic store is now presented as
+  `InMemoryEventBuffer`, with production recovery and durability requirements made explicit.
 
 ### Fixed
 

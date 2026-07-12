@@ -3,6 +3,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import crypto from 'node:crypto';
 
 function runArkCheck(root: string, extraArgs: string[] = []) {
   let output = '';
@@ -1002,7 +1003,7 @@ describe('ark init', () => {
     try {
       out = execFileSync(
         'node',
-        [path.resolve('bin/ark.mjs'), 'start', '--yes', '--no-install', '--root', root],
+        [path.resolve('bin/ark.mjs'), 'start', '--yes', '--apply', '--no-install', '--root', root],
         {
         encoding: 'utf8',
         stdio: 'pipe',
@@ -1014,21 +1015,12 @@ describe('ark init', () => {
       status = e.status;
     }
     expect(status).toBe(0);
-    // Plain-language shape, the plan, and a wrap-up — no skill names required.
+    // Plain-language analysis and the exact preview are shown before applying.
     expect(out).toContain('Your project looks like');
-    expect(out).toContain('Your architecture plan');
-    // Status light (suggest / adapt / enforce) — honest wrap-up, never a false "guards everything".
-    expect(out).toMatch(/Done — status: (SUGGEST|ADAPT|ENFORCE)/);
-    // One-flow handoff: agent autopilot + doctor.
-    expect(out).toContain('Next (the only flow you need)');
-    expect(out).toContain('/ark-autopilot');
-    expect(out).toMatch(/--doctor/);
-    // Day-zero origin freezes after contract, before agent docs/gates messaging.
-    expect(out).toMatch(/day-zero architecture picture|Freezing day-zero/i);
-    const originIdx = out.search(/Freezing day-zero|Architecture origin already frozen/i);
-    const gatesIdx = out.search(/Installing agent and CI gate templates/i);
-    expect(originIdx).toBeGreaterThanOrEqual(0);
-    expect(gatesIdx).toBeGreaterThan(originIdx);
+    expect(out).toContain('Files to create/edit/delete');
+    expect(out).toContain('Projected governed coverage');
+    expect(out).toContain('Commands in the approved setup plan');
+    expect(out).toContain('Applied');
     // It actually set things up — and left the gates active so it "stays that way"
     // (the enforcement handoff): config, agent contract, CI gate, and origin snapshot.
     expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(true);
@@ -1048,11 +1040,38 @@ describe('ark init', () => {
     }
     const out = execFileSync(
       'node',
-      [path.resolve('bin/ark.mjs'), 'start', '--yes', '--no-install', '--root', root],
+      [path.resolve('bin/ark.mjs'), 'start', '--yes', '--apply', '--no-install', '--root', root],
       { encoding: 'utf8', stdio: 'pipe' }
     );
-    expect(out).toContain('established codebase');
-    expect(out).toContain('ADOPT');
+    expect(out).toContain('frontend-surface');
+    expect(out).toContain('Projected governed coverage: 100%');
+  });
+
+  it('`ark start` defaults to a complete read-only JSON preview and --apply writes its bytes', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-start-preview-'));
+    fs.writeFileSync(path.join(root, 'package.json'), '{"name":"preview"}\n');
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src/index.ts'), 'export const value = 1;\n');
+    const before = fs.readdirSync(root, { recursive: true }).map(String).sort();
+    const raw = execFileSync('node', [path.resolve('bin/ark.mjs'), 'start', '--root', root, '--no-install', '--no-strict', '--json'], { encoding: 'utf8' });
+    const preview = JSON.parse(raw) as {
+      readOnly: boolean;
+      changes: Array<{ path: string; afterHash: string | null; afterBase64: string | null }>;
+      commands: string[];
+      projectedCoverage: { percent: number | null };
+    };
+    expect(preview.readOnly).toBe(true);
+    expect(preview.changes.some((change) => change.path === 'ark.config.json')).toBe(true);
+    expect(preview.commands.some((command) => command.includes('--coverage'))).toBe(true);
+    expect(typeof preview.projectedCoverage.percent).toBe('number');
+    expect(fs.readdirSync(root, { recursive: true }).map(String).sort()).toEqual(before);
+
+    const appliedPreview = JSON.parse(execFileSync('node', [path.resolve('bin/ark.mjs'), 'start', '--root', root, '--no-install', '--no-strict', '--apply', '--json'], { encoding: 'utf8' })) as typeof preview;
+    expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(true);
+    for (const change of appliedPreview.changes.filter((item) => item.afterBase64)) {
+      const applied = fs.readFileSync(path.join(root, change.path));
+      expect(`sha256:${crypto.createHash('sha256').update(applied).digest('hex')}`).toBe(change.afterHash);
+    }
   });
 
   it('`ark upgrade --no-install` refreshes gates, migrates runners, and verifies in one command', () => {

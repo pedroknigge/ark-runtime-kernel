@@ -20,6 +20,7 @@ import {
 } from './ark-shared.mjs';
 import { pinArkgateDevDependency, FALSE_GREEN_GAP_ID } from './lib/field-install.mjs';
 import { validateHardWriteRequest } from './lib/enforcement-profiles.mjs';
+import { applyStartPreview, planStart, renderStartPreview } from './lib/start-preview.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const arkCheck = path.join(here, 'ark-check.mjs');
@@ -58,6 +59,10 @@ function parseArgs(argv) {
     force: false,
     strict: true,
     install: true,
+    apply: false,
+    json: false,
+    internalApply: false,
+    skipPackageManager: false,
     requireWriteHook: undefined,
     help: false,
     version: false,
@@ -80,6 +85,10 @@ function parseArgs(argv) {
     else if (arg === '--force') args.force = true;
     else if (arg === '--no-strict') args.strict = false;
     else if (arg === '--no-install') args.install = false;
+    else if (arg === '--apply') args.apply = true;
+    else if (arg === '--json') args.json = true;
+    else if (arg === '--internal-apply') args.internalApply = true;
+    else if (arg === '--skip-package-manager') args.skipPackageManager = true;
     else if (arg === '--preset') args.preset = requireValue(arg, i++);
     else if (arg === '--archetype') args.archetype = requireValue(arg, i++);
     else if (arg === '--tools') args.tools = requireValue(arg, i++);
@@ -97,14 +106,13 @@ function parseArgs(argv) {
 
 function usage() {
   return `Usage:
-  ark start   [--root <project>] [--tools <list>] [--require-write-hook <host>] [--yes]
+  ark start   [--root <project>] [--tools <list>] [--require-write-hook <host>] [--apply] [--json]
   ark init    [--root <project>] [--preset hexagonal|layered|feature-sliced|monorepo|ui-surface|vertical-slice|ddd-bounded-contexts|clean-architecture|onion-architecture]
               [--archetype <playbook-id>] [--tools <list>] [--require-write-hook <host>] [--yes] [--force] [--no-strict]
   ark upgrade [--root <project>] [--no-install] [--no-strict]
 
 Commands:
-  start     New here? The guided setup. Looks at your project, suggests a shape in
-            plain language, sets up the guardrails, and shows a plan — no code changed.
+  start     New here? Analyze and preview the complete setup. Read-only unless --apply.
   init      Configure Ark project enforcement with explicit prompts.
   upgrade   One command to update Ark: bump the package to @latest, refresh gate
             templates + /ark-* skills (and Codex home prompts), migrate command
@@ -117,6 +125,8 @@ Options:
   --force      Allow generated files to overwrite existing files.
   --no-strict  Skip the final strict ark-check run.
   --no-install Skip adding/installing arkgate as a project devDependency (start/upgrade).
+  --apply       Apply the mutations shown by the start preview.
+  --json        Emit the start preview as deterministic machine-readable JSON.
   --preset     Start from a named architecture preset instead of detection.
   --archetype  Application shape from templates/architecture-playbook.json (maps to the matching preset).
                Valid ids: crud-product, api-backend, frontend-surface, library-sdk, cli-utility,
@@ -413,6 +423,20 @@ async function init(args) {
 // names: look at the code → suggest a shape → set up the guardrails → show the plan. It only
 // orchestrates existing steps (recommend → init → --plan) and frames each in outcome terms.
 async function start(args) {
+  if (!args.internalApply) {
+    const preview = await planStart(args, {
+      arkCheck,
+      cliPath: fileURLToPath(import.meta.url),
+      cliVersion,
+      packageInstallArgv,
+    });
+    if (args.json) console.log(JSON.stringify(preview, null, 2));
+    else renderStartPreview(preview);
+    if (!args.apply) return 0;
+    applyStartPreview(args.root, preview);
+    if (!args.json) console.log(`Applied ${preview.changes.length} previewed mutation(s).`);
+    return 0;
+  }
   const root = args.root;
   const nonInteractive = shouldUseNonInteractiveDefaults(args);
   const interactive = !nonInteractive;
@@ -468,7 +492,7 @@ async function start(args) {
     if (args.install !== false && fs.existsSync(path.join(root, 'package.json'))) {
       const { pinned, installStatus } = ensureProjectArkgateDependency(root, {
         install: true,
-        runPackageManager: true,
+        runPackageManager: !args.skipPackageManager,
       });
       if (pinned.changed) {
         console.log(`  Pinned arkgate@${pinned.version} in package.json devDependencies.`);

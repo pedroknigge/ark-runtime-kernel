@@ -180,6 +180,8 @@ function normalizeHookPayload(payload) {
     Edit: 'Edit',
     search_replace: 'Edit',
     MultiEdit: 'MultiEdit',
+    ApplyPatch: 'ApplyPatch',
+    apply_patch: 'ApplyPatch',
   };
   const toolName = nameMap[rawName] ?? rawName;
   const filePath =
@@ -192,6 +194,70 @@ function normalizeHookPayload(payload) {
       Boolean(process.env.GROK_HOOK_EVENT) ||
       (payload != null && typeof payload === 'object' && 'toolName' in payload),
   };
+}
+
+function applyCodexUpdatePatch(current, lines) {
+  let source = current.split('\n');
+  let cursor = 0;
+  const hunks = [];
+  let hunk = [];
+  for (const line of lines) {
+    if (line.startsWith('@@')) {
+      if (hunk.length > 0) hunks.push(hunk);
+      hunk = [];
+    } else if (/^[ +\-]/.test(line)) {
+      hunk.push(line);
+    }
+  }
+  if (hunk.length > 0) hunks.push(hunk);
+  for (const entries of hunks) {
+    const oldLines = entries.filter((line) => !line.startsWith('+')).map((line) => line.slice(1));
+    const newLines = entries.filter((line) => !line.startsWith('-')).map((line) => line.slice(1));
+    let found = -1;
+    for (let at = cursor; at <= source.length - oldLines.length; at += 1) {
+      if (oldLines.every((line, index) => source[at + index] === line)) {
+        found = at;
+        break;
+      }
+    }
+    if (found < 0) return null;
+    source.splice(found, oldLines.length, ...newLines);
+    cursor = found + newLines.length;
+  }
+  return source.join('\n');
+}
+
+function codexPatchWrites(patch, root) {
+  if (typeof patch !== 'string' || !patch.includes('*** Begin Patch')) return [];
+  const lines = patch.split('\n');
+  const writes = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const match = lines[index].match(/^\*\*\* (Add|Update|Delete) File: (.+)$/);
+    if (!match) continue;
+    const [, action, relativePath] = match;
+    const body = [];
+    for (index += 1; index < lines.length && !lines[index].startsWith('*** '); index += 1) {
+      body.push(lines[index]);
+    }
+    index -= 1;
+    if (action === 'Delete') continue;
+    const filePath = path.resolve(root, relativePath);
+    let content;
+    if (action === 'Add') {
+      content = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1)).join('\n');
+      if (body.some((line) => line.startsWith('+'))) content += '\n';
+    } else {
+      let current;
+      try {
+        current = fs.readFileSync(filePath, 'utf8');
+      } catch {
+        continue;
+      }
+      content = applyCodexUpdatePatch(current, body);
+    }
+    if (typeof content === 'string') writes.push({ filePath, content });
+  }
+  return writes;
 }
 
 /**
@@ -238,7 +304,27 @@ function runHook(gate, config, args, ts) {
     return;
   }
 
+  runHookPayload(payload, gate, config, args, ts);
+}
+
+function runHookPayload(payload, gate, config, args, ts) {
   const { toolName, toolInput, grokStyle } = normalizeHookPayload(payload);
+  if (toolName === 'ApplyPatch') {
+    const patch = toolInput.patch ?? toolInput.input ?? toolInput.content;
+    for (const write of codexPatchWrites(patch, args.root)) {
+      runHookPayload(
+        {
+          tool_name: 'Write',
+          tool_input: { file_path: write.filePath, content: write.content },
+        },
+        gate,
+        config,
+        args,
+        ts
+      );
+    }
+    return;
+  }
   const filePath = toolInput.file_path;
   if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) return;
   if (typeof filePath !== 'string' || !SOURCE_FILE.test(filePath) || filePath.endsWith('.d.ts')) {

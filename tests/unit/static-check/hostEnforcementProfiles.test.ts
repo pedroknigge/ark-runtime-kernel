@@ -114,6 +114,12 @@ describe('host-specific enforcement profiles', () => {
       if (hardHost) {
         expect(first.stdout).toContain(`Hard-write hook verified for ${host}`);
       }
+      if (host === 'codex') {
+        const hooks = fs.readFileSync(path.join(root, '.codex', 'hooks.json'), 'utf8');
+        expect(hooks).toContain('ApplyPatch|apply_patch|Write|Edit|MultiEdit');
+        expect(hooks).toContain('${CODEX_PROJECT_DIR:-${PWD:-.}}');
+        expect(hooks).not.toContain('CLAUDE_PROJECT_DIR');
+      }
 
       const mergeArgs = generatedMergeArgs(root);
       expect(mergeArgs).toContain('--strict-merge');
@@ -223,6 +229,7 @@ describe('host-specific enforcement profiles', () => {
         ARK,
         [
           'start',
+          '--apply',
           '--root',
           root,
           '--yes',
@@ -252,6 +259,7 @@ describe('host-specific enforcement profiles', () => {
         ARK,
         [
           'start',
+          '--apply',
           '--root',
           root,
           '--yes',
@@ -316,6 +324,7 @@ describe('host-specific enforcement profiles', () => {
         ARK,
         [
           'start',
+          '--apply',
           '--root',
           root,
           '--yes',

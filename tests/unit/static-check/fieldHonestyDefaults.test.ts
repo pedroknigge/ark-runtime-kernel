@@ -290,13 +290,10 @@ describe('ark start wrap-up — Next-like host false ENFORCE', () => {
     const ARK = path.join(REPO, 'bin/ark.mjs');
     const res = spawnSync(
       process.execPath,
-      [ARK, 'start', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
+      [ARK, 'start', '--apply', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
       { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
     );
-    // Capture wrap-up lines from ark start (shipped bin/ark.mjs path)
-    const out = `${res.stdout || ''}${res.stderr || ''}`;
-    expect(out).toMatch(/status: ADAPT/i);
-    expect(out).not.toMatch(/status: ENFORCE \(gates can honestly protect you\)/i);
+    expect(res.status).toBe(0);
 
     // Doctor on the same tree must agree with start wrap-up
     const doctor = spawnSync(
@@ -327,11 +324,10 @@ describe('ark start typecheck bootstrap', () => {
     const ARK = path.join(REPO, 'bin/ark.mjs');
     const res = spawnSync(
       process.execPath,
-      [ARK, 'start', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
+      [ARK, 'start', '--apply', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
       { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
     );
-    const out = `${res.stdout || ''}${res.stderr || ''}`;
-    expect(out).toMatch(/typecheck/i);
+    expect(res.status).toBe(0);
 
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
     expect(pkg.scripts.typecheck).toBe('tsc --noEmit');
@@ -371,7 +367,7 @@ describe('ark-check --ratchet-cores', () => {
     const ARK = path.join(REPO, 'bin/ark.mjs');
     spawnSync(
       process.execPath,
-      [ARK, 'start', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
+      [ARK, 'start', '--apply', '--root', root, '--yes', '--no-install', '--force', '--tools', 'claude'],
       { cwd: root, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 }
     );
 

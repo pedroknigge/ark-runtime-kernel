@@ -138,6 +138,10 @@ export function detectWritePathInventory(root) {
       merge
     ),
     cursor: hostRecord([], mcpEvidence(root, '.cursor/mcp.json'), [], merge),
+    // Codex 0.123+ emits PreToolUse for the native apply_patch handler, but some
+    // Code Mode hosts execute deferred nested writes without dispatching that
+    // project hook. Keep the installed hook as best-effort protection; do not
+    // report a hard boundary that cannot be verified for every write surface.
     codex: hostRecord([], codexMcpEvidence(root), [], merge),
   };
 

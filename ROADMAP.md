@@ -162,7 +162,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 12 | `C05` | `done` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
 | 13 | `C06` | `done` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
 | 14 | `O01` | `done` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
-| 15 | `O02` | `todo` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
+| 15 | `O02` | `done` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
 | 16 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
 | 17 | `O04` | `todo` | M | `O03` | Clean-room onboarding remains green for every supported host profile |
 | 18 | `V01` | `todo` | L | `C05`, `O04` | Cold, warm, and incremental performance have real CI budgets |
@@ -171,7 +171,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
 | 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `O02`. Make `ark start` preview-first.
+**Next:** `O03`. Reduce default host setup to at most five small project files.
 
 ---
 
@@ -679,7 +679,7 @@ package smoke installed and imported `arkgate` and `@arkgate/runtime` independen
 
 ### O02 â€” Make `ark start` preview-first
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `O01`
 - **Partially closes:** `RB-06`
 

@@ -36,7 +36,13 @@ export const HOST_SUPPORT_MATRIX = Object.freeze({
     true
   ),
   cursor: hostProfile('Cursor', null, null, false, false),
-  codex: hostProfile('OpenAI Codex', null, null, false, false),
+  codex: hostProfile(
+    'OpenAI Codex',
+    '.codex/hooks.json',
+    'Best-effort PreToolUse `apply_patch`; Code Mode hosts may bypass the event',
+    false,
+    false
+  ),
 });
 
 export const HOST_SUPPORT_HOSTS = Object.freeze(Object.keys(HOST_SUPPORT_MATRIX));

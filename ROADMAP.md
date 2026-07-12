@@ -159,8 +159,8 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 9 | `C02` | `done` | M | `C01` | A stable analysis IR and programmatic API are specified |
 | 10 | `C03` | `done` | L | `C02` | CLI/MCP scanning uses one importable engine without generated duplication |
 | 11 | `C04` | `done` | L | `C03` | Symbol-aware analysis defines and enforces the supported soundness envelope |
-| 12 | `C05` | `todo` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
-| 13 | `C06` | `todo` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
+| 12 | `C05` | `done` | M | `C04` | CLI, MCP, ESLint, hooks, and Action have contract parity |
+| 13 | `C06` | `done` | L | `C05` | Runtime is isolated from the gate package and marked experimental until proven |
 | 14 | `O01` | `todo` | M | `C05` | Repository discovery is source/graph-first rather than framework-guess-first |
 | 15 | `O02` | `todo` | M | `O01` | `ark start` previews all mutations and measured coverage before apply |
 | 16 | `O03` | `todo` | L | `O02` | Host setup writes at most five small project files by default |
@@ -171,7 +171,7 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 21 | `V04` | `todo` | M | `C06`, `V03` | Package and release artifacts are small, complete, and attestable |
 | 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
 
-**Next:** `C05`. Enforce adapter parity.
+**Next:** `O01`. Replace framework guessing with source/graph-first discovery.
 
 ---
 
@@ -594,7 +594,7 @@ soundness boundary and intentional dynamic/runtime exclusions are documented in
 
 ### C05 — Enforce adapter parity
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `C04`
 
 **Implementation**
@@ -604,6 +604,15 @@ soundness boundary and intentional dynamic/runtime exclusions are documented in
 - Version public JSON and MCP schemas; changes require compatibility fixtures.
 - Remove adapter-specific rule reimplementations.
 
+**Evidence:** `src/domain/adapterContract.ts` defines the public `1.0` result envelope and emits
+`schemas/ark.analysis-result.schema.json` plus the standalone CLI helper. CLI JSON, MCP
+`structuredContent`, repair-capable hooks, and ESLint reports normalize through that contract.
+`src/domain/sourcePolicy.ts` owns publish-rule classification, while ESLint no longer invents
+architecture defaults without `ark.config.json`. The golden adapter corpus asserts exact rule ID,
+location, severity, and evidence across CLI/MCP/hook/ESLint. GitHub Actions runs the dedicated
+`adapter-parity` job, and `tests/fixtures/contracts/ark.analysis-result.v1.json` freezes v1
+compatibility. Full coverage passed 875 tests with 85.60% branches; mutation passed at 94.77%.
+
 **Acceptance**
 
 - Same source + contract yields the same rule ID, location, severity, and evidence in every adapter.
@@ -612,7 +621,7 @@ soundness boundary and intentional dynamic/runtime exclusions are documented in
 
 ### C06 — Isolate runtime from the gate product
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `C05`
 
 **Implementation**
@@ -625,6 +634,15 @@ soundness boundary and intentional dynamic/runtime exclusions are documented in
 - Define workflow recovery, optimistic versioning, leases, and idempotency before any production
   durability claim.
 - Ensure gate-only consumers do not install or bundle runtime code.
+
+**Evidence:** ADR 0004 selects a separate `@arkgate/runtime` 0.x package published only under the
+`experimental` tag. ArkGate `3.0.0-beta.0` builds its stable root from `src/gate.ts`; the root
+tarball has no runtime or NestJS bundles, while deprecated `arkgate/runtime` and `arkgate/nestjs`
+paths are forwarding shims scheduled for removal in ArkGate 4. The preferred non-transactional
+API is `InMemoryEventBuffer`; old outbox names remain deprecated aliases. Recovery, optimistic
+versioning, lease, idempotency, atomic-handoff, and fault-matrix requirements are explicit in ADR
+0004 and production hardening docs. Gate-only tests passed without a runtime build, and the offline
+package smoke installed and imported `arkgate` and `@arkgate/runtime` independently.
 
 **Acceptance**
 
@@ -895,9 +913,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: C05 — Enforce adapter parity
-First result: inventory every adapter output and define one versioned result envelope
-Then: route CLI, MCP, ESLint, hooks, and Action through that envelope with golden fixtures
-Primary files: adapter serializers, public schemas, parity corpus, and CI workflow
-Required finish: identical inputs yield identical rule IDs, locations, severities, and evidence
+Item: O01 — Replace framework guessing with source/graph-first discovery
+First result: inventory discovery decisions still based on framework names or directory folklore
+Then: derive candidates from imports, ownership, and contract coverage with explicit confidence
+Primary files: discovery helpers, recommend/adopt flows, fixtures, and reference docs
+Required finish: framework identity is supporting evidence, never the primary architecture decision
 ```

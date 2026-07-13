@@ -21,8 +21,10 @@ under Application — escalate to `/ark-contract` or `/ark-explore` when the wal
 | User already has a plan and wants the apply loop | Brownfield contract false-green → `/ark-adopt` |
 
 **Empty plan is not success for the product** — only for *edge remediation*. If `goal.met` and
-you still see design-weak smells while looping: do **not** invent mechanical-safe kinds; hand off
-`/ark-explore` shape-focus or `/ark-autopilot` for dual-plan B.
+(`goal.designWeak` or non-empty `patternBets` from `--plan --json`): do **not** invent
+mechanical-safe kinds; hand off `/ark-explore` shape-focus or `/ark-autopilot` for dual-plan B.
+Pattern bets always have `neverMechanicalSafe: true` — extraction cards only
+(`docs/brownfield-adoption.md` §6).
 
 ## Related onboarding
 

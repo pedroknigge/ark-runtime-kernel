@@ -214,17 +214,25 @@ ENFORCE without Shape progress is **`ENFORCE · design-weak`** — say that out 
 | `soft-contract` | Layers without denies / peerIsolation off where peers leak |
 | `facade-sql-in-routes` | Routes import raw ORM/SQL while “repositories exist” elsewhere |
 
-**Extraction card** (for each I/O / god-module B bet — judgment, never mechanical-safe):
+**Extraction card** (for each I/O / god-module B bet — judgment, never mechanical-safe).
+Canonical productized template also in `docs/brownfield-adoption.md` §6:
 
 ```text
+### Extraction card
 Pilot: <one dir or feature>
-Smell: <id>
+Smell: <doctor designSmells[].id when present, else agent-detected id>
 Move: <verbatim I/O or rule → port/adapter or Domain file>
-Do not: rewrite queries, touch schema, weaken ark.config
-Success: <observable>
+Do not:
+  - rewrite queries / touch schema / migrations
+  - weaken ark.config.json
+  - auto-apply as mechanical-safe or invent new mechanical-safe kinds
+  - big-bang the monorepo
+Success: <observable / falsifiable>
 Kill-switch: <stop condition>
 Next: /ark-autopilot (apply with user ok) | /ark-fix (one cluster) | /ark-contract (globs only)
 ```
+
+When doctor JSON is available, prefer smell `id`s from `designSmells` / `patternBets[].smellId`.
 
 ## Output format (keep tight)
 

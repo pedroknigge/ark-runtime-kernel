@@ -180,10 +180,10 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 25 | `P02` | `done` | M | `P01` | Doctor reports deterministic design smells (path vs design); ENFORCE can be design-weak |
 | 26 | `P03` | `done` | M | `P02` | Stable JSON IR for plan **B** pattern bets (pilot, success signal, kill-switch); never mechanical-safe |
 | 27 | `P04` | `done` | M | `P03` | Eval fixtures: ENFORCE + design-weak and spaghetti concurrent patterns; CI guards skill/CLI honesty |
-| 28 | `P05` | `todo` | M | `P03` | Extraction-card playbook productized in docs + judgment assists (no general codemod) |
+| 28 | `P05` | `done` | M | `P03` | Extraction-card playbook productized in docs + judgment assists (no general codemod) |
 
-**Next:** `P02` — deterministic design smells in doctor (`P01` done). Stable `3.0.0` is published;
-Phase P is the post-release queue for design-depth under an honest gate.
+**Next:** no Phase P implementation item remains (`P01`–`P05` done). Stable `3.0.0` is published;
+further product work requires a newly approved roadmap item.
 
 ---
 
@@ -271,12 +271,16 @@ patternBets are non-empty; `assertNotHealthyFinishedIgnoringDesign` refuses heal
 
 ### P05 — Extraction cards as productized judgment assist
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `P03`
-- **Likely files:** `docs/brownfield-adoption.md`, skill cross-links, optional MCP judgmentBrief field
+- **Likely files:** `docs/brownfield-adoption.md`, `templates/skills/ark-{explore,fix,autopilot,loop}.md`,
+  `tests/unit/static-check/extractionCardSurface.test.ts`
 
 **Outcome:** I/O and god-module judgment has a fixed card template (pilot, move bytes, do-not list,
 success, kill-switch) in docs and skills; still human/agent applied, no bulk codemod engine.
+
+**Local evidence (2026-07-13):** extraction card §6 in brownfield-adoption; skill links;
+`extractionCardSurface.test.ts` guards template fields.
 
 ---
 
@@ -1135,10 +1139,10 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: P02 — Deterministic design smells in doctor (todo; next when started)
-First result: doctor JSON smell ids with path evidence + fixtures (no false ENFORCE healthy)
-Then: wire skills to prefer doctor ids when present; keep agent-detected smells in explore
-Primary files: bin/lib/doctor-plan.mjs, analysis sensors, doctor tests, eval fixtures seed
-Required finish: P02 acceptance + common merge gate green on the same commit
-Released baseline: npm arkgate@3.0.0; P01 skills depth already on main after this change lands
+Item: No Phase P item scheduled (P01–P05 done)
+First result: define and approve a post-P roadmap item before changing product behavior
+Then: scoped plan + acceptance evidence
+Primary files: whatever the approved item names
+Required finish: item acceptance + common merge gate green on the same commit
+Released baseline: npm arkgate@3.0.0; Phase P skills/doctor/plan B/fixtures/extraction cards on branch
 ```

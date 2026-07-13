@@ -112,6 +112,10 @@ function parseJson(text) {
   return undefined;
 }
 
+function diagnostic(text, root) {
+  return text.trim().slice(0, 1200).split(root).join('<project>');
+}
+
 function packCandidate(work) {
   const packOutput = run('npm', ['pack', '--json', '--pack-destination', work], { cwd: REPO });
   const jsonStart = packOutput.lastIndexOf('\n[');
@@ -141,10 +145,10 @@ function runCell(cell, candidate, work, candidateSha) {
   const root = cloneCell(cell, work);
   const environment = { ...process.env, CODEX_HOME: path.join(root, '.ark-eval-codex'), ARK_ACTIVE_HOST: cell.host };
   const initial = snapshot(root);
-  const preview = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--no-install', '--json'], { cwd: root, env: environment });
+  const preview = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--yes', '--no-install', '--json'], { cwd: root, env: environment });
   const previewJson = parseJson(preview.stdout);
   const startedAt = Date.now();
-  const applied = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--no-install', '--apply', '--json'], { cwd: root, env: environment });
+  const applied = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--yes', '--no-install', '--apply', '--json'], { cwd: root, env: environment });
   const firstGreenMs = Date.now() - startedAt;
   const checked = commandResult(process.execPath, [candidate.check, '--root', root, '--strict-merge', '--json'], { cwd: root, env: environment });
   const checkJson = parseJson(checked.stdout);
@@ -180,6 +184,7 @@ function runCell(cell, candidate, work, candidateSha) {
     bypasses: 0,
     manualDecisions: [],
     issues,
+    diagnostics: { preview: diagnostic(preview.stderr || preview.stdout, root), apply: diagnostic(applied.stderr || applied.stdout, root) },
   };
 }
 

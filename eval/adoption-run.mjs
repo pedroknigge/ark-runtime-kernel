@@ -137,8 +137,11 @@ function packCandidate(work) {
 
 function cloneCell(cell, work) {
   const cloneRoot = path.join(work, cell.id);
-  run('git', ['clone', '--filter=blob:none', '--no-checkout', cell.repository, cloneRoot]);
-  run('git', ['checkout', '--detach', cell.sha], { cwd: cloneRoot });
+  fs.mkdirSync(cloneRoot, { recursive: true });
+  run('git', ['init'], { cwd: cloneRoot });
+  run('git', ['remote', 'add', 'origin', cell.repository], { cwd: cloneRoot });
+  run('git', ['fetch', '--depth', '1', '--filter=blob:none', 'origin', cell.sha], { cwd: cloneRoot });
+  run('git', ['checkout', '--detach', 'FETCH_HEAD'], { cwd: cloneRoot });
   const root = path.resolve(cloneRoot, cell.projectPath ?? '.');
   if (!root.startsWith(`${cloneRoot}${path.sep}`) && root !== cloneRoot) throw new Error(`${cell.id} projectPath escaped clone`);
   if (!fs.existsSync(path.join(root, 'package.json'))) throw new Error(`${cell.id} projectPath has no package.json`);

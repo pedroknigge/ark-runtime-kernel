@@ -81,8 +81,8 @@ These are the starting facts this roadmap must change.
 | `RB-06` | P1 | `closed` | O03 compact active-host setup passed PR #41 CI and merged as `105cd39` |
 
 `RB-01`–`RB-06` are closed by the corresponding completed items and their recorded evidence.
-V05 passed its binary exit gate in PR #49. The next action is the separately authorized stable
-`3.0.0` release procedure; closing `RB-06` only removed the onboarding release blocker.
+V05 passed its binary exit gate in PR #49. The separately authorized stable `3.0.0` release
+completed on 2026-07-13; closing `RB-06` had removed the onboarding release blocker.
 
 ---
 
@@ -172,8 +172,9 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 22 | `V05` | `done` | M | all prior items | Independent audit passed; PR #49 CI green and beta exit authorized |
 | 23 | `B01` | `done` | L | `V05` failure evidence | Approved-adoption coverage recovered without lowering the exit criterion |
 
-**Next:** no roadmap implementation item remains. Prepare and execute the separate stable
-`3.0.0` release procedure only with explicit tag/publication authorization.
+**Next:** no roadmap implementation item remains. Stable `3.0.0` was released with signed tag,
+GitHub Release, npm publication, and MCP Registry publication. Any further work requires a newly
+approved roadmap item.
 
 ---
 
@@ -1032,10 +1033,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: Release 3.0.0 — stable publication
-First result: verify the prepared `3.0.0` candidate from clean `main` with the release dry run
-Then: create a signed `v3.0.0` tag and GitHub Release, then dispatch `publish-npm.yml` with
-`dry_run=false` for provenance-backed publication
+Item: No implementation item scheduled
+First result: define and approve a post-3.0 roadmap item before changing product behavior
+Then: create a scoped implementation plan and its acceptance evidence
 Primary files: `package.json`, `package-lock.json`, `src/version.ts`, `server.json`,
 `CHANGELOG.md`, and `docs/releases/3.0.0.md`
 Required finish: npm `arkgate@3.0.0`, GitHub Release artifacts, provenance, and tag all agree

@@ -552,10 +552,11 @@ async function start(args) {
       const preset = archetype ? resolveArchetypePreset(archetype).preset : undefined;
       const includeRoots = resolveIncludeRoots(root);
       const tsPackages = detectTsPackageRoots(root);
+      const nestedTsPackages = tsPackages.filter((entry) => entry !== '.');
       const workspaces = detectWorkspaces(root);
       const looksLikeMonorepo =
         includeRoots.length > 0 ||
-        tsPackages.length > 0 ||
+        nestedTsPackages.length > 0 ||
         workspaces.length > 0 ||
         fs.existsSync(path.join(root, 'rush.json')) ||
         fs.existsSync(path.join(root, 'pnpm-workspace.yaml')) ||
@@ -568,9 +569,9 @@ async function start(args) {
         const useUi =
           rec?.preset === 'feature-sliced' ||
           rec?.archetype === 'frontend-surface' ||
-          (tsPackages.length > 0 && includeRoots.length === 0 && !rec?.mature);
-        initArgs.push('--preset', useUi && tsPackages.length <= 3 ? 'ui-surface' : 'monorepo');
-        const shown = includeRoots.length > 0 ? includeRoots : tsPackages;
+          (nestedTsPackages.length > 0 && includeRoots.length === 0 && !rec?.mature);
+        initArgs.push('--preset', useUi && nestedTsPackages.length <= 3 ? 'ui-surface' : 'monorepo');
+        const shown = includeRoots.length > 0 ? includeRoots : nestedTsPackages;
         console.log(
           shown.length > 0
             ? `  Multi-package / TS package layout detected — profile include: ${shown.join(', ')}.`

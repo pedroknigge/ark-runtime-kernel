@@ -28,6 +28,8 @@ const args = {
   candidateSha: argValue(process.argv, '--candidate-sha'),
   dryRun: process.argv.includes('--dry-run'),
   keep: process.argv.includes('--keep'),
+  resume: process.argv.includes('--resume'),
+  sourceCache: argValue(process.argv, '--source-cache'),
 };
 
 function run(command, argv, options = {}) {
@@ -135,18 +137,30 @@ function packCandidate(work) {
   };
 }
 
-function cloneCell(cell, work) {
+function cloneCell(cell, work, sourceCache) {
   const cloneRoot = path.join(work, cell.id);
-  run('git', ['clone', '--depth', '1', '--filter=blob:none', cell.repository, cloneRoot]);
-  run('git', ['checkout', '--detach', cell.sha], { cwd: cloneRoot });
+  if (sourceCache) {
+    const cached = fs.realpathSync(path.resolve(sourceCache, cell.id));
+    if (!fs.existsSync(path.join(cached, '.git'))) throw new Error(`${cell.id} source cache is missing a Git checkout`);
+    if (run('git', ['remote', 'get-url', 'origin'], { cwd: cached }) !== cell.repository) throw new Error(`${cell.id} source cache origin does not match manifest`);
+    if (run('git', ['rev-parse', 'HEAD'], { cwd: cached }) !== cell.sha) throw new Error(`${cell.id} source cache SHA does not match manifest`);
+    if (run('git', ['status', '--porcelain'], { cwd: cached }) !== '') throw new Error(`${cell.id} source cache is not clean`);
+    fs.cpSync(cached, cloneRoot, { recursive: true, filter: (source) => !['.git', 'node_modules'].includes(path.basename(source)) });
+  } else {
+    fs.mkdirSync(cloneRoot, { recursive: true });
+    run('git', ['init'], { cwd: cloneRoot });
+    run('git', ['remote', 'add', 'origin', cell.repository], { cwd: cloneRoot });
+    run('git', ['fetch', '--depth', '1', '--filter=blob:none', 'origin', cell.sha], { cwd: cloneRoot });
+    run('git', ['checkout', '--detach', 'FETCH_HEAD'], { cwd: cloneRoot });
+  }
   const root = path.resolve(cloneRoot, cell.projectPath ?? '.');
   if (!root.startsWith(`${cloneRoot}${path.sep}`) && root !== cloneRoot) throw new Error(`${cell.id} projectPath escaped clone`);
   if (!fs.existsSync(path.join(root, 'package.json'))) throw new Error(`${cell.id} projectPath has no package.json`);
   return root;
 }
 
-function runCell(cell, candidate, work, candidateSha) {
-  const root = cloneCell(cell, work);
+function runCell(cell, candidate, work, candidateSha, sourceCache) {
+  const root = cloneCell(cell, work, sourceCache);
   const environment = { ...process.env, CODEX_HOME: path.join(root, '.ark-eval-codex'), ARK_ACTIVE_HOST: cell.host };
   const initial = snapshot(root);
   const preview = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--yes', '--no-install', '--json'], { cwd: root, env: environment });
@@ -245,6 +259,35 @@ function renderReport(result) {
   return `# External adoption matrix\n\nCandidate: \`${result.candidate.sha}\`\n\n| Metric | Result |\n|---|---:|\n| Cells | ${result.cellCount} |\n| Green merge gates | ${result.mergeGate.green} |\n| Adapt cases | ${result.mergeGate.adapt} |\n| Median first-green | ${result.medians.firstGreenMsExcludingDependencyInstall ?? 'n/a'} ms |\n| Median governed coverage | ${result.medians.governedCoveragePercent ?? 'n/a'}% |\n| Open P0/P1 | ${result.p0p1Open.length} |\n\n## Acceptance\n\n${Object.entries(result.acceptance).map(([key, value]) => `- ${value ? '[x]' : '[ ]'} ${key}`).join('\n')}\n`;
 }
 
+function environmentFailure(cell, candidateSha, error) {
+  return {
+    schemaVersion: 1,
+    id: cell.id,
+    repository: cell.repository,
+    repositorySha: cell.sha,
+    projectPath: cell.projectPath ?? '.',
+    candidateSha,
+    shape: cell.shape,
+    size: cell.size,
+    host: cell.host,
+    packageManager: cell.packageManager,
+    expectedInstallCommand: cell.installCommand,
+    treeFiles: null,
+    candidateInstallMs: null,
+    preview: null,
+    apply: null,
+    strictMerge: null,
+    governedCoverage: null,
+    mergeGateState: 'adapt',
+    finalCiState: 'not-run-external-ci; environment-failure',
+    falseBlocks: 0,
+    bypasses: 0,
+    manualDecisions: ['Retained as Adapt because the external clone did not complete.'],
+    issues: [{ severity: 'P2', class: 'environment-failure', message: String(error.message).slice(0, 1200) }],
+    diagnostics: { preview: '', apply: '', strictMerge: '' },
+  };
+}
+
 function main() {
   const manifest = JSON.parse(fs.readFileSync(args.manifest, 'utf8'));
   validateManifest(manifest);
@@ -269,9 +312,19 @@ function main() {
     const candidate = { sha: sourceSha, tarballSha256: packed.tarballSha256, installMs: packed.installMs };
     const results = [];
     for (const cell of cells) {
-      const result = runCell(cell, packed, work, sourceSha);
+      const resultFile = path.join(outputRoot, `${cell.id}.json`);
+      let result;
+      if (args.resume && fs.existsSync(resultFile)) {
+        result = JSON.parse(fs.readFileSync(resultFile, 'utf8'));
+        if (result.candidateSha !== sourceSha || result.repositorySha !== cell.sha) {
+          throw new Error(`${cell.id} resume artifact does not match the candidate or repository SHA`);
+        }
+      } else {
+        try { result = runCell(cell, packed, work, sourceSha, args.sourceCache); }
+        catch (error) { result = environmentFailure(cell, sourceSha, error); }
+      }
       results.push(result);
-      writeJson(path.join(outputRoot, `${cell.id}.json`), result);
+      writeJson(resultFile, result);
       console.log(`${cell.id}: ${result.mergeGateState} coverage=${result.governedCoverage?.percent ?? 'n/a'}`);
     }
     const resultSummary = summary(manifest, results, candidate);

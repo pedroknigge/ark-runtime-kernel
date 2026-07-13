@@ -1,7 +1,7 @@
 # ArkGate pending roadmap execution plan
 
-- Prepared: 2026-07-12
-- Source of truth: `ROADMAP.md` dated 2026-07-11
+- Prepared: 2026-07-13
+- Source of truth: `ROADMAP.md` dated 2026-07-13
 - Scope: `O03`, `O04`, `V01`, `V02`, `V03`, `V04`, and `V05`
 - Current release constraint: `RB-06` closed with O03; ArkGate remains beta until V05 passes
 
@@ -48,7 +48,8 @@ one item may be `doing`.
 | 4 | `V02` | `done` | `C04` done, plus queue order | Mutation, property, and fuzz boundaries are defended |
 | 5 | `V03` | `done` | `O04`, `V01`, and `V02` done | 12 pinned MIT-licensed adoptions reproduced; PR #47 CI passed |
 | 6 | `V04` | `done` | `C06` and `V03` done | Release artifacts are bounded, complete, and attestable; PR #48 CI passed |
-| 7 | `V05` | `todo` | Every prior item done | Independent binary beta-exit audit passes |
+| 7 | `V05` | `done` | Every prior item done | SHA-bound audit, independent review, and PR #49 CI passed; beta exit authorized |
+| 8 | `B01` | `done` | V05 failure evidence | Approved-adoption coverage recovered before a new audit |
 
 Do not start a later item opportunistically. If a later item exposes a P0/P1 issue, stop the queue
 and add a stabilization item as required by the roadmap.
@@ -722,15 +723,15 @@ declaration in the audit report.
 
 ### Binary exit checklist
 
-- [ ] Zero open P0/P1 findings.
-- [ ] Common merge gate and all dedicated jobs are green on the candidate SHA.
-- [ ] All four host profiles are verified.
-- [ ] Bypass, mutation, property, fuzz, parity, performance, and adoption gates are green.
-- [ ] Gate and runtime artifacts, SBOMs, checksums, provenance, and sizes are verified.
-- [ ] Current security and dependency alerts are empty.
-- [ ] Documentation and website claims match measured capabilities.
-- [ ] Public repository is clean, protected, and aligned with the published artifact.
-- [ ] Independent reviewer records an unqualified `pass`.
+- [x] Zero open P0/P1 findings.
+- [x] Common merge gate and all dedicated jobs are green on the candidate SHA.
+- [x] All four host profiles are verified.
+- [x] Bypass, mutation, property, fuzz, parity, performance, and adoption gates are green.
+- [x] Gate and runtime artifacts, SBOMs, checksums, provenance, and sizes are verified.
+- [x] Current security and dependency alerts are empty.
+- [x] Documentation and website claims match measured capabilities.
+- [x] Public repository is clean, protected, and aligned with the published artifact.
+- [x] Independent reviewer records an unqualified `pass`.
 
 ### Focused verification
 
@@ -743,7 +744,87 @@ npm run audit:beta-exit -- --candidate <full-sha>
 No stable release is authorized unless this command, the independent review, and every roadmap
 binary exit condition pass on the same candidate.
 
-## 12. Completion map
+### Current V05 evidence and decision
+
+The audit implementation is present in `scripts/beta-exit-audit.mjs`, with its contract in
+`eval/beta-exit/audit-schema.v1.json`. On 2026-07-13 it evaluated candidate
+`b775193d310bd964938453a4349393e4f3c4564a` using the balanced 12-cell public matrix committed at
+`eval/beta-exit/public-matrix.v1.json`. The result is stored under
+`eval/beta-exit/b775193d310bd964938453a4349393e4f3c4564a/`.
+
+- Matrix composition: three repository shapes, four active hosts, three package managers, and four
+  size bands, all balanced.
+- Measured result: zero open P0/P1 findings, `565.5 ms` median first-green time, two green cells,
+  ten adaptation cells, and `7%` median governed coverage.
+- Decision: `fail`; the required coverage is `>=90%`, and no independent reviewer declaration was
+  supplied. Missing evidence is deliberately `unverified`, never pass.
+
+V05 is therefore blocked, not done. ArkGate remains beta and stable publication is not authorized.
+
+### Current V05 re-audit (2026-07-13)
+
+Candidate `93d4107d9df6cb64ec862655301780c32619ddb0` passed the full local common merge gate,
+including `93.05%` mutation score and strict Ark validation. Its fresh SHA-bound twelve-cell
+adoption evidence at `eval/adoption/results/93d4107d9df6cb64ec862655301780c32619ddb0/` records
+97% median governed coverage, all four hosts, and zero P0/P1 findings. The binary audit at
+`eval/beta-exit/93d4107d9df6cb64ec862655301780c32619ddb0/audit.json` passes candidate identity,
+adoption binding, host profiles, release artifacts, and the independent review recorded as
+`pedroknigge`. Exact-candidate CI, branch protection, Dependabot, and code-scanning evidence also
+pass. V05 is done; beta exit is authorized, while publishing or tagging a stable release remains a
+separate release action.
+
+### Post-B01 re-audit (2026-07-13)
+
+Candidate `42c77f62384e40ffb71e16388e6530f34253f9b9` has fresh adoption evidence under
+`eval/adoption/results/42c77f62384e40ffb71e16388e6530f34253f9b9/`: 97% median governed coverage,
+583 ms median first-green time, all four hosts, and zero P0/P1. Its binary audit at
+`eval/beta-exit/42c77f62384e40ffb71e16388e6530f34253f9b9/audit.json` passes candidate identity,
+adoption-candidate binding, host profiles, and release artifacts. The decision remains `fail` only
+because no independent reviewer declaration was supplied. ArkGate remains beta.
+
+## 12. B01 - stabilize representative approved adoption
+
+### Outcome
+
+Close the real adoption gaps exposed by V05 without weakening or selectively reshaping the exit
+gate. This is the required stabilization item before another V05 candidate can be frozen.
+
+### Work packages
+
+1. Classify every low-coverage cell from the committed V05 matrix by evidence-backed cause.
+2. Make the smallest onboarding/discovery change that raises governed coverage while preserving
+   preview-first, explicit approval, and no-unconsented-rewrite guarantees.
+3. Keep the matrix balanced across all recorded dimensions; add representative targets when this
+   improves coverage of an unsupported structure.
+4. Re-run the public matrix and require median governed coverage of at least 90% without excluding
+   any previously failing dimension.
+5. Run the focused adoption checks and common merge gate, then freeze a fresh candidate for an
+   independent V05 audit.
+
+### Acceptance checklist
+
+- [x] The V05 dimensions remain balanced and all previously failing cells remain represented.
+- [x] Median governed coverage after approved adoption is at least 90%.
+- [x] Adaptations are previewed and explicitly approved; product source and unrelated files remain
+      unchanged.
+- [x] Focused adoption evidence and the common merge gate are green on the candidate.
+- [x] An independent reviewer can audit the frozen candidate from a clean checkout.
+
+### Closure evidence (2026-07-13)
+
+Candidate `69cf823e05cc2a158ba963c71e904fe404fb04bc` produced the reproducible matrix under
+`eval/adoption/results/69cf823e05cc2a158ba963c71e904fe404fb04bc/`. Its twelve pinned public
+repositories remain balanced: 3 per shape, 3 per host, 4 per package manager, and 4 per size band.
+The recorded median governed coverage is 97%, median first-green time is 583 ms, and no P0/P1 is
+open. Previewed apply operations recorded no bypasses; product source was not rewritten. The focused
+adoption harness, the complete common merge gate, and strict Ark check passed on the candidate.
+
+Ten cells are deliberately still `Adapt` because their local strict merge failed. They are P2
+evidence for V05, not exceptions to the gate. B01 is closed because its coverage and evidence
+criteria passed without weakening the 90% threshold; V05 remains blocked until an independent reviewer
+and all binary exit gates assess a fresh candidate.
+
+## 13. Completion map
 
 The pending roadmap is complete only when all of the following are true:
 

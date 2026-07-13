@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "candidate": {
+    "sha": "93d4107d9df6cb64ec862655301780c32619ddb0",
+    "tarballSha256": "25a4be870845f842f893412e15540defaa8f1b8afcd59fded7d7f74e273b588e",
+    "installMs": 657
+  },
+  "cellCount": 12,
+  "dimensions": {
+    "shapes": {
+      "library": 3,
+      "api": 3,
+      "frontend": 3,
+      "monorepo": 3
+    },
+    "hosts": {
+      "claude": 3,
+      "grok": 3,
+      "cursor": 3,
+      "codex": 3
+    },
+    "packageManagers": {
+      "npm": 4,
+      "pnpm": 4,
+      "yarn": 4
+    },
+    "sizes": {
+      "small": 4,
+      "medium": 4,
+      "large": 4
+    }
+  },
+  "medians": {
+    "firstGreenMsExcludingDependencyInstall": 600.5,
+    "governedCoveragePercent": 97
+  },
+  "mergeGate": {
+    "green": 2,
+    "adapt": 10
+  },
+  "p0p1Open": [],
+  "acceptance": {
+    "dimensionsRepresented": true,
+    "noOpenP0P1": true,
+    "medianFirstGreenUnderFiveMinutes": true,
+    "medianCoverageAtLeast90": true
+  }
+}

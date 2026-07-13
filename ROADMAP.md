@@ -939,6 +939,16 @@ governed coverage, 583 ms median first-green, all four hosts, and zero P0/P1. It
 adoption-to-candidate binding, host profiles, and release artifacts. It deliberately fails because
 the independent-review declaration is unverified. No beta or stable-release claim is authorized.
 
+**Current V05 re-audit (2026-07-13):** Candidate
+`93d4107d9df6cb64ec862655301780c32619ddb0` passed the full local common merge gate, including
+`93.05%` mutation and strict Ark validation. Its fresh SHA-bound twelve-cell adoption result at
+`eval/adoption/results/93d4107d9df6cb64ec862655301780c32619ddb0/summary.json` records 97%
+median governed coverage, all four hosts, and zero P0/P1. The audit at
+`eval/beta-exit/93d4107d9df6cb64ec862655301780c32619ddb0/audit.json` passes candidate identity,
+adoption binding, host profiles, and release artifacts, and deliberately fails only because the
+independent-review declaration is unverified. V05 remains blocked; no beta-exit or stable-release
+claim is authorized.
+
 ### B01 — Stabilize representative approved adoption
 
 - **Status:** `done`

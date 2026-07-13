@@ -761,6 +761,16 @@ The audit implementation is present in `scripts/beta-exit-audit.mjs`, with its c
 
 V05 is therefore blocked, not done. ArkGate remains beta and stable publication is not authorized.
 
+### Current V05 re-audit (2026-07-13)
+
+Candidate `93d4107d9df6cb64ec862655301780c32619ddb0` passed the full local common merge gate,
+including `93.05%` mutation score and strict Ark validation. Its fresh SHA-bound twelve-cell
+adoption evidence at `eval/adoption/results/93d4107d9df6cb64ec862655301780c32619ddb0/` records
+97% median governed coverage, all four hosts, and zero P0/P1 findings. The binary audit at
+`eval/beta-exit/93d4107d9df6cb64ec862655301780c32619ddb0/audit.json` passes candidate identity,
+adoption binding, host profiles, and release artifacts. It deliberately remains `fail` because
+the independent-review declaration is unverified; ArkGate remains beta and V05 stays blocked.
+
 ### Post-B01 re-audit (2026-07-13)
 
 Candidate `42c77f62384e40ffb71e16388e6530f34253f9b9` has fresh adoption evidence under

@@ -57,7 +57,33 @@ the same files or weaken the gate.
 2. Tell the user the path to `ark-report.html` and `.ark/reports/origin.html`.
    Mention `.ark/` should stay gitignored (Ark appends that on first report when possible).
 
-3. Optionally also run:
+3. **Open the report in the default browser** (mandatory when `ark-report.html` exists and
+   this is a local interactive session — skip only in CI/headless or if the user said not to):
+
+   Detect OS and run **one** simple open (best-effort; do not fail the skill if open fails):
+
+   | OS | Command |
+   |----|---------|
+   | **macOS** | `open ark-report.html` |
+   | **Linux** | `xdg-open ark-report.html` |
+   | **Windows** | `start ark-report.html` (cmd) or `Invoke-Item ark-report.html` (PowerShell) |
+
+   One-liner that picks the host OS (from the project root, after the report was written):
+
+   ```bash
+   # macOS / Linux / Windows (Git Bash or similar)
+   case "$(uname -s 2>/dev/null || echo unknown)" in
+     Darwin*) open ark-report.html ;;
+     Linux*)  xdg-open ark-report.html ;;
+     MINGW*|MSYS*|CYGWIN*|Windows_NT) start ark-report.html 2>/dev/null || cmd.exe /c start ark-report.html ;;
+     *) open ark-report.html 2>/dev/null || xdg-open ark-report.html 2>/dev/null || true ;;
+   esac
+   ```
+
+   Prefer the absolute path if the cwd is not the project root. This only opens the file in
+   the **default browser** — no special flags, no browser selection.
+
+4. Optionally also run:
 
    ```bash
    npx ark-check --coverage
@@ -104,6 +130,8 @@ else is judgment/deferred and must not be auto-applied.
   - the strict check from `package.json` (or `ark-check --root . --config ark.config.json --strict-config`)
   - `/ark-place` for "where does new code go?"
   - the path to `ark-report.html`
+  - **open that HTML in the default browser** (step 3 above: `open` / `xdg-open` / `start`)
+    if you have not already — so the user sees the showcase without hunting for the file
 
 ## Related
 
@@ -116,11 +144,14 @@ else is judgment/deferred and must not be auto-applied.
 End with **exactly** these headings (markdown `###`):
 
 ### Completion
-- **Sensor:** commands/tools run
+- **Sensor:** commands/tools run (include report + browser-open command when used)
 - **Opened:** real paths read (or `n/a` only if pure install/upgrade with no source analysis)
-- **Result:** one-line outcome
+- **Result:** one-line outcome (include `ark-report.html` path; note if browser open was attempted)
 - **Handoff:** `/ark-…` / CLI / `none`
 - **Incomplete?** `no` | `yes — <what is missing>`
+
+Prefer **Incomplete?** `yes` if the showcase report was generated but the browser-open step was
+skipped without CI/headless/user-opt-out reason.
 
 If a **STOP** handoff applies and you continued as if done, set **Incomplete?** to `yes`.
 **Skill incomplete if missing** any of the bullets above.

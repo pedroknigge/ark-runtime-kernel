@@ -1,6 +1,6 @@
 # ArkGate internal roadmap — truth, focus, proof
 
-- **Status date:** 2026-07-12
+- **Status date:** 2026-07-13
 - **Scope:** canonical implementation queue for the ArkGate library repository
 - **Rule:** one active item at a time; do not start an item until all dependencies are `done`
 
@@ -169,9 +169,10 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 19 | `V02` | `done` | M | `C04` | Mutation, property, and fuzz tests defend critical boundaries |
 | 20 | `V03` | `done` | L | `O04`, `V01`, `V02` | External adoption is reproduced on 12 pinned MIT-licensed repositories |
 | 21 | `V04` | `done` | M | `C06`, `V03` | Package and release artifacts are bounded, complete, and attestable |
-| 22 | `V05` | `todo` | M | all prior items | Independent audit passes and the product may exit beta |
+| 22 | `V05` | `blocked` | M | all prior items | Independent audit failed; ArkGate remains beta |
+| 23 | `B01` | `todo` | L | `V05` failure evidence | Raise approved-adoption coverage without lowering the exit criterion |
 
-**Next:** `V05`. Run the independent beta-exit audit.
+**Next:** `B01`. Stabilize representative public-repository adoption before re-running V05.
 
 ---
 
@@ -885,7 +886,7 @@ build, CodeQL, Semgrep, fuzz, onboarding, package isolation, and performance CI.
 
 ### V05 — Independent beta exit audit
 
-- **Status:** `todo`
+- **Status:** `blocked`
 - **Depends on:** every prior item
 
 Run the audit from a clean checkout by a reviewer who did not implement the final slice.
@@ -919,6 +920,35 @@ If any condition fails, the product stays beta. Do not convert the result into a
 | 50k cold scan | p95 ≤30 s on `ubuntu-latest`; 5 s deferred to a dedicated engine-optimization milestone |
 | External matrix | ≥12 pinned repos, 4 hosts, 3 package managers |
 | Open P0/P1 at beta exit | 0 |
+
+**Attempt evidence (2026-07-13):** `scripts/beta-exit-audit.mjs` and
+`eval/beta-exit/audit-schema.v1.json` record a reproducible binary decision. The 12-cell balanced
+public matrix at `eval/beta-exit/b775193d310bd964938453a4349393e4f3c4564a/public-matrix/` covered
+three repository shapes, four active hosts, three package managers, and four size bands. It found
+zero open P0/P1 findings and a 565.5 ms median first-green time, but only 7% median governed
+coverage (two green cells and ten requiring adaptation), versus the required 90%. The generated
+`audit.json` therefore records `fail`; its independent-review condition is also `unverified` because
+no reviewer declaration exists. ArkGate remains beta. Do not rerun V05 as a pass candidate until
+`B01` closes and an independent reviewer can audit a frozen candidate from a clean checkout.
+
+### B01 — Stabilize representative approved adoption
+
+- **Status:** `todo`
+- **Depends on:** V05 failure evidence
+
+Identify and close the product gaps that leave real, approved public projects outside governed
+scope. Preserve the existing 90% median governed-coverage threshold and the no-unconsented-rewrite
+rule; do not narrow the matrix, exclude failing shapes, or lower the exit criterion to obtain a pass.
+
+**Acceptance**
+
+- The V05 public matrix remains balanced across its recorded shapes, hosts, package managers, and
+  size bands.
+- The same or a more demanding pinned public matrix reaches median governed coverage of at least
+  90% after approved adoption.
+- Every adaptation is previewed, explicitly approved, and leaves product source and unrelated files
+  unchanged.
+- The focused adoption evidence and common merge gate pass before V05 is re-run.
 
 ---
 

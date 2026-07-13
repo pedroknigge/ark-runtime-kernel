@@ -1,16 +1,18 @@
-# ArkGate pending roadmap execution plan
+# ArkGate roadmap execution plan (closed through 3.0.0)
 
 - Prepared: 2026-07-13
+- Closed: 2026-07-13 (stable `3.0.0` published)
 - Source of truth: `ROADMAP.md` dated 2026-07-13
-- Scope: `O03`, `O04`, `V01`, `V02`, `V03`, `V04`, and `V05`
-- Current release constraint: V05 passed in PR #49; `3.0.0` is prepared but must not be tagged or
-  published without explicit release authorization
+- Scope: `O03`, `O04`, `V01`, `V02`, `V03`, `V04`, and `V05` (all `done`)
+- Current release state: V05 passed in PR #49; `3.0.0` was released on 2026-07-13 with signed tag,
+  GitHub Release, npm publication, and MCP Registry publication
 
 ## 1. Purpose and authority
 
-This document turns the pending roadmap into an implementation-ready sequence. It adds execution
-detail, evidence locations, likely files, and verification commands. It does not replace the
-roadmap.
+This document recorded the pending roadmap as an implementation-ready sequence through beta exit
+and the stable 3.0.0 release. It retains execution detail, evidence locations, and verification
+commands as historical record. It does not replace the roadmap. New product work requires a newly
+approved roadmap item before this plan is extended.
 
 When this document and `ROADMAP.md` disagree:
 
@@ -55,10 +57,13 @@ one item may be `doing`.
 Do not start a later item opportunistically. If a later item exposes a P0/P1 issue, stop the queue
 and add a stabilization item as required by the roadmap.
 
-### Post-roadmap release 3.0.0
+### Post-roadmap release 3.0.0 (completed)
 
-The implementation roadmap is complete. The next operation is a release procedure, not another
-roadmap feature:
+The implementation roadmap and release procedure are complete. The signed `v3.0.0` tag, GitHub
+Release, npm publication, and MCP Registry publication completed on 2026-07-13. The initial
+`publish-npm` run published npm successfully, then failed only while attaching duplicate-named
+release assets; those assets were completed manually, and PR #51 prevents that collision in future
+releases. The procedure below is retained as the completed release record:
 
 1. Run `npm run release:npm -- --dry` from clean `main` for `arkgate@3.0.0`.
 2. With explicit authorization, create and push signed tag `v3.0.0`.

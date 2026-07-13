@@ -29,6 +29,7 @@ const args = {
   dryRun: process.argv.includes('--dry-run'),
   keep: process.argv.includes('--keep'),
   resume: process.argv.includes('--resume'),
+  sourceCache: argValue(process.argv, '--source-cache'),
 };
 
 function run(command, argv, options = {}) {
@@ -136,21 +137,30 @@ function packCandidate(work) {
   };
 }
 
-function cloneCell(cell, work) {
+function cloneCell(cell, work, sourceCache) {
   const cloneRoot = path.join(work, cell.id);
-  fs.mkdirSync(cloneRoot, { recursive: true });
-  run('git', ['init'], { cwd: cloneRoot });
-  run('git', ['remote', 'add', 'origin', cell.repository], { cwd: cloneRoot });
-  run('git', ['fetch', '--depth', '1', '--filter=blob:none', 'origin', cell.sha], { cwd: cloneRoot });
-  run('git', ['checkout', '--detach', 'FETCH_HEAD'], { cwd: cloneRoot });
+  if (sourceCache) {
+    const cached = path.resolve(sourceCache, cell.id);
+    if (!fs.existsSync(path.join(cached, '.git'))) throw new Error(`${cell.id} source cache is missing a Git checkout`);
+    if (run('git', ['remote', 'get-url', 'origin'], { cwd: cached }) !== cell.repository) throw new Error(`${cell.id} source cache origin does not match manifest`);
+    if (run('git', ['rev-parse', 'HEAD'], { cwd: cached }) !== cell.sha) throw new Error(`${cell.id} source cache SHA does not match manifest`);
+    if (run('git', ['status', '--porcelain'], { cwd: cached }) !== '') throw new Error(`${cell.id} source cache is not clean`);
+    fs.cpSync(cached, cloneRoot, { recursive: true, filter: (source) => !['.git', 'node_modules'].includes(path.basename(source)) });
+  } else {
+    fs.mkdirSync(cloneRoot, { recursive: true });
+    run('git', ['init'], { cwd: cloneRoot });
+    run('git', ['remote', 'add', 'origin', cell.repository], { cwd: cloneRoot });
+    run('git', ['fetch', '--depth', '1', '--filter=blob:none', 'origin', cell.sha], { cwd: cloneRoot });
+    run('git', ['checkout', '--detach', 'FETCH_HEAD'], { cwd: cloneRoot });
+  }
   const root = path.resolve(cloneRoot, cell.projectPath ?? '.');
   if (!root.startsWith(`${cloneRoot}${path.sep}`) && root !== cloneRoot) throw new Error(`${cell.id} projectPath escaped clone`);
   if (!fs.existsSync(path.join(root, 'package.json'))) throw new Error(`${cell.id} projectPath has no package.json`);
   return root;
 }
 
-function runCell(cell, candidate, work, candidateSha) {
-  const root = cloneCell(cell, work);
+function runCell(cell, candidate, work, candidateSha, sourceCache) {
+  const root = cloneCell(cell, work, sourceCache);
   const environment = { ...process.env, CODEX_HOME: path.join(root, '.ark-eval-codex'), ARK_ACTIVE_HOST: cell.host };
   const initial = snapshot(root);
   const preview = commandResult(process.execPath, [candidate.bin, 'start', '--root', root, '--tools', cell.host, '--yes', '--no-install', '--json'], { cwd: root, env: environment });
@@ -310,7 +320,7 @@ function main() {
           throw new Error(`${cell.id} resume artifact does not match the candidate or repository SHA`);
         }
       } else {
-        try { result = runCell(cell, packed, work, sourceSha); }
+        try { result = runCell(cell, packed, work, sourceSha, args.sourceCache); }
         catch (error) { result = environmentFailure(cell, sourceSha, error); }
       }
       results.push(result);

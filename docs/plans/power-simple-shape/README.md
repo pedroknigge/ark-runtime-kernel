@@ -9,7 +9,7 @@
 **Kind:** epic / product vision  
 **Owners:** product (Pedro) + library maintainers  
 **Last updated:** 2026-07-13  
-**Code path (if any):** *none yet as a single package surface* — builds on Phase P (`design-smells`, `patternBets`, skills) already on `main` / npm 3.0.2+
+**Code path (if any):** Phase Q surfaces ship in **arkgate@3.0.3** (post-green path, smell outcomes, golden pattern, pilot loop, AI-velocity eval) on top of Phase P (`design-smells`, `patternBets`, skills)
 
 ---
 
@@ -154,7 +154,7 @@ flowchart TB
 | 3 | `Q03` | M | **done** — Golden pattern artifact (`.ark/golden-pattern.json`) + place/prepare-write/doctor read it for *new* code | Q01 |
 | 4 | `Q04` | M | **done** — Pilot loop productized: extraction card → one pilot → re-doctor; fixture proof | Q02, Q03 |
 | 5 | `Q05` | M | **done** — AI-velocity evidence: eval/bench golden-path vs design-weak for same feature prompt | Q04 |
-| 6 | `Q06` | S | **Release + surfaces**: package-surface, agent-guide, site, CHANGELOG; patch release when behavior ships | Q01–Q05 as needed |
+| 6 | `Q06` | S | **done** — Release + surfaces: package-surface, agent-guide, CHANGELOG, `docs/releases/3.0.3.md`, version 3.0.3 | Q01–Q05 as needed |
 
 Implementation rules (carry forward from ROADMAP):
 
@@ -223,6 +223,8 @@ When implementation of Q-items starts:
 3. When a slice is user-visible and stable, update [package-surface.md](../../package-surface.md) and consumer docs; site copy stays in `arkgate-site`.
 4. Create `docs/features/<slice>/` only if a durable code surface needs a pack (most Q work is product CLI/skills — ROADMAP + release notes may suffice).
 5. Mark this plan **Shipped** or **Superseded** when Q01–Q06 acceptance is met or replaced by a later epic.
+
+**Status (2026-07-13):** Phase Q **Shipped** in package **3.0.3** (notes prepared; publish from main after merge).
 
 ---
 

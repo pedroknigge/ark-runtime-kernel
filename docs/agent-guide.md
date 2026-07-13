@@ -82,12 +82,16 @@ explore then apply A + propose/apply-with-ok B. `/ark-loop` = plan A only. Empty
 “architecture healthy” if design-weak residual remains. Full routing table: full-install
 `AGENTS.md` / [README skill table](../README.md#other-skills-only-when-you-need-them).
 
-**Design fitness (3.0.1+):** after edges are clean, doctor can still report **ENFORCE · design-weak**.
+**Design fitness (3.0.1+ / Phase Q 3.0.3):** after edges are clean, doctor can still report **ENFORCE · design-weak**.
 
 ```bash
-npx ark-check --doctor --json   # doctor.designFitness + doctor.designSmells[] + doctor.pilotLoop
+npx ark-check --doctor --json   # designFitness, designSmells[].outcome, postGreenPath, goldenPattern, pilotLoop
 npx ark-check --plan --json     # plan.goal.designWeak + plan.patternBets[] + plan.pilotLoop
 ```
+
+**Post-green path (Q01):** when design-weak, doctor sets `postGreenPath` / `primaryNextAction`
+(`clarify-for-ai`) — **one** Shape door: `/ark-explore` shape-focus → dual-plan B, then
+`/ark-autopilot` only to apply B with your OK. Do not skill-shop coverage/think for the same residual.
 
 **Pilot loop (Q04):** when design-weak, `pilotLoop.nextPilot` is **one** extraction card
 (pilot target, move, success, kill-switch). Apply **that one pilot only**, then re-doctor.

@@ -191,9 +191,10 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 31 | `Q03` | `done` | M | `Q01` | Optional golden pattern artifact for new-code place/prepare-write guidance |
 | 32 | `Q04` | `done` | M | `Q02`, `Q03` | Pilot loop productized: extraction card → one pilot → re-doctor |
 | 33 | `Q05` | `done` | M | `Q04` | AI-velocity evidence: golden-path vs design-weak same feature scenario |
+| 34 | `Q06` | `done` | S | `Q01`–`Q05` | Release train: CHANGELOG, 3.0.3 notes, surface parity, dry-run readiness |
 
-**Next:** no Q item scheduled after `Q05`. Epic: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
-(remaining Q06 still proposed until approved into this table).
+**Next:** Phase Q complete on this branch. Publish `arkgate@3.0.3` from `main` after merge.
+Epic: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
 
 ---
 
@@ -285,6 +286,23 @@ better. Method documented next to the number. No live LLM; no gate weaken.
 
 **Local evidence (2026-07-13):** design-weak 4 turns vs golden-path 1 turn; harness PASS;
 `q05AiVelocity.test.ts` green; `check:architecture` green.
+
+### Q06 — Release train (Phase Q surfaces + patch 3.0.3)
+
+- **Status:** `done`
+- **Depends on:** `Q01`–`Q05`
+- **Likely files:** `package.json`, `src/version.ts`, `server.json`, `package-lock.json`,
+  `CHANGELOG.md`, `docs/releases/3.0.3.md`, `docs/package-surface.md`, `docs/agent-guide.md`,
+  `release/package-budgets.v1.json`, `tests/unit/static-check/q06ReleaseSurfaces.test.ts`
+
+**Outcome:** Patch **3.0.3** packages Q01–Q05 for consumers: CHANGELOG section, release note
+with upgrade path and honesty lines, version sync across package metadata, surface docs parity.
+Live `npm publish` only after merge to main with auth; dry-run readiness is the local bar.
+
+**Local evidence (2026-07-13):** version 3.0.3 synced (package/lock/server/src); CHANGELOG +
+`docs/releases/3.0.3.md`; `q06ReleaseSurfaces.test.ts` green; `check:release-artifacts` verified
+(`arkgate@3.0.3` pack); `npm publish --dry-run` shows `+ arkgate@3.0.3`; architecture green.
+Live npm publish deferred to maintainer checklist on main.
 
 ## Phase P — post-3.0 pattern depth
 

@@ -109,6 +109,36 @@ The fixture must actually violate (`ark-check` exits 1) or the runner reports
 after the run, so "delete the file" doesn't count as a fix. `case.json` is
 stripped from the copy before the agent sees it — no answer key leaks.
 
+### AI-velocity harness (Q05 — fixture-measured, CI-safe)
+
+Compares **the same fixed feature scenario** on two arms of
+`tests/fixtures/design-weak-enforce`:
+
+| Arm | Setup | Metric |
+|-----|--------|--------|
+| **design-weak** | No golden pattern; concurrent-layout placement ladder | `placementTurns` (agent-equivalent) |
+| **golden-path** | Same tree + `.ark/golden-pattern.json` (`newCodeHome: src/domain/`) | `placementTurns` |
+
+**Scenario:** add pure domain rule `canRefund` (prompt + snippet fixed in
+`bin/lib/ai-velocity.mjs` / `FEATURE_SCENARIO`).
+
+**Metric:** `placementTurns` — steps until a **DomainModel** landing. Design-weak walks
+confused candidates (`features/.../ui`, `routes`, `services`, then `domain`); golden uses
+`newCodeHome` as the first attempt. **Golden must be strictly better** (fewer turns).
+
+**Not measured / not claimed:** live multi-agent latency, human productivity, LOC vanity.
+**Honesty:** design-weak residual may remain on both arms; golden does not clear design-weak;
+patternBets stay never mechanical-safe; gate is not weakened.
+
+```bash
+npm run eval:ai-velocity
+# or: node eval/ai-velocity-run.mjs
+# -> eval/ai-velocity-report.json (+ baseline)
+```
+
+Method is printed next to the numbers in the harness stdout and stored in
+`comparison.method` on the report. CI gate: `tests/unit/static-check/q05AiVelocity.test.ts`.
+
 ### Loop-cost harness (W3 — fixture-measured, CI-safe)
 
 Measures **turns-to-green**, optional **tokens-to-green**, and **CHEATED** for a

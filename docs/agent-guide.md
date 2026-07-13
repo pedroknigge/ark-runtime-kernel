@@ -94,6 +94,11 @@ npx ark-check --plan --json     # plan.goal.designWeak + plan.patternBets[] + pl
 Success = reduced smell evidence on pilot paths; residual outside the pilot may remain.
 Never multi-pilot batch; never mechanical-safe; never claim healthy finished while design-weak.
 
+**AI-velocity evidence (Q05):** deterministic fixture bench (no live LLM) compares the same
+feature add on design-weak vs golden-path trees. Run `npm run eval:ai-velocity`; metric is
+`placementTurns` (agent-equivalent steps to the DomainModel home). Method is stored next to
+the number in `eval/ai-velocity-report.json`. See [eval/README.md](../eval/README.md).
+
 Smell **ids** (stable JSON) plus **outcome** lines (plain language, Q02) on each
 `designSmells[]` object — prefer `outcome` for humans; keep `id` for automation:
 

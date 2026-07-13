@@ -190,9 +190,10 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 30 | `Q02` | `done` | S | `Q01` | Human outcome language for each design smell id (docs parity) |
 | 31 | `Q03` | `done` | M | `Q01` | Optional golden pattern artifact for new-code place/prepare-write guidance |
 | 32 | `Q04` | `done` | M | `Q02`, `Q03` | Pilot loop productized: extraction card → one pilot → re-doctor |
+| 33 | `Q05` | `done` | M | `Q04` | AI-velocity evidence: golden-path vs design-weak same feature scenario |
 
-**Next:** no Q item scheduled after `Q04`. Epic: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
-(remaining Q05–Q06 still proposed until approved into this table).
+**Next:** no Q item scheduled after `Q05`. Epic: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
+(remaining Q06 still proposed until approved into this table).
 
 ---
 
@@ -268,6 +269,22 @@ paths). Never multi-pilot batch, never mechanical-safe, never false healthy fini
 selects `facade-sql-in-routes` → pilot on `src/routes/orders.ts`; after single pilot
 rewrite, smell cleared on pilot path while `goal.met` stays true and residual
 `domain-logic-in-ui` remains; patternBets never mechanical-safe; `check:architecture` green.
+
+### Q05 — AI-velocity evidence (golden-path vs design-weak)
+
+- **Status:** `done`
+- **Depends on:** `Q04`
+- **Likely files:** `bin/lib/ai-velocity.mjs`, `eval/ai-velocity-run.mjs`,
+  `eval/ai-velocity-report.json`, `eval/ai-velocity-baseline.json`,
+  `tests/unit/static-check/q05AiVelocity.test.ts`, `eval/README.md`, package-surface
+
+**Outcome:** Deterministic CI-safe bench runs the **same** fixed feature scenario
+(`add-pure-domain-canRefund`) on design-weak vs golden-path arms. Metric
+**`placementTurns`** (agent-equivalent steps to DomainModel home); golden strictly
+better. Method documented next to the number. No live LLM; no gate weaken.
+
+**Local evidence (2026-07-13):** design-weak 4 turns vs golden-path 1 turn; harness PASS;
+`q05AiVelocity.test.ts` green; `check:architecture` green.
 
 ## Phase P — post-3.0 pattern depth
 

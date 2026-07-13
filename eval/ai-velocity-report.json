@@ -1,0 +1,125 @@
+{
+  "schemaVersion": "1",
+  "id": "q05-ai-velocity",
+  "mode": "fixture-measured",
+  "scenario": {
+    "id": "add-pure-domain-canRefund",
+    "prompt": "Add a pure domain rule canRefund(status: string): boolean for order refund eligibility. No I/O, no ORM.",
+    "fileName": "canRefund.ts",
+    "correctLayer": "DomainModel",
+    "correctPath": "src/domain/canRefund.ts",
+    "sourceBytes": 83
+  },
+  "arms": {
+    "design-weak": {
+      "armId": "design-weak",
+      "scenarioId": "add-pure-domain-canRefund",
+      "prompt": "Add a pure domain rule canRefund(status: string): boolean for order refund eligibility. No I/O, no ORM.",
+      "guidedByGolden": false,
+      "goldenPattern": {
+        "present": false,
+        "path": ".ark/golden-pattern.json"
+      },
+      "placementTurns": 4,
+      "landed": true,
+      "landedPath": "src/domain/canRefund.ts",
+      "landedLayer": "DomainModel",
+      "steps": [
+        {
+          "turn": 1,
+          "path": "src/features/orders/ui/canRefund.ts",
+          "layer": "PresentationAdapters",
+          "correctLanding": false
+        },
+        {
+          "turn": 2,
+          "path": "src/routes/canRefund.ts",
+          "layer": "PresentationAdapters",
+          "correctLanding": false
+        },
+        {
+          "turn": 3,
+          "path": "src/services/canRefund.ts",
+          "layer": "ApplicationOrchestration",
+          "correctLanding": false
+        },
+        {
+          "turn": 4,
+          "path": "src/domain/canRefund.ts",
+          "layer": "DomainModel",
+          "correctLanding": true
+        }
+      ],
+      "designFitness": {
+        "designWeak": true,
+        "smellCount": 2,
+        "ids": [
+          "domain-logic-in-ui",
+          "facade-sql-in-routes"
+        ]
+      },
+      "patternBetCount": 2,
+      "patternBetsNeverMechanicalSafe": true,
+      "metric": "placementTurns"
+    },
+    "golden-path": {
+      "armId": "golden-path",
+      "scenarioId": "add-pure-domain-canRefund",
+      "prompt": "Add a pure domain rule canRefund(status: string): boolean for order refund eligibility. No I/O, no ORM.",
+      "guidedByGolden": true,
+      "goldenPattern": {
+        "present": true,
+        "path": ".ark/golden-pattern.json",
+        "name": "domain-first pure rules",
+        "norm": "New pure business rules live under src/domain/; adapters and routes never own can*/policy helpers.",
+        "newCodeHome": "src/domain/",
+        "examplePath": "src/domain/canRefund.ts",
+        "advisoryOnly": true,
+        "doesNotClearDesignWeak": true
+      },
+      "placementTurns": 1,
+      "landed": true,
+      "landedPath": "src/domain/canRefund.ts",
+      "landedLayer": "DomainModel",
+      "steps": [
+        {
+          "turn": 1,
+          "path": "src/domain/canRefund.ts",
+          "layer": "DomainModel",
+          "correctLanding": true
+        }
+      ],
+      "designFitness": {
+        "designWeak": true,
+        "smellCount": 2,
+        "ids": [
+          "domain-logic-in-ui",
+          "facade-sql-in-routes"
+        ]
+      },
+      "patternBetCount": 2,
+      "patternBetsNeverMechanicalSafe": true,
+      "metric": "placementTurns"
+    }
+  },
+  "comparison": {
+    "metric": "placementTurns",
+    "designWeakTurns": 4,
+    "goldenPathTurns": 1,
+    "goldenStrictlyBetter": true,
+    "deltaTurns": 3,
+    "relativeReduction": 0.75,
+    "method": "Agent-equivalent placement attempts until DomainModel home for fixed pure-rule feature (add-pure-domain-canRefund). Design-weak arm walks concurrent-layout candidates; golden-path arm uses .ark/golden-pattern.json newCodeHome as first attempt. No live LLM; gate not weakened; design-weak residual may remain on both arms."
+  },
+  "honesty": {
+    "designWeakArmStillDesignWeak": true,
+    "goldenDoesNotRequireClearingDesignWeak": true,
+    "patternBetsNeverMechanicalSafe": true,
+    "gateNotWeakened": true,
+    "liveLlmRequired": false
+  },
+  "ok": true,
+  "generatedAt": "2026-07-13T18:38:37.774Z",
+  "fixture": "tests/fixtures/design-weak-enforce",
+  "command": "npm run eval:ai-velocity"
+}

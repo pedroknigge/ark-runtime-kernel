@@ -163,14 +163,20 @@ function runCell(cell, candidate, work, candidateSha) {
   const coveragePercent = coverage?.percent;
   const mergeGateState = checked.status === 0 && typeof coveragePercent === 'number' && coveragePercent >= 90 ? 'green' : 'adapt';
   const issues = [];
+  const manualDecisions = [];
   if (preview.status !== 0 || applied.status !== 0) {
     issues.push({ severity: 'P2', class: 'repository-incompatibility', message: (applied.stderr || preview.stderr).trim().slice(0, 1200) });
   }
   if (previewChanges.length > 0 && JSON.stringify(previewChanges) !== JSON.stringify(changes)) {
     issues.push({ severity: 'P1', class: 'destructive-onboarding', message: 'preview/apply path parity mismatch' });
   }
-  if (checked.status === 0 && (typeof coveragePercent !== 'number' || coveragePercent < 90)) {
+  if (checked.status !== 0) {
+    issues.push({ severity: 'P2', class: 'repository-incompatibility', message: 'local strict-merge did not pass; retained as Adapt without bypass' });
+    manualDecisions.push('Retained as Adapt after local strict-merge failure; no rule override or bypass was applied.');
+  }
+  if (typeof coveragePercent !== 'number' || coveragePercent < 90) {
     issues.push({ severity: 'P2', class: 'contract-decision', message: `governed coverage ${coveragePercent ?? 'unknown'}% remains Adapt` });
+    manualDecisions.push('Retained as Adapt below 90% governed coverage; no policy override was applied.');
   }
   return {
     schemaVersion: 1,
@@ -188,16 +194,18 @@ function runCell(cell, candidate, work, candidateSha) {
     candidateInstallMs: candidate.installMs,
     preview: { exitCode: preview.status, changes: previewChanges.length, projectedCoverage: previewJson?.projectedCoverage ?? null },
     apply: { exitCode: applied.status, filesChanged: changes.length, firstGreenMsExcludingDependencyInstall: firstGreenMs },
+    strictMerge: { exitCode: checked.status },
     governedCoverage: coverage,
     mergeGateState,
-    finalCiState: 'not-run-external-ci',
+    finalCiState: `not-run-external-ci; local-strict-merge-${checked.status === 0 ? 'pass' : 'fail'}`,
     falseBlocks: 0,
     bypasses: 0,
-    manualDecisions: [],
+    manualDecisions,
     issues,
     diagnostics: {
       preview: preview.status === 0 ? '' : diagnostic(preview.stderr || preview.stdout, root),
       apply: applied.status === 0 ? '' : diagnostic(applied.stderr || applied.stdout, root),
+      strictMerge: checked.status === 0 ? '' : diagnostic(checked.stderr || checked.stdout, root),
     },
   };
 }

@@ -137,7 +137,7 @@ function packCandidate(work) {
 
 function cloneCell(cell, work) {
   const cloneRoot = path.join(work, cell.id);
-  run('git', ['clone', '--depth', '1', '--filter=blob:none', cell.repository, cloneRoot]);
+  run('git', ['clone', '--filter=blob:none', '--no-checkout', cell.repository, cloneRoot]);
   run('git', ['checkout', '--detach', cell.sha], { cwd: cloneRoot });
   const root = path.resolve(cloneRoot, cell.projectPath ?? '.');
   if (!root.startsWith(`${cloneRoot}${path.sep}`) && root !== cloneRoot) throw new Error(`${cell.id} projectPath escaped clone`);

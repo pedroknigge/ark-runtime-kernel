@@ -16,6 +16,10 @@ function run(command, args, cwd = root) {
   return execFileSync(command, args, { cwd, encoding: 'utf8' });
 }
 function sha256(file) { return createHash('sha256').update(fs.readFileSync(file)).digest('hex'); }
+function cyclonedxSerial(component) {
+  const hex = createHash('sha256').update(component).digest('hex');
+  return `urn:uuid:${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`;
+}
 function pack(name, policy, work) {
   const cwd = path.join(root, policy.path);
   const report = JSON.parse(run('npm', ['pack', '--json', '--ignore-scripts', '--pack-destination', work], cwd))[0];
@@ -30,7 +34,7 @@ function pack(name, policy, work) {
   fs.copyFileSync(tarball, path.join(output, name, report.filename));
   fs.writeFileSync(path.join(output, name, `${report.filename}.sha256`), `${sha256(tarball)}  ${report.filename}\n`);
   fs.writeFileSync(path.join(output, name, 'content-manifest.json'), `${JSON.stringify({ schemaVersion: 1, package: component, packedBytes: report.size, unpackedBytes: report.unpackedSize, files: report.files }, null, 2)}\n`);
-  fs.writeFileSync(path.join(output, name, 'sbom.cdx.json'), `${JSON.stringify({ bomFormat: 'CycloneDX', specVersion: '1.5', serialNumber: `urn:uuid:${createHash('sha256').update(`${pkg.name}@${pkg.version}`).digest('hex').slice(0, 32)}`, version: 1, metadata: { component }, components: Object.entries({ ...pkg.dependencies, ...pkg.peerDependencies }).map(([dep, version]) => ({ type: 'library', name: dep, version })) }, null, 2)}\n`);
+  fs.writeFileSync(path.join(output, name, 'sbom.cdx.json'), `${JSON.stringify({ bomFormat: 'CycloneDX', specVersion: '1.5', serialNumber: cyclonedxSerial(`${pkg.name}@${pkg.version}`), version: 1, metadata: { component }, components: Object.entries({ ...pkg.dependencies, ...pkg.peerDependencies }).map(([dep, version]) => ({ type: 'library', name: dep, version })) }, null, 2)}\n`);
   return { name, package: pkg.name, version: pkg.version, packedBytes: report.size, unpackedBytes: report.unpackedSize, files: report.files.length, errors };
 }
 

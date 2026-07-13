@@ -19,7 +19,7 @@ const config = {
     'bin/lib/ast-scan.mjs:11-42',
     'bin/lib/ast-scan.mjs:301-322',
     'bin/lib/ast-scan.mjs:411-427',
-    'bin/ark-shared.mjs:415-440',
+    'bin/ark-shared.mjs:450-475',
     'src/domain/baselineKey.ts:20-48',
     'src/domain/configContract.ts:386-460',
     'src/kernel/semanticAnalysis.ts:18-49',

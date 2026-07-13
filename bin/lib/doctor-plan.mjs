@@ -556,7 +556,12 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   } else {
     line(designFitness.designWeak ? warn : warn, designFitness.label);
     for (const smell of designSmells.slice(0, 5)) {
-      line(' ', color.dim(`[${smell.id}] ${smell.message}`));
+      // Q02: outcome-first (plain language); technical message stays in JSON + dim detail.
+      const outcome = smell.outcome || smell.message;
+      line(' ', `[${smell.id}] ${outcome}`);
+      if (smell.outcome && smell.message && smell.message !== smell.outcome) {
+        line(' ', color.dim(`detail: ${smell.message}`));
+      }
       if (smell.evidence?.length) {
         line(' ', color.dim(`evidence: ${smell.evidence.slice(0, 4).join(', ')}`));
       }

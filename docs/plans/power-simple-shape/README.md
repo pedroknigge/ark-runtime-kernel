@@ -150,7 +150,7 @@ flowchart TB
 | Order | ID | Size | Outcome | Depends |
 |---:|---|---:|---|---|
 | 1 | `Q01` | M | **done** — Single post-green path in doctor top-action + skill routing: “clarify for AI / Shape” without skill shopping | Phase P done |
-| 2 | `Q02` | S | **Human outcome language** for top design smells (and site/README parity) | Q01 |
+| 2 | `Q02` | S | **done** — Human outcome language for top design smells (and docs parity) | Q01 |
 | 3 | `Q03` | M | **Golden pattern artifact** for consumers + place/prepare-write/skills read it for *new* code | Q01 |
 | 4 | `Q04` | M | **Pilot loop productized**: extraction card → one pilot → re-doctor; gallery or fixture proof | Q02, Q03 |
 | 5 | `Q05` | M | **AI-velocity evidence**: eval/bench golden-path vs design-weak for same feature prompt | Q04 |

@@ -187,9 +187,10 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
 | 29 | `Q01` | `done` | M | Phase P done | Single post-green “clarify for AI / Shape” door in doctor + routing |
+| 30 | `Q02` | `done` | S | `Q01` | Human outcome language for each design smell id (docs parity) |
 
-**Next:** no Q item scheduled after `Q01`. Epic narrative: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
-(remaining Q02–Q06 still proposed until approved into this table).
+**Next:** no Q item scheduled after `Q02`. Epic narrative: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
+(remaining Q03–Q06 still proposed until approved into this table).
 
 ---
 
@@ -212,6 +213,21 @@ mechanical-safe kinds.
 **Local evidence (2026-07-13):** `q01PostGreenPath.test.ts` green; design-weak fixture doctor
 JSON `postGreenPath.id === clarify-for-ai`; human top action #1 is the chained path; no
 “Healthy — nothing to do” under design-weak.
+
+### Q02 — Human outcome language for design smells
+
+- **Status:** `done`
+- **Depends on:** `Q01`
+- **Likely files:** `bin/lib/design-smells.mjs` (`DESIGN_SMELL_OUTCOMES`, `outcome` field),
+  `bin/lib/doctor-plan.mjs`, `docs/agent-guide.md`, `docs/package-surface.md`,
+  `tests/unit/static-check/q02SmellOutcomes.test.ts`
+
+**Outcome:** Every stable smell id has a plain-language `outcome` for newbies/vibecoders;
+technical `message` retained; doctor human prints outcome first; JSON includes `outcome`;
+agent-guide table parity. Smell **ids unchanged**. Q01 postGreenPath preserved.
+
+**Local evidence (2026-07-13):** `q02SmellOutcomes.test.ts` green; fixture doctor JSON smells
+all have `outcome`; human doctor shows ORM-in-routes outcome wording.
 
 ## Phase P — post-3.0 pattern depth
 

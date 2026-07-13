@@ -89,12 +89,24 @@ npx ark-check --doctor --json   # doctor.designFitness + doctor.designSmells[]
 npx ark-check --plan --json     # plan.goal.designWeak + plan.patternBets[] (never mechanical-safe)
 ```
 
-Smell ids (stable): `io-under-application`, `handler-in-persistence`, `god-module`,
-`domain-logic-in-ui`, `facade-sql-in-routes`, `mixed-pattern-cluster`, `soft-contract`.
-Each has `evidence[]` paths. Plan **B** bets include `pilot`, `successSignal`, `killSwitch`,
-and **`neverMechanicalSafe: true`** — loop/autoPatch must ignore them. For judgment I/O moves
-use **extraction cards** ([brownfield-adoption.md](brownfield-adoption.md) §6). Multi-PR residual
-may optionally be persisted as a short Shape plan under the repo; not a gate requirement.
+Smell **ids** (stable JSON) plus **outcome** lines (plain language, Q02) on each
+`designSmells[]` object — prefer `outcome` for humans; keep `id` for automation:
+
+| id | Outcome (what to do / why the AI struggles) |
+|----|-----------------------------------------------|
+| `io-under-application` | Business code reaches DB/APIs directly — put I/O behind a port/adapter |
+| `handler-in-persistence` | HTTP handlers under storage folders — move handlers to API/UI |
+| `god-module` | Huge multi-job files — split the pilot by concern |
+| `domain-logic-in-ui` | can*/calculate* in UI — move pure rules into Domain |
+| `facade-sql-in-routes` | Routes import ORM/SQL — keep queries in repository/adapter |
+| `mixed-pattern-cluster` | Several layout styles — pick one golden pattern + pilot |
+| `soft-contract` | Layers without deny rules — add real walls, not soft green |
+
+Each smell also has `evidence[]` paths and `message` (technical detail). Plan **B** bets include
+`pilot`, `successSignal`, `killSwitch`, and **`neverMechanicalSafe: true`** — loop/autoPatch must
+ignore them. For judgment I/O moves use **extraction cards**
+([brownfield-adoption.md](brownfield-adoption.md) §6). Multi-PR residual may optionally be
+persisted as a short Shape plan under the repo; not a gate requirement.
 
 **Full-skill agent co-pilot:** after explicitly installing the `/ark-*` pack, use
 `/ark-autopilot` (explore-first, dual plan A remediation + B pattern bets). Recon without

@@ -20,7 +20,11 @@ the explore pass and dual-plan section B (pattern / Shape bets).
 | “Make architecture sound” end-to-end | Map only, no apply → `/ark-explore` |
 | Brownfield or greenfield with apply | Only fitness numbers → `/ark-coverage` |
 | User wants A + B planned and A executed | Single edge fix → `/ark-fix`; plan A only → `/ark-loop` |
+| **Apply half of Q01 post-green path** (after explore map / when user wants full apply) | Skipping explore when doctor primary is Shape map-first |
 | Spaghetti under ENFORCE: Shape work with user ok on B | Contract false-green first → `/ark-adopt` / `/ark-contract` STOP paths |
+
+**Q01:** doctor’s single door is `/ark-explore` shape-focus → dual-plan B, **then** this skill only
+to apply B with OK. Prefer that order when `postGreenPath` / design-weak is the primary residual.
 
 ## Related onboarding
 
@@ -47,6 +51,9 @@ decision-grade explore pass **and** without opening violating files.
 4. **Open every file** in plan A `steps[]` (and `target` if present) before classifying a fix.
 5. **“Así te lo re-soluciono”** for each A cluster and each B pattern bet.
 6. Apply A → re-run ark-check → rollback on regression. **Never auto-apply B** as mechanical-safe.
+7. **Q04 pilot loop for B:** when design-weak, take **`pilotLoop.nextPilot`** (one extraction card)
+   → apply **only** that pilot with user OK → **re-doctor**. Never multi-pilot batch B; residual
+   outside the pilot may remain and must not be called “healthy finished.”
 
 
 ## Subagent fan-out (optional, host-dependent)

@@ -21,6 +21,51 @@ export const DESIGN_SMELL_IDS = Object.freeze([
   'soft-contract',
 ]);
 
+/**
+ * Q02 — outcome-oriented human language per smell id (newbie / vibecoder).
+ * Stable `id`s never change; technical detail stays in `message`.
+ */
+export const DESIGN_SMELL_OUTCOMES = Object.freeze({
+  'io-under-application':
+    'Business/application code reaches the database or external APIs directly — the AI will keep pasting I/O into the wrong place. Put data access behind a port/adapter.',
+  'handler-in-persistence':
+    'HTTP handlers live under data/repository folders — names look like “storage” but they are routes. Move handlers to the API/UI layer so the AI stops mixing transport and storage.',
+  'god-module':
+    'A few huge files own too many responsibilities — the AI cannot safely edit one concern without breaking others. Split the pilot file by job (one export surface per concern).',
+  'domain-logic-in-ui':
+    'Business rules (can*/calculate*/policy) sit in UI components — the AI will duplicate them in pages. Move pure rules into Domain (or a pure domain module) and import from the UI.',
+  'facade-sql-in-routes':
+    'Routes/controllers import the ORM or SQL client — the AI will keep growing “smart controllers.” Keep queries in a repository/adapter; routes only call that port.',
+  'mixed-pattern-cluster':
+    'The repo mixes several layout styles (features vs services vs hex folders) — the AI does not know where new code goes. Pick one golden pattern and migrate one pilot cluster on touch.',
+  'soft-contract':
+    'Some layers have files but almost no deny rules — the gate looks green while peers can still import freely. Add real layer rules so the AI has hard walls, not soft suggestions.',
+});
+
+/** @param {string} id */
+export function outcomeForSmellId(id) {
+  return (
+    DESIGN_SMELL_OUTCOMES[id] ||
+    'This design residual confuses where the AI should put new code. Clarify one home for this kind of change (see evidence paths) without weakening the gate.'
+  );
+}
+
+/**
+ * @param {{ id: string, severity?: string, message: string, evidence?: string[], fix?: string }} partial
+ */
+export function makeDesignSmell(partial) {
+  const id = partial.id;
+  return {
+    id,
+    severity: partial.severity ?? 'warn',
+    message: partial.message,
+    /** Plain-language outcome (Q02); prefer this for human doctor lines. */
+    outcome: outcomeForSmellId(id),
+    evidence: partial.evidence ?? [],
+    fix: partial.fix ?? '',
+  };
+}
+
 const IO_IMPORT_RE =
   /\bfrom\s+['"](?:@?prisma\/client|@supabase\/|drizzle-orm|typeorm|knex|mongodb|pg|mysql2|better-sqlite3|ioredis|redis)['"]|require\(\s*['"](?:@?prisma\/client|pg|knex|typeorm)/;
 const HANDLER_CONTENT_RE =
@@ -133,25 +178,29 @@ export function detectDesignSmells(root, config, files = [], coverage = null) {
     ? coverage.layersWithoutRules
     : [];
   if (withoutRules.length > 0) {
-    smells.push({
-      id: 'soft-contract',
-      severity: 'warn',
-      message: `Layers classify files but have no deny/allow rule edges: ${withoutRules.join(', ')}. Soft green — peer leaks may go unchecked.`,
-      evidence: withoutRules.map((n) => `layer:${n}`),
-      fix: 'Add rules via /ark-contract (or a policy pack) so every populated layer participates in enforcement.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'soft-contract',
+        severity: 'warn',
+        message: `Layers classify files but have no deny/allow rule edges: ${withoutRules.join(', ')}. Soft green — peer leaks may go unchecked.`,
+        evidence: withoutRules.map((n) => `layer:${n}`),
+        fix: 'Add rules via /ark-contract (or a policy pack) so every populated layer participates in enforcement.',
+      })
+    );
   }
 
   // Classic false-green I/O under Application (reuse detector when coverage present)
   const falseGreen = detectContractFalseGreenRisk(resolvedRoot, config, coverage ?? {});
   if (falseGreen?.risk) {
-    smells.push({
-      id: 'io-under-application',
-      severity: 'warn',
-      message: falseGreen.message,
-      evidence: (falseGreen.ioPaths || []).slice(0, 12),
-      fix: falseGreen.fix,
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'io-under-application',
+        severity: 'warn',
+        message: falseGreen.message,
+        evidence: (falseGreen.ioPaths || []).slice(0, 12),
+        fix: falseGreen.fix,
+      })
+    );
   }
 
   const godEvidence = [];
@@ -209,53 +258,63 @@ export function detectDesignSmells(root, config, files = [], coverage = null) {
   }
 
   if (!falseGreen?.risk && ioUnderAppFiles.length > 0) {
-    smells.push({
-      id: 'io-under-application',
-      severity: 'warn',
-      message: `Application-layer files import database/client SDKs directly (${ioUnderAppFiles.length} file(s)). Prefer ports in Domain + adapters outside Application.`,
-      evidence: ioUnderAppFiles.slice(0, 12),
-      fix: 'Extract a port + adapter (extraction card); do not weaken ark.config to silence the smell.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'io-under-application',
+        severity: 'warn',
+        message: `Application-layer files import database/client SDKs directly (${ioUnderAppFiles.length} file(s)). Prefer ports in Domain + adapters outside Application.`,
+        evidence: ioUnderAppFiles.slice(0, 12),
+        fix: 'Extract a port + adapter (extraction card); do not weaken ark.config to silence the smell.',
+      })
+    );
   }
 
   if (handlerInPersist.length > 0) {
-    smells.push({
-      id: 'handler-in-persistence',
-      severity: 'warn',
-      message: `HTTP/route handler shape found under persistence/repository paths (${handlerInPersist.length} file(s)) — semantic false-green risk.`,
-      evidence: handlerInPersist.slice(0, 12),
-      fix: 'Move handlers to Presentation/API; keep Persistence as data access only (/ark-explore shape-focus).',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'handler-in-persistence',
+        severity: 'warn',
+        message: `HTTP/route handler shape found under persistence/repository paths (${handlerInPersist.length} file(s)) — semantic false-green risk.`,
+        evidence: handlerInPersist.slice(0, 12),
+        fix: 'Move handlers to Presentation/API; keep Persistence as data access only (/ark-explore shape-focus).',
+      })
+    );
   }
 
   if (godEvidence.length > 0) {
-    smells.push({
-      id: 'god-module',
-      severity: 'warn',
-      message: `God-module candidates: large files with wide export surfaces (${godEvidence.length} file(s), ≥${GOD_LOC} LOC and ≥${GOD_EXPORTS} exports).`,
-      evidence: godEvidence.slice(0, 12),
-      fix: 'Split by concern with a pilot cluster; keep gate rules; use dual-plan B extraction card.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'god-module',
+        severity: 'warn',
+        message: `God-module candidates: large files with wide export surfaces (${godEvidence.length} file(s), ≥${GOD_LOC} LOC and ≥${GOD_EXPORTS} exports).`,
+        evidence: godEvidence.slice(0, 12),
+        fix: 'Split by concern with a pilot cluster; keep gate rules; use dual-plan B extraction card.',
+      })
+    );
   }
 
   if (domainInUi.length > 0) {
-    smells.push({
-      id: 'domain-logic-in-ui',
-      severity: 'warn',
-      message: `Business-style can*/calculate*/compute* helpers live under UI/presentation paths (${domainInUi.length} file(s)).`,
-      evidence: domainInUi.slice(0, 12),
-      fix: 'Move pure rules into Domain (or shared pure module under Domain globs) and import from UI.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'domain-logic-in-ui',
+        severity: 'warn',
+        message: `Business-style can*/calculate*/compute* helpers live under UI/presentation paths (${domainInUi.length} file(s)).`,
+        evidence: domainInUi.slice(0, 12),
+        fix: 'Move pure rules into Domain (or shared pure module under Domain globs) and import from UI.',
+      })
+    );
   }
 
   if (facadeSql.length > 0) {
-    smells.push({
-      id: 'facade-sql-in-routes',
-      severity: 'warn',
-      message: `Route/controller files import ORM/SQL clients directly (${facadeSql.length} file(s)).`,
-      evidence: facadeSql.slice(0, 12),
-      fix: 'Relocate query bytes into a repository/adapter; routes call a port — extraction card; no schema rewrite.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'facade-sql-in-routes',
+        severity: 'warn',
+        message: `Route/controller files import ORM/SQL clients directly (${facadeSql.length} file(s)).`,
+        evidence: facadeSql.slice(0, 12),
+        fix: 'Relocate query bytes into a repository/adapter; routes call a port — extraction card; no schema rewrite.',
+      })
+    );
   }
 
   // mixed-pattern: vertical-slice features coexisting with flat services and/or hex folders
@@ -265,20 +324,25 @@ export function detectDesignSmells(root, config, files = [], coverage = null) {
     if (hasFeaturesLayout) evidence.push('layout:features/*');
     if (hasFlatServices) evidence.push('layout:services/*');
     if (hasHexPorts) evidence.push('layout:hex-domain-application-infra');
-    smells.push({
-      id: 'mixed-pattern-cluster',
-      severity: 'info',
-      message:
-        'Concurrent design patterns detected in the tree (slice features vs flat services vs hex folders). Pick a golden pattern and pilot migrate-on-touch.',
-      evidence,
-      fix: 'Run /ark-explore shape-focus; mark golden vs legacy; dual-plan B with pilot + kill-switch.',
-    });
+    smells.push(
+      makeDesignSmell({
+        id: 'mixed-pattern-cluster',
+        severity: 'info',
+        message:
+          'Concurrent design patterns detected in the tree (slice features vs flat services vs hex folders). Pick a golden pattern and pilot migrate-on-touch.',
+        evidence,
+        fix: 'Run /ark-explore shape-focus; mark golden vs legacy; dual-plan B with pilot + kill-switch.',
+      })
+    );
   }
 
   // Stable order by id for snapshots
   const order = new Map(DESIGN_SMELL_IDS.map((id, i) => [id, i]));
   smells.sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
-  return smells;
+  // Ensure every smell carries outcome (defensive for partial callers).
+  return smells.map((s) =>
+    s.outcome ? s : makeDesignSmell({ id: s.id, severity: s.severity, message: s.message, evidence: s.evidence, fix: s.fix })
+  );
 }
 
 /**

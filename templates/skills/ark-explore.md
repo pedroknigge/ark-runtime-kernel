@@ -16,9 +16,14 @@ ranked residual that changes the next command — **not** a celebration of ENFOR
 | Use `/ark-explore` when… | Do **not** use it when… |
 |--------------------------|-------------------------|
 | Map / “what next?” / residual after ENFORCE | User wants edits applied → `/ark-autopilot` or `/ark-fix` |
+| **Primary post-green door (Q01):** messy / spaghetti / design-weak / “clarify for AI” | Skill-shopping coverage or think for the same residual |
 | Spaghetti brownfield: patterns concurrent, design-weak under green check | Only “governed% + gates installed?” numbers → `/ark-coverage` |
 | Dual-plan **seed** (A remediation + B pattern bets) without applying | One design trade-off between 2–3 options already mapped → `/ark-think` |
 | Path-correct vs design-correct honesty | Plain-language tour / HTML report → `/ark-explain` |
+
+**Q01 single path:** when doctor `postGreenPath` / ENFORCE · design-weak is active, **this skill
+(shape-focus / dual-plan seed) is the map half of the one door** — then `/ark-autopilot` only
+to apply B with user OK. Do not send the user to coverage or think as equal first choices.
 
 `/ark-autopilot`, `/ark-adopt`, and `/ark-coverage` embed a **lighter** version of this pass.
 **You** are the full recon + pattern-planning skill.
@@ -218,11 +223,15 @@ ENFORCE without Shape progress is **`ENFORCE · design-weak`** — say that out 
 | `facade-sql-in-routes` | Routes import raw ORM/SQL while “repositories exist” elsewhere |
 
 **Extraction card** (for each I/O / god-module B bet — judgment, never mechanical-safe).
-Canonical productized template also in `docs/brownfield-adoption.md` §6:
+Canonical productized template also in `docs/brownfield-adoption.md` §6.
+
+**Q04 pilot loop:** when doctor/plan JSON is available, use **`pilotLoop.nextPilot`** as the
+**single** next extraction card (one pilot at a time → re-doctor). Do not open five B bets
+in parallel. After the pilot lands, re-run doctor; success = reduced evidence on pilot paths.
 
 ```text
 ### Extraction card
-Pilot: <one dir or feature>
+Pilot: <one dir or feature — or pilotLoop.nextPilot.pilotTarget>
 Smell: <doctor designSmells[].id when present, else agent-detected id>
 Move: <verbatim I/O or rule → port/adapter or Domain file>
 Do not:
@@ -230,12 +239,13 @@ Do not:
   - weaken ark.config.json
   - auto-apply as mechanical-safe or invent new mechanical-safe kinds
   - big-bang the monorepo
-Success: <observable / falsifiable>
+Success: <observable / falsifiable — re-doctor>
 Kill-switch: <stop condition>
-Next: /ark-autopilot (apply with user ok) | /ark-fix (one cluster) | /ark-contract (globs only)
+Next: /ark-autopilot (apply with user ok) | /ark-fix (one cluster) | re-doctor
 ```
 
-When doctor JSON is available, prefer smell `id`s from `designSmells` / `patternBets[].smellId`.
+When doctor JSON is available, prefer smell `id`s from `designSmells` / `patternBets[].smellId`
+and the ranked **`pilotLoop.nextPilot`**.
 
 ## Output format (keep tight)
 

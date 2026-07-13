@@ -4,7 +4,36 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
-No changes are scheduled after 3.0.2.
+No changes are scheduled after 3.0.3.
+
+## 3.0.3 — 2026-07-13
+
+### Added
+
+- **Post-green path (Q01):** when design residual remains under edge-clean ENFORCE, doctor
+  JSON exposes `postGreenPath` / `primaryNextAction` / `healthyFinishedForbidden` for a single
+  “clarify for AI / Shape” door (`clarify-for-ai`). Skill routing maps messy/design-weak work
+  to that path — no skill shopping.
+- **Smell outcomes (Q02):** each stable `designSmells[]` id carries plain-language `outcome`
+  for newbies; technical `message` retained; doctor human prints outcome first.
+- **Golden pattern (Q03):** optional `.ark/golden-pattern.json` (`name` + `norm`, optional
+  `newCodeHome` / `examplePath`). Surfaced on `ark_place`, `ark_prepare_write`, and
+  `doctor.goldenPattern` as **advisory for NEW code only**. Absent is OK; never ENFORCE;
+  never clears design-weak; malformed fails closed.
+- **Pilot loop (Q04):** `plan.pilotLoop` / `doctor.pilotLoop` select **one** next extraction
+  card (`nextPilot`: pilot target, move, success, kill-switch). One pilot → re-doctor;
+  residual outside the pilot may remain; never multi-pilot batch; never mechanical-safe.
+- **AI-velocity eval (Q05):** `npm run eval:ai-velocity` compares the same fixed feature
+  scenario on design-weak vs golden-path arms. Metric `placementTurns` (agent-equivalent);
+  golden must be strictly better. Fixture-measured (no live LLM); method string lives next
+  to the number in `eval/ai-velocity-report.json`.
+- **Skills:** `/ark-place` honors golden; explore/autopilot document pilot loop; `/ark-explain`
+  opens `ark-report.html` in the default browser after generating the showcase report.
+
+### Documentation
+
+- package-surface, agent-guide, brownfield pilot-loop section, eval README, Phase Q ROADMAP
+  evidence for Q01–Q05. Release note: `docs/releases/3.0.3.md`.
 
 ## 3.0.2 — 2026-07-13
 

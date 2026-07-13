@@ -82,19 +82,45 @@ explore then apply A + propose/apply-with-ok B. `/ark-loop` = plan A only. Empty
 “architecture healthy” if design-weak residual remains. Full routing table: full-install
 `AGENTS.md` / [README skill table](../README.md#other-skills-only-when-you-need-them).
 
-**Design fitness (3.0.1+):** after edges are clean, doctor can still report **ENFORCE · design-weak**.
+**Design fitness (3.0.1+ / Phase Q 3.0.3):** after edges are clean, doctor can still report **ENFORCE · design-weak**.
 
 ```bash
-npx ark-check --doctor --json   # doctor.designFitness + doctor.designSmells[]
-npx ark-check --plan --json     # plan.goal.designWeak + plan.patternBets[] (never mechanical-safe)
+npx ark-check --doctor --json   # designFitness, designSmells[].outcome, postGreenPath, goldenPattern, pilotLoop
+npx ark-check --plan --json     # plan.goal.designWeak + plan.patternBets[] + plan.pilotLoop
 ```
 
-Smell ids (stable): `io-under-application`, `handler-in-persistence`, `god-module`,
-`domain-logic-in-ui`, `facade-sql-in-routes`, `mixed-pattern-cluster`, `soft-contract`.
-Each has `evidence[]` paths. Plan **B** bets include `pilot`, `successSignal`, `killSwitch`,
-and **`neverMechanicalSafe: true`** — loop/autoPatch must ignore them. For judgment I/O moves
-use **extraction cards** ([brownfield-adoption.md](brownfield-adoption.md) §6). Multi-PR residual
-may optionally be persisted as a short Shape plan under the repo; not a gate requirement.
+**Post-green path (Q01):** when design-weak, doctor sets `postGreenPath` / `primaryNextAction`
+(`clarify-for-ai`) — **one** Shape door: `/ark-explore` shape-focus → dual-plan B, then
+`/ark-autopilot` only to apply B with your OK. Do not skill-shop coverage/think for the same residual.
+
+**Pilot loop (Q04):** when design-weak, `pilotLoop.nextPilot` is **one** extraction card
+(pilot target, move, success, kill-switch). Apply **that one pilot only**, then re-doctor.
+Success = reduced smell evidence on pilot paths; residual outside the pilot may remain.
+Never multi-pilot batch; never mechanical-safe; never claim healthy finished while design-weak.
+
+**AI-velocity evidence (Q05):** deterministic fixture bench (no live LLM) compares the same
+feature add on design-weak vs golden-path trees. Run `npm run eval:ai-velocity`; metric is
+`placementTurns` (agent-equivalent steps to the DomainModel home). Method is stored next to
+the number in `eval/ai-velocity-report.json`. See [eval/README.md](../eval/README.md).
+
+Smell **ids** (stable JSON) plus **outcome** lines (plain language, Q02) on each
+`designSmells[]` object — prefer `outcome` for humans; keep `id` for automation:
+
+| id | Outcome (what to do / why the AI struggles) |
+|----|-----------------------------------------------|
+| `io-under-application` | Business code reaches DB/APIs directly — put I/O behind a port/adapter |
+| `handler-in-persistence` | HTTP handlers under storage folders — move handlers to API/UI |
+| `god-module` | Huge multi-job files — split the pilot by concern |
+| `domain-logic-in-ui` | can*/calculate* in UI — move pure rules into Domain |
+| `facade-sql-in-routes` | Routes import ORM/SQL — keep queries in repository/adapter |
+| `mixed-pattern-cluster` | Several layout styles — pick one golden pattern + pilot |
+| `soft-contract` | Layers without deny rules — add real walls, not soft green |
+
+Each smell also has `evidence[]` paths and `message` (technical detail). Plan **B** bets include
+`pilot`, `successSignal`, `killSwitch`, and **`neverMechanicalSafe: true`** — loop/autoPatch must
+ignore them. For judgment I/O moves use **extraction cards**
+([brownfield-adoption.md](brownfield-adoption.md) §6). Multi-PR residual may optionally be
+persisted as a short Shape plan under the repo; not a gate requirement.
 
 **Full-skill agent co-pilot:** after explicitly installing the `/ark-*` pack, use
 `/ark-autopilot` (explore-first, dual plan A remediation + B pattern bets). Recon without
@@ -223,16 +249,42 @@ reference, and explanation for the full path (recommend → init → gallery →
 5. Use `/ark-place` or `ark_place` for individual files after the contract exists.
 6. Verify with `ark-check --root . --config ark.config.json --strict`.
 
+### Golden pattern for new code (Q03)
+
+When the team has picked **one** layout style for *new* files (after Shape / pilot),
+you may record it as an optional side-car:
+
+```json
+// .ark/golden-pattern.json
+{
+  "schemaVersion": "1",
+  "name": "vertical-slice features",
+  "norm": "New features live under src/features/<slice>/; shared only in src/shared/.",
+  "newCodeHome": "src/features/",
+  "examplePath": "src/features/billing/createInvoice.ts"
+}
+```
+
+| Rule | Meaning |
+|------|---------|
+| **Optional** | Missing file is fine — no claim, no error. |
+| **Advisory** | `ark_place` / `ark_prepare_write` and doctor attach `goldenPattern` for **new** code only. |
+| **Not a gate** | Does **not** ENFORCE, does **not** clear design-weak, does not replace `ark.config.json`. |
+| **Malformed** | Invalid JSON or missing `name`/`norm` → `invalid: true`; fix or delete — do not treat as guidance. |
+
+Legacy paths stay migrate-on-touch; the golden norm limits where agents put **new** code.
+
 ### Write protocol (2.10+ / Track W)
 
 Prefer preparing the write before the host commits it to disk:
 
 | Surface | Role |
 |---------|------|
-| MCP **`ark_prepare_write`** | Place + constrain + validate + optional `autoPatch` + `judgmentBrief` + contentHash in one call |
+| MCP **`ark_prepare_write`** | Place + constrain + validate + optional `autoPatch` + `judgmentBrief` + contentHash + optional `goldenPattern` in one call |
 | Write-gate **`autoPatch`** | Mechanical-safe **import type** rewrites only; post-patch revalidation green or discarded |
 | PreToolUse **`--hook-repair`** | On deny: `ARK_REPAIR_JSON` / `ARK_AUTOPATCH_JSON` on stderr (still exit 2 — never silent write) |
 | Doctor **`writePath`** | Reports `repair` \| `reject-only` \| `mcp-only` \| `none` for installed gates |
+| Doctor **`goldenPattern`** | Optional Q03 advisory summary (`present` / `invalid`); never clears design-weak |
 
 Port-proof inject binding is **judgment** for auto-apply (signature/arity change), not write-path autoPatch.
 Full reference: [ai-gates.md](ai-gates.md). Loop-cost harness: `npm run eval:loop-cost`.

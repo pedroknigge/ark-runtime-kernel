@@ -3,10 +3,10 @@
   "packages": {
     "gate": {
       "path": ".",
-      "maxPackedBytes": 400000,
-      "maxUnpackedBytes": 1400000,
+      "maxPackedBytes": 420000,
+      "maxUnpackedBytes": 1500000,
       "maxFiles": 130,
-      "exception": "The 250 KB/1 MB target is not yet feasible while shipping the documented standalone CLI/MCP tooling. Source maps were removed in V04; this bounded exception must be reconsidered before ArkGate 4."
+      "exception": "The 250 KB/1 MB target is not yet feasible while shipping the documented standalone CLI/MCP tooling plus Phase Q surfaces (doctor/plan/eval docs). Source maps were removed in V04; this bounded exception must be reconsidered before ArkGate 4."
     },
     "runtime": {
       "path": "packages/runtime",

@@ -31,6 +31,13 @@ import {
   summarizeDesignFitness,
   isDesignWeak,
 } from './design-smells.mjs';
+import {
+  buildPostGreenNextAction,
+  mergePostGreenTopActions,
+  isDoctorHealthyNothingToDo,
+} from './post-green-path.mjs';
+import { loadGoldenPattern, summarizeGoldenPattern } from './golden-pattern.mjs';
+import { summarizePilotLoop } from './pilot-loop.mjs';
 
 const color = {
   green: (s) => `\x1b[32m${s}\x1b[0m`,
@@ -221,6 +228,12 @@ export function buildRemediationPlan(
     governedPercent,
     totalFiles,
   });
+  // Q04 — single next pilot extraction card (one at a time → re-doctor).
+  const pilotLoop = summarizePilotLoop({
+    designWeak,
+    patternBets,
+    designSmells,
+  });
 
   let statement =
     activeViolations.length > 0
@@ -263,6 +276,8 @@ export function buildRemediationPlan(
     // Additive: pattern evolution bets derived from design smells (never auto).
     patternBets,
     designSmells,
+    // Q04: one-pilot loop step (extraction card); never mechanical-safe.
+    pilotLoop,
   };
 }
 
@@ -317,6 +332,21 @@ export function runPlan(
       console.log(`  [decide] ${bet.smellId}  ${color.dim(bet.pilot)}`);
       console.log(color.dim(`           success: ${bet.successSignal}`));
     }
+  }
+  // Q04 — single next pilot (one at a time → re-doctor).
+  if (plan.pilotLoop?.active && plan.pilotLoop.nextPilot) {
+    console.log('');
+    console.log(color.bold('Next pilot (one at a time → re-doctor)'));
+    const np = plan.pilotLoop.nextPilot;
+    console.log(`  Pilot: ${np.pilotTarget || np.pilot}  [${np.smellId}]`);
+    console.log(color.dim(`  Move: ${np.move}`));
+    console.log(color.dim(`  Success: ${np.successSignal}`));
+    console.log(color.dim(`  Kill-switch: ${np.killSwitch}`));
+    console.log(
+      color.dim(
+        '  Apply this ONE pilot, then ark-check --doctor — never multi-pilot batch; never mechanical-safe.'
+      )
+    );
   }
   if (activeViolations.length === 0) return plan;
   console.log('');
@@ -383,6 +413,17 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     governedPercent: cov.governed.percent,
     totalFiles: cov.governed.totalFiles,
   });
+  // Q01 — single post-green door when design-weak (map → B; no skill shopping).
+  const postGreenPath = buildPostGreenNextAction(designFitness);
+  // Q03 — optional golden pattern for NEW code (advisory; never clears design-weak).
+  const goldenPattern = summarizeGoldenPattern(loadGoldenPattern(root));
+  // Q04 — one next pilot (extraction card) when design-weak.
+  const patternBetsForLoop = buildPatternBetsFromSmells(designSmells);
+  const pilotLoop = summarizePilotLoop({
+    designWeak: designFitness.designWeak,
+    patternBets: patternBetsForLoop,
+    designSmells,
+  });
 
   if (asJson) {
     console.log(
@@ -407,6 +448,18 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
             // Path-correct ENFORCE can still be design-weak (P02).
             designFitness,
             designSmells,
+            // Q01: primary next action when Shape residual dominates (null if not design-weak).
+            postGreenPath,
+            ...(postGreenPath
+              ? {
+                  primaryNextAction: postGreenPath.action,
+                  healthyFinishedForbidden: true,
+                }
+              : {}),
+            // Q03: advisory golden for new-code placement (absent = no claim).
+            goldenPattern,
+            // Q04: one-pilot loop (extraction card → re-doctor).
+            pilotLoop,
             governed: cov.governed,
             emptyLayers: cov.emptyLayers,
             layersWithoutRules: cov.layersWithoutRules,
@@ -523,7 +576,7 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     modeMark,
     `${modeTitle} — ${
       designFitness.designWeak
-        ? 'Guard on edges is honest, but design smells remain (Shape residual). You do not pick this mode. Next: /ark-explore dual-plan B or /ark-autopilot for pattern bets — never treat empty plan A as healthy finished.'
+        ? 'Guard on edges is honest, but design smells remain (Shape residual). You do not pick this mode. Next: single path — /ark-explore shape-focus → dual-plan B, then /ark-autopilot only to apply B with your OK. Never empty plan A = done.'
         : modeHelp[mode]
     }`
   );
@@ -541,16 +594,50 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   } else {
     line(designFitness.designWeak ? warn : warn, designFitness.label);
     for (const smell of designSmells.slice(0, 5)) {
-      line(' ', color.dim(`[${smell.id}] ${smell.message}`));
+      // Q02: outcome-first (plain language); technical message stays in JSON + dim detail.
+      const outcome = smell.outcome || smell.message;
+      line(' ', `[${smell.id}] ${outcome}`);
+      if (smell.outcome && smell.message && smell.message !== smell.outcome) {
+        line(' ', color.dim(`detail: ${smell.message}`));
+      }
       if (smell.evidence?.length) {
         line(' ', color.dim(`evidence: ${smell.evidence.slice(0, 4).join(', ')}`));
       }
     }
-    if (designFitness.designWeak) {
-      actions.push(
-        'shape residual: /ark-explore (shape-focus) or /ark-autopilot dual-plan B — pattern bets are never mechanical-safe'
-      );
+    if (postGreenPath) {
+      // Rank first via mergePostGreenTopActions at the end (Q01 single door).
+      actions.push(postGreenPath.action);
     }
+    // Q04 — surface one next pilot under design-weak.
+    if (pilotLoop?.active && pilotLoop.nextPilot) {
+      const np = pilotLoop.nextPilot;
+      line(
+        warn,
+        `Next pilot (one at a time): ${np.pilotTarget || np.pilot} [${np.smellId}] → re-doctor after change`
+      );
+      line(' ', color.dim(`success: ${np.successSignal}`));
+      line(' ', color.dim('never multi-pilot batch; patternBets never mechanical-safe'));
+    }
+  }
+
+  // Q03 — optional golden pattern note (advisory for new code only).
+  if (goldenPattern.present) {
+    console.log('');
+    console.log(color.bold('Golden pattern (new code)'));
+    line(
+      ok,
+      `"${goldenPattern.name}" — ${goldenPattern.norm}` +
+        (goldenPattern.newCodeHome ? ` Prefer: ${goldenPattern.newCodeHome}.` : '') +
+        ' Advisory only — does not clear design-weak or replace the gate.'
+    );
+  } else if (goldenPattern.invalid) {
+    console.log('');
+    console.log(color.bold('Golden pattern (new code)'));
+    line(
+      warn,
+      `${goldenPattern.path} is present but invalid (${goldenPattern.error || 'invalid'}). ` +
+        'Fix or remove it — absence is fine; a bad file is not guidance.'
+    );
   }
 
   console.log('');
@@ -776,11 +863,21 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   }
 
   console.log('');
-  if (actions.length === 0) {
+  const uniqueActions = mergePostGreenTopActions(actions, postGreenPath);
+  if (isDoctorHealthyNothingToDo(designFitness, uniqueActions)) {
     console.log(color.green('✔ Healthy — nothing to do.'));
   } else {
-    const uniqueActions = [...new Set(actions.filter(Boolean))];
+    if (designFitness.designWeak && uniqueActions.length === 0 && postGreenPath) {
+      uniqueActions.push(postGreenPath.action);
+    }
     console.log(color.bold(`Top actions (${uniqueActions.length}):`));
     uniqueActions.forEach((action, index) => console.log(`  ${index + 1}. ${action}`));
+    if (postGreenPath) {
+      console.log(
+        color.dim(
+          '  (post-green path is primary when ENFORCE · design-weak — do not skill-shop explore vs coverage vs think)'
+        )
+      );
+    }
   }
 }

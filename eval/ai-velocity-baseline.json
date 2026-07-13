@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "1",
+  "id": "q05-ai-velocity",
+  "metric": "placementTurns",
+  "scenarioId": "add-pure-domain-canRefund",
+  "summary": {
+    "designWeakTurns": 4,
+    "goldenPathTurns": 1,
+    "goldenStrictlyBetter": true,
+    "deltaTurns": 3
+  },
+  "method": "Agent-equivalent placement attempts until DomainModel home for fixed pure-rule feature (add-pure-domain-canRefund). Design-weak arm walks concurrent-layout candidates; golden-path arm uses .ark/golden-pattern.json newCodeHome as first attempt. No live LLM; gate not weakened; design-weak residual may remain on both arms."
+}

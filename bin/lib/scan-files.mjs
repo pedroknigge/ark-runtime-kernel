@@ -12,7 +12,7 @@ export const SOURCE_FILE_NAME = /\.[cm]?[tj]sx?$/;
  *  to production code (*.spec.ts). Counting them as ungoverned forces false
  *  CONFIG_UNCLASSIFIED_FILES under --strict-config on every starter. */
 export const TEST_FILE_NAME =
-  /\.(spec|test)\.(tsx?|jsx?|mts|cts)$/i;
+  /(^test\.|\.(spec|test)(?:-d)?\.)(tsx?|jsx?|mjsx?|cjsx?|mts|cts)$/i;
 
 export function isGovernableSourceFile(name) {
   return SOURCE_FILE_NAME.test(name) && !name.endsWith('.d.ts') && !TEST_FILE_NAME.test(name);

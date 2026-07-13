@@ -314,7 +314,26 @@ export function applyFrameworkLayoutOverlays(config, root) {
   if (signals.libraryOnly && !signals.nestFramework && !signals.nextFramework) {
     ensureInclude('src');
     ensureInclude('lib');
-    mergeLayerPatterns(next, 'DomainModel', ['src/**/*.ts', 'src/**/*.tsx', 'lib/**/*.ts']);
+    // Published libraries commonly expose a root entrypoint instead of src/. Include that
+    // real surface, but not test files: a public package entrypoint is application code and
+    // must not remain outside the contract simply because it is JavaScript or root-level.
+    ensureInclude('.');
+    mergeLayerPatterns(next, 'DomainModel', [
+      'src/**/*.ts',
+      'src/**/*.tsx',
+      'src/**/*.js',
+      'src/**/*.mjs',
+      'src/**/*.cjs',
+      'lib/**/*.ts',
+      'lib/**/*.js',
+      'lib/**/*.mjs',
+      'lib/**/*.cjs',
+      '*.ts',
+      '*.tsx',
+      '*.js',
+      '*.mjs',
+      '*.cjs',
+    ]);
     // Prefer domain over application for a single-folder lib: only domain if no split.
     next.frameworkOverlay = next.frameworkOverlay
       ? `${next.frameworkOverlay}+library`

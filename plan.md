@@ -3,7 +3,8 @@
 - Prepared: 2026-07-13
 - Source of truth: `ROADMAP.md` dated 2026-07-13
 - Scope: `O03`, `O04`, `V01`, `V02`, `V03`, `V04`, and `V05`
-- Current release constraint: `RB-06` closed with O03; ArkGate remains beta until V05 passes
+- Current release constraint: V05 passed in PR #49; `3.0.0` is prepared but must not be tagged or
+  published without explicit release authorization
 
 ## 1. Purpose and authority
 
@@ -19,12 +20,12 @@ When this document and `ROADMAP.md` disagree:
 3. Mark an item `done` only in accordance with the roadmap workflow and only after CI is green on
    the pushed commit.
 
-## 2. Completed roadmap reconciliation
+## 2. Historical O03 reconciliation
 
 O03 completed on 2026-07-12. PR #41 passed its required CI using GitHub-verified signed commit
 `a20f851` and was squash-merged as `105cd39`.
 
-| Roadmap location | Current text | Operational interpretation | Required correction |
+| Roadmap location | Historical record | Operational interpretation | Required correction |
 |---|---|---|---|
 | Ordered queue | `O03` is `done` | O03 completion is authoritative | Start O04 only when its first implementation slice begins |
 | `O03` detail | `O03` is `done` | Detailed status matches the queue | Preserve the linked local and remote evidence |
@@ -53,6 +54,20 @@ one item may be `doing`.
 
 Do not start a later item opportunistically. If a later item exposes a P0/P1 issue, stop the queue
 and add a stabilization item as required by the roadmap.
+
+### Post-roadmap release 3.0.0
+
+The implementation roadmap is complete. The next operation is a release procedure, not another
+roadmap feature:
+
+1. Run `npm run release:npm -- --dry` from clean `main` for `arkgate@3.0.0`.
+2. With explicit authorization, create and push signed tag `v3.0.0`.
+3. Create the GitHub Release from `docs/releases/3.0.0.md`.
+4. Dispatch `publish-npm.yml` with `tag=v3.0.0` and `dry_run=false`; it verifies the tag and
+   release before provenance-backed npm publication.
+5. Verify npm version, release assets, SBOM/checksums, provenance, and the published tag/SHA.
+
+No action in this section publishes or tags a release by itself.
 
 ### Phase-closure synchronization rule
 
@@ -744,7 +759,7 @@ npm run audit:beta-exit -- --candidate <full-sha>
 No stable release is authorized unless this command, the independent review, and every roadmap
 binary exit condition pass on the same candidate.
 
-### Current V05 evidence and decision
+### Historical V05 failure evidence and decision
 
 The audit implementation is present in `scripts/beta-exit-audit.mjs`, with its contract in
 `eval/beta-exit/audit-schema.v1.json`. On 2026-07-13 it evaluated candidate
@@ -773,7 +788,7 @@ adoption binding, host profiles, release artifacts, and the independent review r
 pass. V05 is done; beta exit is authorized, while publishing or tagging a stable release remains a
 separate release action.
 
-### Post-B01 re-audit (2026-07-13)
+### Historical post-B01 re-audit (2026-07-13)
 
 Candidate `42c77f62384e40ffb71e16388e6530f34253f9b9` has fresh adoption evidence under
 `eval/adoption/results/42c77f62384e40ffb71e16388e6530f34253f9b9/`: 97% median governed coverage,

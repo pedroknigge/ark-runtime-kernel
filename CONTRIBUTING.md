@@ -97,8 +97,16 @@ existing GitHub Release, reruns the release gates, publishes to npm with provena
 the npm tarball checksum. Local `npm publish` is emergency-only and intentionally not the normal
 maintainer path.
 
-**Current release in flight:** see [docs/releases/2.13.0.md](docs/releases/2.13.0.md).
-Publication remains gated by the release-blocker policy recorded there and in `ROADMAP.md`.
+**MCP registry (after npm is on `latest`):** keep `server.json` at the same version, then:
+
+```bash
+mcp-publisher login github -token "$(gh auth token)"   # if JWT expired
+mcp-publisher validate server.json
+mcp-publisher publish server.json
+# Confirm: registry lists io.github.pedroknigge/arkgate @ X.Y.Z with isLatest
+```
+
+**Current published release:** [docs/releases/3.0.5.md](docs/releases/3.0.5.md) (`arkgate@3.0.5`).
 
 ## Not sure where to start?
 

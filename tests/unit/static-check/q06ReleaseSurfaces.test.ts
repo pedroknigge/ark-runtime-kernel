@@ -1,5 +1,5 @@
 /**
- * Release surface parity — version pins + historical Phase Q docs + 3.0.4 report patch.
+ * Release surface parity — version pins + historical release docs.
  * Structural checks on shipped docs + version metadata (no re-implementation).
  */
 import { describe, it, expect } from 'vitest';
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { version } from '../../../src/version.ts';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const CURRENT = '3.0.4';
+const CURRENT = '3.0.5';
 
 function read(rel: string) {
   return fs.readFileSync(path.join(REPO, rel), 'utf8');
@@ -29,7 +29,26 @@ describe(`version bump ${CURRENT}`, () => {
   });
 });
 
-describe('CHANGELOG + release note cover 3.0.4 report honesty', () => {
+describe('CHANGELOG + release note cover 3.0.5 Codex honesty', () => {
+  it('CHANGELOG 3.0.5 section names Codex skill catalog fixes', () => {
+    const body = read('CHANGELOG.md');
+    expect(body).toMatch(/## 3\.0\.5/);
+    expect(body).toMatch(/\.agents\/skills|SKILL\.md/i);
+    expect(body).toMatch(/legacy-prompts|legacy prompts/i);
+    expect(body).toMatch(/fail-closed|strict-merge/i);
+    expect(body).toMatch(/write-path honesty|advisory/i);
+  });
+
+  it('docs/releases/3.0.5.md has upgrade path and honesty', () => {
+    const body = read('docs/releases/3.0.5.md');
+    expect(body).toMatch(/arkgate@3\.0\.5/);
+    expect(body).toMatch(/npm install -D arkgate@3\.0\.5/);
+    expect(body).toMatch(/\.agents\/skills|codex-home/i);
+    expect(body).not.toMatch(/weakens the gate|gate was weakened/i);
+  });
+});
+
+describe('CHANGELOG + release note cover 3.0.4 report honesty (historical)', () => {
   it('CHANGELOG 3.0.4 section names report fixes and design strip', () => {
     const body = read('CHANGELOG.md');
     expect(body).toMatch(/## 3\.0\.4/);
@@ -45,7 +64,6 @@ describe('CHANGELOG + release note cover 3.0.4 report honesty', () => {
     expect(body).toMatch(/npm install -D arkgate@3\.0\.4/);
     expect(body).toMatch(/design-weak|design-depth/i);
     expect(body).toMatch(/write-path|CORE_LAYER|false ADAPT/i);
-    // Honesty language may say "No gate weaken"; ban claims that we did weaken.
     expect(body).not.toMatch(/weakens the gate|gate was weakened/i);
   });
 });

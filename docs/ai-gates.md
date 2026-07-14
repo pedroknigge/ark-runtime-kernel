@@ -268,7 +268,7 @@ Hand-editing with relative `--root .` is wrong: Codex does not use the project a
 
 ```bash
 npx ark-check --install-agent-gates --tools codex
-# optional: install /ark-* slash prompts into $CODEX_HOME/prompts
+# optional: install /ark-* skills into $CODEX_HOME/skills/<name>/SKILL.md
 npx ark-check --install-agent-gates --codex-home
 ```
 
@@ -309,10 +309,35 @@ primary A. It writes a **scoped secondary** table:
 
 `ark-check --doctor` surfaces the multi-project state so you are not left thinking B owns
 `ark://manifest` when only a secondary table exists. **Deferred (fix when using Codex):**
-non-temp Codex-home gaps (`codex-home-multi-project`, stale `$CODEX_HOME/prompts`) are
+non-temp Codex-home gaps (`codex-home-multi-project`, stale `$CODEX_HOME/skills`) are
 severity **info**, marked `deferred: true`, and omitted from Top actions when the session
 host is known and not Codex — `/ark-upgrade` on Grok/Claude is not Incomplete because of
 them. **Temp/upgrade primary roots** stay fail-closed urgent (rewritten, not multi-project).
+
+### Codex skill catalog (SKILL.md, not flat prompts)
+
+Codex discovers skills as directories containing `SKILL.md` (Agent Skills standard):
+
+| Scope | Path |
+|-------|------|
+| **Repo** (written by `--tools codex`) | `.agents/skills/<name>/SKILL.md` |
+| **Home** (optional `--codex-home`) | `$CODEX_HOME/skills/<name>/SKILL.md` |
+
+Flat `.codex/prompts/*.md` files are **not** the invocable skill catalog. Install writes the
+repo catalog above so AGENTS.md `/ark-*` references match what Codex can load. After install,
+Ark verifies those references against each selected host catalog.
+
+**Parity & honesty (doctor / install):**
+
+- Doctor distinguishes **missing / stale / legacy-prompts-only** for repo (`.agents/skills`) and
+  home (`$CODEX_HOME/skills`). Home debt is **deferred** when the session host is not Codex.
+- Legacy flat prompts alone are reported as non-loadable skill debt with a
+  `--skills-only --tools codex --force` (repo) or `--codex-home --force` (home) fix.
+- Codex **write path is advisory**: MCP + best-effort `.codex/hooks.json` is **not** a hard
+  write boundary and is **not** equivalent to Claude/Grok PreToolUse hard-write + repair.
+  The hard merge backstop is CI `--strict-merge` (or `--strict`) plus a required status check.
+- CI workflows that run ark-check without the fail-closed profile (or with only
+  `--strict-config`) surface gap `enforcement-ci-not-fail-closed`.
 
 ## Grok Build (xAI)
 

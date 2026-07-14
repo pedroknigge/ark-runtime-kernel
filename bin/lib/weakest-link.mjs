@@ -49,6 +49,30 @@ export function detectPreCommitArk(root) {
 }
 
 /**
+ * Classify ark-check flags in a workflow or package script body.
+ * CLI: `--strict` and `--strict-merge` both set strictConfig + requireGates (fail-closed).
+ * `--strict-config` alone does not require gate files.
+ *
+ * @param {string} text
+ * @returns {{ hasFailClosedFlag: boolean, hasStrictConfigOnly: boolean, hasStrictFlag: boolean }}
+ */
+export function classifyArkCheckFlags(text) {
+  if (!text || typeof text !== 'string') {
+    return { hasFailClosedFlag: false, hasStrictConfigOnly: false, hasStrictFlag: false };
+  }
+  const hasStrictMerge = /--strict-merge\b/.test(text);
+  const hasRequireGates = /--require-gates\b/.test(text);
+  // Bare --strict (alias of --strict-merge), not --strict-config / already-matched merge.
+  const withoutLong = text.replace(/--strict-merge\b/g, ' ').replace(/--strict-config\b/g, ' ');
+  const hasBareStrict = /--strict\b/.test(withoutLong);
+  const hasFailClosedFlag = hasStrictMerge || hasRequireGates || hasBareStrict;
+  const hasStrictConfig = /--strict-config\b/.test(text);
+  const hasStrictConfigOnly = hasStrictConfig && !hasFailClosedFlag;
+  const hasStrictFlag = hasFailClosedFlag || hasStrictConfigOnly;
+  return { hasFailClosedFlag, hasStrictConfigOnly, hasStrictFlag };
+}
+
+/**
  * @param {string} root
  * @returns {{
  *   hasWorkflowsDir: boolean,
@@ -56,6 +80,9 @@ export function detectPreCommitArk(root) {
  *   arkWorkflowFiles: string[],
  *   hasArkCheckWorkflow: boolean,
  *   hasStrictFlag: boolean,
+ *   hasFailClosedFlag: boolean,
+ *   hasStrictConfigOnly: boolean,
+ *   failClosed: boolean,
  *   hasArchitectureJobName: boolean,
  * }}
  */
@@ -67,6 +94,9 @@ export function detectCiEnforcement(root) {
     arkWorkflowFiles: [],
     hasArkCheckWorkflow: false,
     hasStrictFlag: false,
+    hasFailClosedFlag: false,
+    hasStrictConfigOnly: false,
+    failClosed: false,
     hasArchitectureJobName: false,
   };
   if (!out.hasWorkflowsDir) return out;
@@ -77,6 +107,19 @@ export function detectCiEnforcement(root) {
     return out;
   }
   out.workflowFiles = files;
+
+  let checkArchScript = '';
+  try {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    checkArchScript =
+      typeof pkg?.scripts?.['check:architecture'] === 'string'
+        ? pkg.scripts['check:architecture']
+        : '';
+  } catch {
+    checkArchScript = '';
+  }
+  const scriptFlags = classifyArkCheckFlags(checkArchScript);
+
   for (const f of files) {
     let text = '';
     try {
@@ -92,9 +135,19 @@ export function detectCiEnforcement(root) {
     if (mentionsArk) {
       out.hasArkCheckWorkflow = true;
       out.arkWorkflowFiles.push(`.github/workflows/${f}`);
-      if (/--strict\b/.test(text) || /check:architecture/.test(text)) {
+      const flags = classifyArkCheckFlags(text);
+      const viaScript = /check:architecture/.test(text) && scriptFlags.hasFailClosedFlag;
+      if (flags.hasFailClosedFlag || viaScript) {
+        out.hasFailClosedFlag = true;
+        out.failClosed = true;
+        out.hasStrictFlag = true;
+      } else if (flags.hasStrictConfigOnly) {
+        out.hasStrictConfigOnly = true;
+        out.hasStrictFlag = true;
+      } else if (flags.hasStrictFlag) {
         out.hasStrictFlag = true;
       }
+      // check:architecture without fail-closed flags in the script is NOT fail-closed.
       if (/architecture|ark-check|arkgate-check/i.test(f) || /name:\s*.*ark/i.test(text)) {
         out.hasArchitectureJobName = true;
       }
@@ -339,18 +392,14 @@ export function collectWeakestLinkGaps(root, opts = {}) {
         'CI workflows exist but none run ark-check / arkgate-check / check:architecture',
       fix: arkCommand(root, 'ark-check', '--install-agent-gates'),
     });
-  } else if (
-    adopted &&
-    !isProducer &&
-    ci.hasArkCheckWorkflow &&
-    !ci.hasStrictFlag
-  ) {
+  } else if (adopted && !isProducer && ci.hasArkCheckWorkflow && !ci.failClosed) {
     gaps.push({
-      id: 'enforcement-ci-not-strict',
-      severity: 'info',
-      message:
-        'Architecture CI job found but does not pass --strict / check:architecture (weaker than recommended)',
-      fix: 'Add --strict (or npm run check:architecture) to the architecture workflow step',
+      id: 'enforcement-ci-not-fail-closed',
+      severity: 'warn',
+      message: ci.hasStrictConfigOnly
+        ? 'Architecture CI uses --strict-config only (config coverage without gate-file presence). Prefer the fail-closed profile.'
+        : 'Architecture CI job found but does not use the fail-closed profile (--strict-merge / --strict / --require-gates)',
+      fix: 'ark-check --root . --config ark.config.json --strict-merge --baseline .ark-baseline.json',
     });
   }
 

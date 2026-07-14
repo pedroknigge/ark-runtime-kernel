@@ -3,15 +3,19 @@
  * Guards packaging regressions (missing templates) and instruction drift.
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   agentInstructions,
+  agentsMdSkillRefs,
   codexConcernIsActive,
   detectActiveAgentHost,
   skillTemplateNames,
   skillTemplates,
+  SKILL_TOOL_TARGETS,
+  verifyHostSkillCatalog,
 } from '../../../bin/lib/agent-gates.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
@@ -148,6 +152,51 @@ describe('agentInstructions routing table', () => {
     expect(text).toMatch(/Do \*\*not\*\* run overlapping skills|Do not run overlapping skills/i);
     expect(text).toMatch(/Align.*Stabilize.*Shape/s);
     expect(text).toMatch(/design-weak|Shape work/i);
+  });
+});
+
+describe('Codex skill catalog targets + AGENTS.md verification', () => {
+  it('maps Codex to .agents/skills/<name>/SKILL.md (not flat .codex/prompts)', () => {
+    expect(SKILL_TOOL_TARGETS.codex('ark-explore')).toBe('.agents/skills/ark-explore/SKILL.md');
+    expect(SKILL_TOOL_TARGETS.grok('ark-explore')).toBe('.grok/skills/ark-explore/SKILL.md');
+    expect(SKILL_TOOL_TARGETS.claude('ark-explore')).toBe('.claude/skills/ark-explore/SKILL.md');
+  });
+
+  it('agentsMdSkillRefs extracts /ark-* names', () => {
+    expect(agentsMdSkillRefs('run /ark-explore then /ark-autopilot; ignore /other')).toEqual([
+      'ark-autopilot',
+      'ark-explore',
+    ]);
+  });
+
+  it('verifyHostSkillCatalog fails when AGENTS refs are missing from Codex catalog', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-catalog-'));
+    try {
+      fs.writeFileSync(
+        path.join(root, 'AGENTS.md'),
+        '# Ark\n\nUse `/ark-explore` and `/ark-loop`.\n'
+      );
+      const missing = verifyHostSkillCatalog(root, ['codex'], {
+        skillNames: ['ark-explore', 'ark-loop'],
+      });
+      expect(missing.ok).toBe(false);
+      expect(missing.missing.map((m) => m.path).sort()).toEqual([
+        '.agents/skills/ark-explore/SKILL.md',
+        '.agents/skills/ark-loop/SKILL.md',
+      ]);
+
+      fs.mkdirSync(path.join(root, '.agents', 'skills', 'ark-explore'), { recursive: true });
+      fs.mkdirSync(path.join(root, '.agents', 'skills', 'ark-loop'), { recursive: true });
+      fs.writeFileSync(path.join(root, '.agents/skills/ark-explore/SKILL.md'), '---\nname: ark-explore\n---\n');
+      fs.writeFileSync(path.join(root, '.agents/skills/ark-loop/SKILL.md'), '---\nname: ark-loop\n---\n');
+      const ok = verifyHostSkillCatalog(root, ['codex'], {
+        skillNames: ['ark-explore', 'ark-loop'],
+      });
+      expect(ok.ok).toBe(true);
+      expect(ok.referenced).toEqual(['ark-explore', 'ark-loop']);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 });
 

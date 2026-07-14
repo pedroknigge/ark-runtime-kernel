@@ -121,7 +121,9 @@ function hostRecord(hard, advisory, repair, merge) {
 }
 
 export function detectWritePathInventory(root) {
-  const merge = detectCiEnforcement(root).arkWorkflowFiles;
+  // Merge-gate evidence only when CI uses the fail-closed profile (not bare ark-check).
+  const ci = detectCiEnforcement(root);
+  const merge = ci.failClosed ? ci.arkWorkflowFiles : [];
   const claudeHook = hookEvidence(root, '.claude/settings.json');
   const grokHook = hookEvidence(root, '.grok/hooks/ark-write-gate.json');
   const hosts = {

@@ -10,10 +10,19 @@ import { execCommandParts } from '../ark-shared.mjs';
 
 export const PREFERRED_CODEX_MCP_BIN = 'arkgate-mcp';
 
-/** Where Codex loads slash-command prompts ($CODEX_HOME/prompts). */
+/** Where Codex loads slash-command prompts ($CODEX_HOME/prompts) — legacy, not the skill catalog. */
 export function codexPromptsDir() {
   const base = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
   return path.join(base, 'prompts');
+}
+
+/**
+ * Where Codex loads user/home SKILL.md skills ($CODEX_HOME/skills/<name>/SKILL.md).
+ * Repo-scoped skills live at `.agents/skills/<name>/SKILL.md` (Agent Skills standard).
+ */
+export function codexSkillsDir() {
+  const base = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
+  return path.join(base, 'skills');
 }
 
 /** Where Codex loads MCP servers ($CODEX_HOME/config.toml) — global, not project-local. */

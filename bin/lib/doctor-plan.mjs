@@ -14,6 +14,8 @@ import {
 import {
   collectAdoptionGaps,
   detectSkillGaps,
+  detectCodexHomeGap,
+  codexConcernIsActive,
   detectWritePathCapabilities,
   missingGates,
   staleRunnerGateFiles,
@@ -405,8 +407,6 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     ? [...baseline.keys].filter((key) => !currentKeys.has(key)).length
     : 0;
   const activeCount = violations.length - suppressed;
-  const missingSkills = skillGaps.reduce((sum, gap) => sum + gap.missing, 0);
-  const staleSkills = skillGaps.reduce((sum, gap) => sum + gap.stale, 0);
   const designSmells = detectDesignSmells(root, config, files, cov);
   const designFitness = summarizeDesignFitness(designSmells, {
     activeViolations: activeCount,
@@ -769,10 +769,35 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     line(bad, `Missing gates: ${gatesMissing.join(', ')}`);
     actions.push(`install gates (${arkCommand(root, 'ark-check', '--install-agent-gates')})`);
   }
-  if (missingSkills + staleSkills === 0) line(ok, '/ark-* skills current for detected tools');
-  else {
-    line(warn, `${missingSkills} missing / ${staleSkills} outdated /ark-* skill(s) for ${skillGaps.map((g) => g.tool).join(', ')}`);
+  // Report Codex legacy prompts and other-host missing/stale independently (never exclusive).
+  const legacyCodex = skillGaps.some((g) => g.tool === 'codex' && g.legacyPromptsOnly);
+  const remainingGaps = skillGaps.filter((g) => !(g.tool === 'codex' && g.legacyPromptsOnly));
+  const remMiss = remainingGaps.reduce((s, g) => s + g.missing, 0);
+  const remStale = remainingGaps.reduce((s, g) => s + g.stale, 0);
+  if (remMiss + remStale === 0 && !legacyCodex) line(ok, '/ark-* skills current for detected tools');
+  if (legacyCodex) {
+    line(warn, 'Codex: legacy flat .codex/prompts only (not a loadable skill catalog)');
+    actions.push('install Codex SKILL.md catalog (--install-agent-gates --skills-only --tools codex --force)');
+  }
+  if (remMiss + remStale > 0) {
+    line(warn, `${remMiss} missing / ${remStale} outdated /ark-* skill(s) for ${remainingGaps.map((g) => g.tool).join(', ')}`);
     actions.push('refresh /ark-* skills (--install-agent-gates --skills-only --force)');
+  }
+  const codexHomeGap = detectCodexHomeGap(root);
+  if (codexHomeGap) {
+    const parts = [
+      codexHomeGap.legacyPromptsOnly ? 'legacy-prompts-only' : null,
+      codexHomeGap.missing > 0 ? `${codexHomeGap.missing} missing` : null,
+      codexHomeGap.stale > 0 ? `${codexHomeGap.stale} outdated` : null,
+    ].filter(Boolean);
+    const deferred = !codexConcernIsActive();
+    // Deferred home debt is dim/info (not warn) so non-Codex sessions are not "incomplete".
+    if (deferred) {
+      line(color.dim('·'), color.dim(`Codex home skills ${parts.join(', ')} (deferred — not on Codex session)`));
+    } else {
+      line(warn, `Codex home skills ${parts.join(', ')}`);
+      actions.push('refresh Codex home skills (--install-agent-gates --skills-only --codex-home --force)');
+    }
   }
 
   console.log('');

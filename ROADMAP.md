@@ -193,8 +193,9 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 | 33 | `Q05` | `done` | M | `Q04` | AI-velocity evidence: golden-path vs design-weak same feature scenario |
 | 34 | `Q06` | `done` | S | `Q01`â€“`Q05` | Release train: CHANGELOG, 3.0.3 notes, surface parity, dry-run readiness |
 
-**Next:** Phase Q complete on this branch. Publish `arkgate@3.0.3` from `main` after merge.
-Epic: [docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md)
+**Next:** Phase Q complete and shipped (`arkgate@3.0.3`+). Latest patch: **`arkgate@3.0.5`**
+(Codex skill catalog + residual honesty). Epic backlog:
+[docs/plans/power-simple-shape](docs/plans/power-simple-shape/README.md).
 
 ---
 

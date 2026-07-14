@@ -345,7 +345,7 @@ for real systems. Details: [docs/production-hardening.md](docs/production-harden
 | Agent / MCP tools | [docs/agent-guide.md](docs/agent-guide.md) |
 | Demos | [docs/demos/](docs/demos/) |
 | Examples | [examples/](examples/README.md) |
-| Release 3.0.0 | [release notes and publication checklist](docs/releases/3.0.0.md) |
+| Latest release (3.0.5) | [release notes](docs/releases/3.0.5.md) · [3.0.0 baseline](docs/releases/3.0.0.md) |
 | Roadmap | [ROADMAP.md](ROADMAP.md) · [Changelog](CHANGELOG.md) |
 
 ---
@@ -363,7 +363,7 @@ npm run check:architecture   # Ark gates itself
 **npm:** [`arkgate`](https://www.npmjs.com/package/arkgate) · formerly `ark-runtime-kernel`
 **Product:** **ArkGate** — architecture co-pilot / gate for AI TypeScript (not a runtime kernel).
 CLI: `arkgate` · `arkgate-check` · `arkgate-mcp` (aliases `ark` / `ark-check` / `ark-mcp` still work for one major).
-MCP registry: `io.github.pedroknigge/arkgate`.
+MCP registry: [`io.github.pedroknigge/arkgate`](https://registry.modelcontextprotocol.io/) (`server.json` @ package version).
 **Source:** [github.com/pedroknigge/arkgate](https://github.com/pedroknigge/arkgate)
 
 Node ≥ 18 · **MIT**.

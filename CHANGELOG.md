@@ -4,7 +4,42 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
-No changes are scheduled after 3.0.4.
+No changes are scheduled after 3.0.5.
+
+## 3.0.5 — 2026-07-14
+
+Codex host skill catalog + residual honesty. **No breaking** CLI or `ark.config.json`
+changes. **No gate weaken.**
+
+### Fixed
+
+- **Codex `/ark-*` skills not invocable:** install wrote flat `.codex/prompts/*.md`, which
+  Codex does not load as skills. Repo catalog is now `.agents/skills/<name>/SKILL.md`
+  (Agent Skills REPO scope); optional home catalog is `$CODEX_HOME/skills/<name>/SKILL.md`
+  via `--codex-home`. Post-install verifies AGENTS.md `/ark-*` refs against each selected
+  host catalog.
+- **Temp-root MCP footgun:** `--codex-home` no longer rebinds primary `[mcp_servers.ark]` in
+  the default `~/.codex/config.toml` when the project root is a temp/upgrade path (skills may
+  still refresh under an isolated or real home).
+- **Multi-host skill hints:** Codex legacy-prompts-only debt no longer suppresses missing/stale
+  skill reports for Claude/Cursor/other hosts in doctor and `ark-check` human output.
+- **Deferred Codex home debt severity:** outside a Codex session, home skill gaps are dim/info
+  (not warn) and are not Top actions; when the session host is Codex they stay warn + fix.
+
+### Added
+
+- **Skill parity sensors:** missing / stale / legacy-prompts-only for repo and home catalogs,
+  with package `arkVersion` stamps; doctor and JSON expose concrete refresh fixes
+  (`--skills-only --tools codex` and/or `--codex-home`).
+- **CI fail-closed detection:** workflows with ark-check but only `--strict-config` (or no
+  strict flags) surface `enforcement-ci-not-fail-closed` (warn) with a `--strict-merge` fix.
+  `--strict` / `--strict-merge` / `--require-gates` count as fail-closed. Merge-gate inventory
+  evidence requires that fail-closed profile.
+- **Codex write-path honesty:** install and doctor state local Codex write is advisory (MCP +
+  best-effort hooks; not Claude/Grok hard-write + repair); CI `--strict-merge` + required
+  status is the hard merge backstop.
+
+Release note: `docs/releases/3.0.5.md`.
 
 ## 3.0.4 — 2026-07-14
 

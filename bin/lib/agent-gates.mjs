@@ -88,9 +88,13 @@ export {
   skillTemplates,
   skillTemplateNames,
   detectCodexHomeGap,
+  detectCodexRepoSkillGap,
+  assessCodexSkillParity,
+  assessSkillCatalogParity,
   detectSkillGaps,
   agentsMdSkillRefs,
   verifyHostSkillCatalog,
+  printSkillAndCodexGapHints,
 } from './skill-install.mjs';
 
 export { detectDeployPathQuality } from './deploy-path.mjs';
@@ -105,6 +109,7 @@ export {
 export {
   detectPreCommitArk,
   detectCiEnforcement,
+  classifyArkCheckFlags,
   detectConfigGateDrift,
   jobIdsThatRunArkCheck,
   isArkRequiredStatusCheck,

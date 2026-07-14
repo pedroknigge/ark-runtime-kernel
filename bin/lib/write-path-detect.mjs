@@ -72,17 +72,23 @@ export function detectWritePathCapabilities(root, explicitHost) {
       ),
     };
   } else if (mode === 'mcp-only') {
+    const codexHonesty =
+      activeHost === 'codex'
+        ? 'Codex local write is advisory (MCP + best-effort hooks.json — not a hard boundary; ' +
+          'not equivalent to Claude/Grok PreToolUse hard-write + repair). ' +
+          'The hard merge backstop is CI --strict-merge plus a required status check.'
+        : `Active host ${activeHost} has advisory prepare-write/autoPatch tools, ` +
+          'but no hard write boundary; the CI check can still reject the change before merge.';
     gap = {
       id: 'write-path-mcp-only',
       severity: 'info',
-      message:
-        `Active host ${activeHost} has advisory prepare-write/autoPatch tools, ` +
-        'but no hard write boundary; the CI check can still reject the change before merge.',
-      fix: arkCommand(
-        root,
-        'ark-check',
-        `--install-agent-gates --tools ${tools}`
-      ),
+      host: activeHost,
+      message: codexHonesty,
+      fix:
+        activeHost === 'codex'
+          ? 'Keep CI on --strict-merge and require the ark-check status on the default branch; ' +
+            `refresh Codex MCP/skills with ${arkCommand(root, 'ark-check', '--install-agent-gates --tools codex')}`
+          : arkCommand(root, 'ark-check', `--install-agent-gates --tools ${tools}`),
     };
   }
 

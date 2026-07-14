@@ -126,9 +126,12 @@ npx arkgate-check --install-agent-gates --skills-only --force
    **Codex is deferred when you are not on Codex.** Repo skills live in
    `.agents/skills/<name>/SKILL.md`; optional home skills in
    `$CODEX_HOME/skills/<name>/SKILL.md` (not legacy flat `$CODEX_HOME/prompts`).
-   `ark upgrade` may best-effort refresh home when it exists; still list Codex under
-   **Deferred hosts** and do **not** chase MCP multi-project / stale home skills
-   until the user is on Codex (or asks). Fix command when needed:
+   When **on Codex**, refresh **both** repo catalog and home if doctor reports
+   missing/stale/legacy-prompts-only parity gaps. `ark upgrade` may best-effort
+   refresh home when it exists; still list Codex under **Deferred hosts** when
+   not on Codex and do **not** chase MCP multi-project / stale home skills until
+   the user is on Codex (or asks). Fix when needed:
+   `ark-check --install-agent-gates --skills-only --tools codex --force` and/or
    `ark-check --install-agent-gates --skills-only --codex-home --force`
    (and `--tools codex` / `--force` for primary MCP rebind). Exception: temp or
    `ark-upgrade` MCP `--root` paths — leave fail-closed rewrite to the CLI; do not

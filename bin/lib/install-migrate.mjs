@@ -433,18 +433,15 @@ export function runInstallAgentGates(args) {
   // home-dir merge instead. Fires whenever Codex is in play so `ark://manifest` is live
   // without a manual copy step.
   //
-  // Skip home-dir mutation when the project root is a temp/upgrade scratch *and*
-  // CODEX_HOME resolves to the default (~/.codex). Codex itself may export that exact
-  // path, so presence alone does not prove isolation. Fixtures must not rewrite the
-  // developer's real config. A genuinely redirected CODEX_HOME or explicit
-  // --codex-home still wires as requested.
+  // Skip home MCP mutation when the project root is a temp/upgrade scratch *and*
+  // CODEX_HOME is the default (~/.codex). Fixtures and agent smokes must not rewrite
+  // the developer's real config.toml with a temp --root. --codex-home still refreshes
+  // home *skills* below; MCP binding of a temp root into default home is never safe.
+  // A redirected CODEX_HOME (tests/isolation) may still wire as requested.
   let codexMcp = null;
   const wantCodexWire = !args.compact && (tools.has('codex') || args.codexHome);
   const skipHomeWire =
-    wantCodexWire &&
-    isTempOrUpgradeRoot(root) &&
-    !args.codexHome &&
-    usesDefaultCodexHome();
+    wantCodexWire && isTempOrUpgradeRoot(root) && usesDefaultCodexHome();
   if (wantCodexWire && !skipHomeWire) {
     codexMcp = wireCodexMcp(root, args.force);
     console.log('');
@@ -502,6 +499,12 @@ export function runInstallAgentGates(args) {
     if (codexMcp && codexMcp.status !== 'failed') {
       console.log(`  Codex: ark MCP registered in ${codexMcp.file} — restart Codex so \`ark://manifest\` loads.`);
     }
+    if (tools.has('codex') && !args.compact) {
+      console.log('  Codex write path (honest):');
+      console.log('    - Local: advisory MCP + best-effort .codex/hooks.json (not a hard boundary).');
+      console.log('    - Hard merge backstop: CI --strict-merge + required status check.');
+      console.log('    - Not equivalent to Claude/Grok PreToolUse hard-write + repair.');
+    }
     if (args.codexHome) {
       console.log(
         `  Codex: refreshed home skills under ${codexSkillsDir()}/<name>/SKILL.md (Codex skill catalog).`
@@ -513,7 +516,23 @@ export function runInstallAgentGates(args) {
       console.log(
         `  Optional multi-project home copy: ${arkCommand(root, 'ark-check', '--install-agent-gates --codex-home')}`
       );
-      console.log(`  (writes $CODEX_HOME/skills; legacy prompts path ${codexPromptsDir()} is not the skill catalog).`);
+      console.log(
+        `  (writes $CODEX_HOME/skills; legacy flat prompts at ${codexPromptsDir()} are not the skill catalog).`
+      );
+      // Best-effort note when dead prompts still sit under the repo.
+      try {
+        const promptDir = path.join(root, '.codex', 'prompts');
+        if (fs.existsSync(promptDir)) {
+          const legacy = fs.readdirSync(promptDir).filter((n) => /^ark-[a-z0-9-]+\.md$/.test(n));
+          if (legacy.length > 0) {
+            console.log(
+              `  Note: ignoring ${legacy.length} legacy .codex/prompts/ark-*.md file(s) — not loadable as Codex skills.`
+            );
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
   }
 

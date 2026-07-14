@@ -327,6 +327,18 @@ Flat `.codex/prompts/*.md` files are **not** the invocable skill catalog. Instal
 repo catalog above so AGENTS.md `/ark-*` references match what Codex can load. After install,
 Ark verifies those references against each selected host catalog.
 
+**Parity & honesty (doctor / install):**
+
+- Doctor distinguishes **missing / stale / legacy-prompts-only** for repo (`.agents/skills`) and
+  home (`$CODEX_HOME/skills`). Home debt is **deferred** when the session host is not Codex.
+- Legacy flat prompts alone are reported as non-loadable skill debt with a
+  `--skills-only --tools codex --force` (repo) or `--codex-home --force` (home) fix.
+- Codex **write path is advisory**: MCP + best-effort `.codex/hooks.json` is **not** a hard
+  write boundary and is **not** equivalent to Claude/Grok PreToolUse hard-write + repair.
+  The hard merge backstop is CI `--strict-merge` (or `--strict`) plus a required status check.
+- CI workflows that run ark-check without the fail-closed profile (or with only
+  `--strict-config`) surface gap `enforcement-ci-not-fail-closed`.
+
 ## Grok Build (xAI)
 
 Grok reads project rules from **`AGENTS.md`**, project MCP from **`.grok/config.toml`**

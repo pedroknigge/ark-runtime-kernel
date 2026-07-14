@@ -3,6 +3,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { arkCommand } from '../ark-shared.mjs';
 import { codexPromptsDir, codexSkillsDir } from './codex-home.mjs';
 import { __packageRoot, isCompactRouterAgentsContent, readJson } from './gate-files.mjs';
 
@@ -260,6 +261,122 @@ export function skillTemplateNames() {
     .map((entry) => path.basename(entry.name, '.md'));
 }
 
+/**
+ * Count present / stale / legacy-only skill files for one catalog root.
+ * @param {string[]} skillNames
+ * @param {(name: string) => string} skillFile path builder
+ * @param {string|null} packageVersion
+ * @param {{ legacyFile?: (name: string) => string }} [opts]
+ */
+export function assessSkillCatalogParity(skillNames, skillFile, packageVersion, opts = {}) {
+  const expectedCount = skillNames.length;
+  const present = [];
+  let stale = 0;
+  for (const name of skillNames) {
+    const file = skillFile(name);
+    if (!fs.existsSync(file)) continue;
+    present.push(name);
+    if (packageVersion) {
+      const installed = installedSkillVersion(file);
+      if (installed === null || isVersionOlder(installed, packageVersion)) stale += 1;
+    }
+  }
+  let legacyCount = 0;
+  if (typeof opts.legacyFile === 'function') {
+    for (const name of skillNames) {
+      if (fs.existsSync(opts.legacyFile(name))) legacyCount += 1;
+    }
+  }
+  const presentCount = present.length;
+  const missing = expectedCount - presentCount;
+  const legacyPromptsOnly = presentCount === 0 && legacyCount > 0;
+  const hasLegacyPrompts = legacyCount > 0;
+  const ok = missing === 0 && stale === 0 && !legacyPromptsOnly;
+  return {
+    ok,
+    missing,
+    stale,
+    presentCount,
+    expectedCount,
+    packageVersion: packageVersion ?? null,
+    legacyPromptsOnly,
+    hasLegacyPrompts,
+    legacyCount,
+  };
+}
+
+/**
+ * Repo + home Codex skill parity against the shipping package skill set.
+ * Producer trees (templates/skills) and projects without AGENTS.md return null.
+ *
+ * @param {string} root
+ * @returns {null | {
+ *   packageVersion: string|null,
+ *   expectedCount: number,
+ *   repo: object,
+ *   home: object,
+ *   skillsDir: string,
+ *   promptsDir: string,
+ *   needsAttention: boolean,
+ *   homeNeedsAttention: boolean,
+ *   repoNeedsAttention: boolean,
+ * }}
+ */
+export function assessCodexSkillParity(root) {
+  if (!fs.existsSync(path.join(root, 'AGENTS.md'))) return null;
+  if (fs.existsSync(path.join(root, 'templates', 'skills'))) return null;
+  const skillNames = skillTemplateNames();
+  if (skillNames.length === 0) return null;
+
+  const packageVersion = arkPackageVersion();
+  const skillsDir = codexSkillsDir();
+  const promptsDir = codexPromptsDir();
+  const repoSkill = (name) => path.join(root, SKILL_TOOL_TARGETS.codex(name));
+  const repoLegacy = (name) => path.join(root, '.codex', 'prompts', `${name}.md`);
+  const homeSkill = (name) => path.join(skillsDir, name, 'SKILL.md');
+  const homeLegacy = (name) => path.join(promptsDir, `${name}.md`);
+
+  const repo = assessSkillCatalogParity(skillNames, repoSkill, packageVersion, {
+    legacyFile: repoLegacy,
+  });
+  const home = assessSkillCatalogParity(skillNames, homeSkill, packageVersion, {
+    legacyFile: homeLegacy,
+  });
+
+  // Repo catalog matters when .codex is present (Codex host adopted) or repo skills/prompts exist.
+  const repoInPlay =
+    fs.existsSync(path.join(root, '.codex')) ||
+    repo.presentCount > 0 ||
+    repo.hasLegacyPrompts;
+  // Home is "in play" only when ark skills or legacy prompts were actually installed there
+  // (empty $CODEX_HOME/skills is optional multi-project — not debt).
+  const homeInPlay = home.presentCount > 0 || home.hasLegacyPrompts;
+
+  if (!repoInPlay && !homeInPlay) return null;
+
+  const repoNeedsAttention =
+    repoInPlay && (repo.missing > 0 || repo.stale > 0 || repo.legacyPromptsOnly);
+  const homeNeedsAttention =
+    homeInPlay && (home.missing > 0 || home.stale > 0 || home.legacyPromptsOnly);
+
+  return {
+    packageVersion,
+    expectedCount: skillNames.length,
+    repo: { ...repo, inPlay: repoInPlay },
+    home: {
+      ...home,
+      inPlay: homeInPlay,
+      skillsDir,
+      promptsDir,
+    },
+    skillsDir,
+    promptsDir,
+    repoNeedsAttention,
+    homeNeedsAttention,
+    needsAttention: repoNeedsAttention || homeNeedsAttention,
+  };
+}
+
 // A normal ark-check run is the reliable discovery point for new /ark-* skills.
 // Ark ships no install lifecycle script (a postinstall banner would be blocked by
 // modern package managers' script-approval policy anyway, so careful users never
@@ -269,37 +386,39 @@ export function skillTemplateNames() {
 // Advisory only — never affects the exit code. Copilot has no reliable directory
 // signal, so it is not auto-detected (explicit --tools only), matching resolveTools.
 export function detectCodexHomeGap(root) {
-  if (!fs.existsSync(path.join(root, 'AGENTS.md'))) return null;
-  if (fs.existsSync(path.join(root, 'templates', 'skills'))) return null;
-  const skillNames = skillTemplateNames();
-  if (skillNames.length === 0) return null;
-  const skillsDir = codexSkillsDir();
-  const promptsDir = codexPromptsDir();
-  const hasSkillsTree = fs.existsSync(skillsDir);
-  const hasLegacyPrompts = fs.existsSync(promptsDir);
-  if (!hasSkillsTree && !hasLegacyPrompts) return null;
+  const parity = assessCodexSkillParity(root);
+  if (!parity || !parity.homeNeedsAttention) return null;
+  const { home, packageVersion, expectedCount, skillsDir } = parity;
+  return {
+    missing: home.missing,
+    stale: home.stale,
+    legacyPromptsOnly: Boolean(home.legacyPromptsOnly),
+    hasLegacyPrompts: Boolean(home.hasLegacyPrompts),
+    presentCount: home.presentCount,
+    expectedCount,
+    packageVersion,
+    skillsDir,
+  };
+}
 
-  // Real catalog: $CODEX_HOME/skills/<name>/SKILL.md
-  const present = skillNames.filter((name) =>
-    fs.existsSync(path.join(skillsDir, name, 'SKILL.md'))
-  );
-  if (present.length === 0) {
-    // Legacy prompts-only install is not a loadable skill catalog — count as full gap
-    // when any ark-* prompt is present (user did set up Codex home for Ark once).
-    const legacy = skillNames.filter((name) => fs.existsSync(path.join(promptsDir, `${name}.md`)));
-    if (legacy.length === 0) return null; // Codex home never set up for Ark — don't nag.
-    return { missing: skillNames.length, stale: 0, legacyPromptsOnly: true };
-  }
-  const version = arkPackageVersion();
-  const missing = skillNames.length - present.length;
-  let stale = 0;
-  if (version) {
-    for (const name of present) {
-      const installed = installedSkillVersion(path.join(skillsDir, name, 'SKILL.md'));
-      if (installed === null || isVersionOlder(installed, version)) stale += 1;
-    }
-  }
-  return missing > 0 || stale > 0 ? { missing, stale } : null;
+/**
+ * Repo-side Codex gaps: missing/stale .agents/skills or legacy .codex/prompts only.
+ * @param {string} root
+ * @returns {null | { missing: number, stale: number, legacyPromptsOnly: boolean, hasLegacyPrompts: boolean, presentCount: number, expectedCount: number, packageVersion: string|null }}
+ */
+export function detectCodexRepoSkillGap(root) {
+  const parity = assessCodexSkillParity(root);
+  if (!parity || !parity.repoNeedsAttention) return null;
+  const { repo, packageVersion, expectedCount } = parity;
+  return {
+    missing: repo.missing,
+    stale: repo.stale,
+    legacyPromptsOnly: Boolean(repo.legacyPromptsOnly),
+    hasLegacyPrompts: Boolean(repo.hasLegacyPrompts),
+    presentCount: repo.presentCount,
+    expectedCount,
+    packageVersion,
+  };
 }
 
 /**
@@ -399,7 +518,94 @@ export function detectSkillGaps(root) {
         if (installed === null || isVersionOlder(installed, version)) stale += 1;
       }
     }
-    if (missing > 0 || stale > 0) gaps.push({ tool, missing, stale });
+    let legacyPromptsOnly = false;
+    let hasLegacyPrompts = false;
+    if (tool === 'codex') {
+      const legacyCount = skillNames.filter((name) =>
+        fs.existsSync(path.join(root, '.codex', 'prompts', `${name}.md`))
+      ).length;
+      hasLegacyPrompts = legacyCount > 0;
+      // Flat prompts without any SKILL.md catalog entries are not loadable.
+      legacyPromptsOnly = hasLegacyPrompts && missing === skillNames.length;
+    }
+    if (missing > 0 || stale > 0 || legacyPromptsOnly) {
+      gaps.push({
+        tool,
+        missing,
+        stale,
+        ...(legacyPromptsOnly ? { legacyPromptsOnly: true } : {}),
+        ...(hasLegacyPrompts ? { hasLegacyPrompts: true } : {}),
+      });
+    }
   }
   return gaps;
+}
+
+/**
+ * Human-facing skill / Codex catalog gap lines for ark-check (non-JSON).
+ * @param {string} root
+ * @param {{ skillGaps: object[], codexHomeGap: object|null, codexRepoSkillGap: object|null, codexSessionActive: boolean, color: { dim: Function, yellow: Function } }} opts
+ */
+export function printSkillAndCodexGapHints(root, opts) {
+  const { skillGaps, codexHomeGap, codexRepoSkillGap, codexSessionActive, color } = opts;
+  if (skillGaps?.length > 0) {
+    const legacyCodex = skillGaps.some((gap) => gap.tool === 'codex' && gap.legacyPromptsOnly);
+    // Report Codex legacy separately; never suppress missing/stale for other hosts.
+    const remaining = skillGaps.filter((gap) => !(gap.tool === 'codex' && gap.legacyPromptsOnly));
+    const missingTotal = remaining.reduce((sum, gap) => sum + gap.missing, 0);
+    const staleTotal = remaining.reduce((sum, gap) => sum + gap.stale, 0);
+    const tools = remaining.map((gap) => gap.tool).join(', ');
+    if (legacyCodex) {
+      console.log(
+        color.yellow(
+          'Codex has legacy flat .codex/prompts/ark-*.md only — those are not loadable as skills. ' +
+            `Install the real catalog: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --tools codex --force')}`
+        )
+      );
+    }
+    if (missingTotal > 0) {
+      console.log(
+        color.dim(
+          `${missingTotal} /ark-* skill(s) not installed for ${tools} (this Ark version ships them). ` +
+            `Install: ${arkCommand(root, 'ark-check', '--install-agent-gates')}`
+        )
+      );
+    }
+    if (staleTotal > 0) {
+      console.log(
+        color.dim(
+          `${staleTotal} /ark-* skill(s) outdated for ${tools} (this Ark ships newer versions). ` +
+            `Refresh: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --force')}`
+        )
+      );
+    }
+  }
+  if (codexHomeGap) {
+    const parts = [];
+    if (codexHomeGap.legacyPromptsOnly) parts.push('legacy-prompts-only');
+    if (codexHomeGap.missing > 0) parts.push(`${codexHomeGap.missing} missing`);
+    if (codexHomeGap.stale > 0) parts.push(`${codexHomeGap.stale} outdated`);
+    const deferred = !codexSessionActive;
+    const deferredNote = deferred
+      ? ' Deferred unless you use Codex — not a blocker for Grok/Claude/Cursor. '
+      : ' ';
+    const msg =
+      `Codex home skill catalog (${codexSkillsDir()}) behind this Ark (${parts.join(', ')}).` +
+      deferredNote +
+      `Catalog is $CODEX_HOME/skills/<name>/SKILL.md (not flat prompts). ` +
+      `When using Codex: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --codex-home --force')}`;
+    console.log(deferred ? color.dim(msg) : color.yellow(msg));
+  }
+  if (codexRepoSkillGap && codexSessionActive) {
+    const parts = [];
+    if (codexRepoSkillGap.legacyPromptsOnly) parts.push('legacy-prompts-only');
+    if (codexRepoSkillGap.missing > 0) parts.push(`${codexRepoSkillGap.missing} missing`);
+    if (codexRepoSkillGap.stale > 0) parts.push(`${codexRepoSkillGap.stale} outdated`);
+    console.log(
+      color.yellow(
+        `Codex repo skill catalog (.agents/skills) needs refresh (${parts.join(', ')}). ` +
+          `Fix: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --tools codex --force')}`
+      )
+    );
+  }
 }

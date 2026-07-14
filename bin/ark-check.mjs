@@ -33,7 +33,9 @@ import {
   loadTypeScript,
   detectSkillGaps,
   detectCodexHomeGap,
-  detectActiveAgentHost,
+  detectCodexRepoSkillGap,
+  codexConcernIsActive,
+  printSkillAndCodexGapHints,
   missingGates,
   staleRunnerGateFiles,
   brokenMcpGateFiles,
@@ -44,7 +46,6 @@ import {
   arkPackageVersion,
   compactRouterHost,
   REQUIRED_GATE_FILES,
-  codexSkillsDir,
   detectWritePathCapabilities,
 } from './lib/agent-gates.mjs';
 import { syncBaselineIntoCheckSurfaces } from './lib/field-install.mjs';
@@ -1229,6 +1230,8 @@ async function main() {
 
   const skillGaps = detectSkillGaps(root);
   const codexHomeGap = detectCodexHomeGap(root);
+  const codexRepoSkillGap = detectCodexRepoSkillGap(root);
+  const codexSessionActive = codexConcernIsActive();
 
   if (args.report) {
     const exampleByLayer = new Map();
@@ -1372,7 +1375,15 @@ async function main() {
       warnings,
       ...(activeViolations.length > 0 ? { summary: summarizeViolations(activeViolations) } : {}),
       ...(skillGaps.length > 0 ? { skillGaps } : {}),
-      ...(codexHomeGap ? { codexHomeGap } : {}),
+      ...(codexHomeGap
+        ? {
+            codexHomeGap: {
+              ...codexHomeGap,
+              deferred: !codexSessionActive,
+            },
+          }
+        : {}),
+      ...(codexRepoSkillGap ? { codexRepoSkillGap } : {}),
     }, null, 2));
   } else {
     for (const warning of warnings) {
@@ -1420,30 +1431,13 @@ async function main() {
       printViolationBreakdown(summarizeViolations(activeViolations), { toStderr: true });
     }
 
-    if (skillGaps.length > 0) {
-      const missingTotal = skillGaps.reduce((sum, gap) => sum + gap.missing, 0);
-      const staleTotal = skillGaps.reduce((sum, gap) => sum + gap.stale, 0);
-      const tools = skillGaps.map((gap) => gap.tool).join(', ');
-      if (missingTotal > 0) {
-        console.log(
-          color.dim(
-            `${missingTotal} /ark-* skill(s) not installed for ${tools} (this Ark version ships them). ` +
-              `Install: ${arkCommand(root, 'ark-check', '--install-agent-gates')}`
-          )
-        );
-      }
-      if (staleTotal > 0) {
-        // Stale skills already exist, so refreshing needs --force. --skills-only
-        // scopes the overwrite to the canonical skills, leaving a customized
-        // AGENTS.md / settings / CI untouched (a bare --force would clobber them).
-        console.log(
-          color.dim(
-            `${staleTotal} /ark-* skill(s) outdated for ${tools} (this Ark ships newer versions). ` +
-              `Refresh: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --force')}`
-          )
-        );
-      }
-    }
+    printSkillAndCodexGapHints(root, {
+      skillGaps,
+      codexHomeGap,
+      codexRepoSkillGap,
+      codexSessionActive,
+      color,
+    });
 
     const staleRunners = staleRunnerGateFiles(root);
     if (staleRunners.length > 0) {
@@ -1461,27 +1455,6 @@ async function main() {
         color.yellow(
           `Broken MCP argv in ${brokenMcp.join(', ')}: more than one of ark-mcp/arkgate-mcp in args ` +
             `(stdio hosts get a double binary name). Fix: ${arkCommand(root, 'ark-check', '--install-agent-gates --migrate-commands')}`
-        )
-      );
-    }
-
-    if (codexHomeGap) {
-      const parts = [];
-      if (codexHomeGap.missing > 0) parts.push(`${codexHomeGap.missing} missing`);
-      if (codexHomeGap.stale > 0) parts.push(`${codexHomeGap.stale} outdated`);
-      // Advisory always; when session host is known and not Codex, say so so
-      // /ark-upgrade does not chase home prompts as Incomplete.
-      const activeHost = detectActiveAgentHost();
-      const deferredNote =
-        activeHost != null && activeHost !== 'codex'
-          ? ' Deferred unless you use Codex — not a blocker for Grok/Claude/Cursor. '
-          : ' ';
-      console.log(
-        color.dim(
-          `/ark-* skills in ${codexSkillsDir()} are behind this Ark (${parts.join(', ')}).` +
-            deferredNote +
-            `Codex loads home skills from $CODEX_HOME/skills/<name>/SKILL.md (repo: .agents/skills/). ` +
-            `When using Codex: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --codex-home --force')}`
         )
       );
     }

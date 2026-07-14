@@ -42,7 +42,7 @@ function writeMergeGate(root: string): void {
   write(
     root,
     '.github/workflows/ark-check.yml',
-    'name: Ark\njobs:\n  architecture:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npm run check:architecture\n'
+    'name: Ark\njobs:\n  architecture:\n    runs-on: ubuntu-latest\n    steps:\n      - run: npx ark-check --strict-merge\n'
   );
 }
 

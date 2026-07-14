@@ -44,7 +44,7 @@ import {
   arkPackageVersion,
   compactRouterHost,
   REQUIRED_GATE_FILES,
-  codexPromptsDir,
+  codexSkillsDir,
   detectWritePathCapabilities,
 } from './lib/agent-gates.mjs';
 import { syncBaselineIntoCheckSurfaces } from './lib/field-install.mjs';
@@ -301,8 +301,8 @@ function usage() {
     '(instruction-tier rule files derived from the same contract).',
     'It also installs the /ark-* skills shipped in templates/skills/ into each',
     'detected tool\'s command location (.claude/skills/, .cursor/commands/,',
-    '.codex/prompts/, .grok/skills/, .windsurf/workflows/, .clinerules/workflows/,',
-    '.github/prompts/).',
+    '.agents/skills/ (Codex REPO catalog), .grok/skills/, .windsurf/workflows/,',
+    '.clinerules/workflows/, .github/prompts/).',
     'Kiro, Roo, Continue, and Gemini have no command mechanism and receive only their',
     'rule file. Existing files are never overwritten without --force, so re-running',
     'after an update only adds what is missing. --skills-only restricts the write to',
@@ -1478,9 +1478,9 @@ async function main() {
           : ' ';
       console.log(
         color.dim(
-          `/ark-* skills in ${codexPromptsDir()} are behind this Ark (${parts.join(', ')}).` +
+          `/ark-* skills in ${codexSkillsDir()} are behind this Ark (${parts.join(', ')}).` +
             deferredNote +
-            `Codex loads them from $CODEX_HOME/prompts, not the repo. ` +
+            `Codex loads home skills from $CODEX_HOME/skills/<name>/SKILL.md (repo: .agents/skills/). ` +
             `When using Codex: ${arkCommand(root, 'ark-check', '--install-agent-gates --skills-only --codex-home --force')}`
         )
       );

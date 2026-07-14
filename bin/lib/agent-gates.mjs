@@ -10,6 +10,7 @@ export {
   codexPrimaryTable,
   codexProjectSlug,
   codexPromptsDir,
+  codexSkillsDir,
   codexScopedTableForRoot,
   extractCodexArkRootFromToml,
   extractCodexRootFromBlock,
@@ -77,6 +78,7 @@ export {
   normalizeToolsList,
   resolveTools,
   KNOWN_TOOLS,
+  SKILL_TOOL_TARGETS,
   detectActiveAgentHost,
   codexConcernIsActive,
   arkPackageVersion,
@@ -87,6 +89,8 @@ export {
   skillTemplateNames,
   detectCodexHomeGap,
   detectSkillGaps,
+  agentsMdSkillRefs,
+  verifyHostSkillCatalog,
 } from './skill-install.mjs';
 
 export { detectDeployPathQuality } from './deploy-path.mjs';

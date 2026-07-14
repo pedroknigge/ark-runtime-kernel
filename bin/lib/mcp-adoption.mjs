@@ -143,6 +143,14 @@ export function collectAdoptionGaps(root, config, coverage) {
         extras: [['.cursor/mcp.json', 'MCP config']],
         toolsFlag: 'cursor',
       },
+      {
+        host: 'codex',
+        dir: '.codex',
+        // Official Codex REPO skill catalog (Agent Skills standard) — not .codex/prompts.
+        skill: (n) => path.join(root, '.agents', 'skills', n, 'SKILL.md'),
+        extras: [['.codex/hooks.json', 'hooks']],
+        toolsFlag: 'codex',
+      },
     ];
     for (const h of hostChecks) {
       if (!fs.existsSync(path.join(root, h.dir))) continue;

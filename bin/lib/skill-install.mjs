@@ -3,7 +3,7 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { codexPromptsDir } from './codex-home.mjs';
+import { codexPromptsDir, codexSkillsDir } from './codex-home.mjs';
 import { __packageRoot, isCompactRouterAgentsContent, readJson } from './gate-files.mjs';
 
 export function normalizeToolsList(tools) {
@@ -144,13 +144,19 @@ export const KNOWN_TOOLS = [
 ];
 
 // One canonical markdown per skill (templates/skills/*.md, shipped in the npm
-// package); installed into each tool's slash-command location. The YAML
-// frontmatter (name/description) is understood or harmlessly ignored by every
-// host. Kiro has no command mechanism — its steering rule file is the only gate.
+// package); installed into each tool's slash-command / skill-catalog location.
+// The YAML frontmatter (name/description) is understood or harmlessly ignored
+// by every host. Kiro has no command mechanism — its steering rule file is the
+// only gate.
+//
+// Codex: discovers Agent Skills directories with SKILL.md — repo path is the
+// official `.agents/skills/<name>/SKILL.md` (not dead `.codex/prompts/*.md`).
+// Home install uses `$CODEX_HOME/skills/<name>/SKILL.md` via --codex-home.
 export const SKILL_TOOL_TARGETS = {
   claude: (name) => `.claude/skills/${name}/SKILL.md`,
   cursor: (name) => `.cursor/commands/${name}.md`,
-  codex: (name) => `.codex/prompts/${name}.md`,
+  // Official Codex REPO skill scope (Agent Skills standard).
+  codex: (name) => `.agents/skills/${name}/SKILL.md`,
   // Grok Build: project skills at .grok/skills/<name>/SKILL.md (slash-invocable).
   grok: (name) => `.grok/skills/${name}/SKILL.md`,
   windsurf: (name) => `.windsurf/workflows/${name}.md`,
@@ -267,20 +273,88 @@ export function detectCodexHomeGap(root) {
   if (fs.existsSync(path.join(root, 'templates', 'skills'))) return null;
   const skillNames = skillTemplateNames();
   if (skillNames.length === 0) return null;
-  const dir = codexPromptsDir();
-  if (!fs.existsSync(dir)) return null;
-  const present = skillNames.filter((name) => fs.existsSync(path.join(dir, `${name}.md`)));
-  if (present.length === 0) return null; // Codex home never set up for Ark — don't nag.
+  const skillsDir = codexSkillsDir();
+  const promptsDir = codexPromptsDir();
+  const hasSkillsTree = fs.existsSync(skillsDir);
+  const hasLegacyPrompts = fs.existsSync(promptsDir);
+  if (!hasSkillsTree && !hasLegacyPrompts) return null;
+
+  // Real catalog: $CODEX_HOME/skills/<name>/SKILL.md
+  const present = skillNames.filter((name) =>
+    fs.existsSync(path.join(skillsDir, name, 'SKILL.md'))
+  );
+  if (present.length === 0) {
+    // Legacy prompts-only install is not a loadable skill catalog — count as full gap
+    // when any ark-* prompt is present (user did set up Codex home for Ark once).
+    const legacy = skillNames.filter((name) => fs.existsSync(path.join(promptsDir, `${name}.md`)));
+    if (legacy.length === 0) return null; // Codex home never set up for Ark — don't nag.
+    return { missing: skillNames.length, stale: 0, legacyPromptsOnly: true };
+  }
   const version = arkPackageVersion();
   const missing = skillNames.length - present.length;
   let stale = 0;
   if (version) {
     for (const name of present) {
-      const installed = installedSkillVersion(path.join(dir, `${name}.md`));
+      const installed = installedSkillVersion(path.join(skillsDir, name, 'SKILL.md'));
       if (installed === null || isVersionOlder(installed, version)) stale += 1;
     }
   }
   return missing > 0 || stale > 0 ? { missing, stale } : null;
+}
+
+/**
+ * Skill names referenced as `/ark-*` in AGENTS.md (or any instruction text).
+ * @param {string} text
+ * @returns {string[]}
+ */
+export function agentsMdSkillRefs(text) {
+  if (!text || typeof text !== 'string') return [];
+  const refs = new Set();
+  const re = /\/(ark-[a-z0-9-]+)/g;
+  let match;
+  while ((match = re.exec(text)) !== null) refs.add(match[1]);
+  return [...refs].sort();
+}
+
+/**
+ * Verify that every `/ark-*` skill referenced by AGENTS.md (and known to this
+ * package) is present in each selected host's skill catalog path.
+ *
+ * Compact routers intentionally omit `/ark-*` — they verify as ok with no checks.
+ *
+ * @param {string} root
+ * @param {Iterable<string>} tools
+ * @param {{ skillNames?: string[], agentsText?: string }} [options]
+ * @returns {{ ok: boolean, missing: Array<{ tool: string, name: string, path: string }>, referenced: string[], checkedTools: string[], compact?: boolean }}
+ */
+export function verifyHostSkillCatalog(root, tools, options = {}) {
+  const skillNames = new Set(options.skillNames ?? skillTemplateNames());
+  let agentsText = options.agentsText;
+  if (agentsText == null) {
+    try {
+      agentsText = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+    } catch {
+      return { ok: true, missing: [], referenced: [], checkedTools: [] };
+    }
+  }
+  if (isCompactRouterAgentsContent(agentsText)) {
+    return { ok: true, missing: [], referenced: [], checkedTools: [], compact: true };
+  }
+  const referenced = agentsMdSkillRefs(agentsText).filter((name) => skillNames.has(name));
+  const missing = [];
+  const checkedTools = [];
+  for (const tool of tools) {
+    const target = SKILL_TOOL_TARGETS[tool];
+    if (!target) continue;
+    checkedTools.push(tool);
+    for (const name of referenced) {
+      const relativePath = target(name);
+      if (!fs.existsSync(path.join(root, relativePath))) {
+        missing.push({ tool, name, path: relativePath });
+      }
+    }
+  }
+  return { ok: missing.length === 0, missing, referenced, checkedTools };
 }
 
 export function detectSkillGaps(root) {

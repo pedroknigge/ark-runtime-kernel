@@ -680,7 +680,9 @@ jobs:
     for (const name of skillNames) {
       expect(fs.existsSync(path.join(root, `.claude/skills/${name}/SKILL.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.cursor/commands/${name}.md`))).toBe(true);
-      expect(fs.existsSync(path.join(root, `.codex/prompts/${name}.md`))).toBe(true);
+      // Codex: Agent Skills REPO catalog — not dead flat .codex/prompts/*.md
+      expect(fs.existsSync(path.join(root, `.agents/skills/${name}/SKILL.md`))).toBe(true);
+      expect(fs.existsSync(path.join(root, `.codex/prompts/${name}.md`))).toBe(false);
       expect(fs.existsSync(path.join(root, `.grok/skills/${name}/SKILL.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.windsurf/workflows/${name}.md`))).toBe(true);
       expect(fs.existsSync(path.join(root, `.clinerules/workflows/${name}.md`))).toBe(true);
@@ -2907,7 +2909,7 @@ describe('ark-check monorepo tsconfig resolution', () => {
     expect(fs.existsSync(path.join(root, 'ark.config.json'))).toBe(false);
   });
 
-  it('--codex-home installs the /ark-* skills into $CODEX_HOME/prompts', () => {
+  it('--codex-home installs the /ark-* skills into $CODEX_HOME/skills/<name>/SKILL.md', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxh-'));
     fs.writeFileSync(path.join(root, 'AGENTS.md'), '# AGENTS\n');
     const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxhome-'));
@@ -2916,9 +2918,11 @@ describe('ark-check monorepo tsconfig resolution', () => {
       [path.resolve('bin/ark-check.mjs'), '--install-agent-gates', '--root', root, '--tools', 'claude', '--codex-home'],
       { encoding: 'utf8', stdio: 'pipe', env: { ...process.env, CODEX_HOME: codexHome } }
     );
-    const fixSkill = path.join(codexHome, 'prompts', 'ark-fix.md');
+    const fixSkill = path.join(codexHome, 'skills', 'ark-fix', 'SKILL.md');
     expect(fs.existsSync(fixSkill)).toBe(true);
     expect(fs.readFileSync(fixSkill, 'utf8')).toMatch(/^arkVersion:/m);
+    // Legacy flat prompts are not the invocable catalog
+    expect(fs.existsSync(path.join(codexHome, 'prompts', 'ark-fix.md'))).toBe(false);
   });
 
   it('--tools codex wires [mcp_servers.ark] into $CODEX_HOME/config.toml with absolute paths, preserving other tables and staying idempotent', () => {
@@ -2959,7 +2963,7 @@ describe('ark-check monorepo tsconfig resolution', () => {
     expect(toml.match(/\[mcp_servers\.ark\]/g)).toHaveLength(1);
   });
 
-  it('flags stale /ark-* skills in the Codex home prompts dir', () => {
+  it('flags stale /ark-* skills in the Codex home skills dir', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxg-'));
     fs.writeFileSync(path.join(root, 'AGENTS.md'), '# AGENTS\n');
     fs.writeFileSync(
@@ -2967,9 +2971,9 @@ describe('ark-check monorepo tsconfig resolution', () => {
       JSON.stringify({ include: ['src'], layers: [{ name: 'DomainModel', patterns: ['src/domain/**'] }], rules: [] })
     );
     const codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-cxghome-'));
-    fs.mkdirSync(path.join(codexHome, 'prompts'), { recursive: true });
+    fs.mkdirSync(path.join(codexHome, 'skills', 'ark-fix'), { recursive: true });
     fs.writeFileSync(
-      path.join(codexHome, 'prompts', 'ark-fix.md'),
+      path.join(codexHome, 'skills', 'ark-fix', 'SKILL.md'),
       '---\nname: ark-fix\narkVersion: 1.0.0\n---\nbody\n'
     );
     const out = execFileSync(

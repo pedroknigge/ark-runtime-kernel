@@ -213,9 +213,9 @@ async function upgrade(args) {
   let status = runArkCheck(['--root', root, '--install-agent-gates'], { cwd: root });
   if (status !== 0) return status;
 
-  // Codex loads slash-command prompts from $CODEX_HOME/prompts, not the repo — refresh those
-  // when a Codex home exists. --force rewrites temp/upgrade MCP roots to this project + arkgate-mcp.
-  // Non-fatal: a permission error (e.g. sandbox) shouldn't fail the whole upgrade.
+  // Codex home skill catalog is $CODEX_HOME/skills/<name>/SKILL.md (repo uses .agents/skills/).
+  // Refresh home when a Codex home exists. --force rewrites temp/upgrade MCP roots to this
+  // project + arkgate-mcp. Non-fatal: a permission error (e.g. sandbox) shouldn't fail upgrade.
   const codexHomeBase = process.env.CODEX_HOME || path.join(os.homedir(), '.codex');
   if (fs.existsSync(codexHomeBase)) {
     console.log(`\n     Refreshing Codex home (${codexHomeBase})…`);

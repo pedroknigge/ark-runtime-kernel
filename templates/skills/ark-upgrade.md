@@ -123,9 +123,10 @@ npx arkgate-check --install-agent-gates --skills-only --force
    **Active host first.** Refresh skills for the host running this skill (e.g.
    `.grok/skills/`, `.claude/skills/`, `.cursor/commands/`). Repo-local copies for
    other detected hosts are fine to refresh in the same pass when cheap.
-   **Codex is deferred when you are not on Codex.** Prompts live in
-   `$CODEX_HOME/prompts` (`~/.codex/prompts`), not the repo. `ark upgrade` may
-   best-effort refresh that home when it exists; still list Codex under
+   **Codex is deferred when you are not on Codex.** Repo skills live in
+   `.agents/skills/<name>/SKILL.md`; optional home skills in
+   `$CODEX_HOME/skills/<name>/SKILL.md` (not legacy flat `$CODEX_HOME/prompts`).
+   `ark upgrade` may best-effort refresh home when it exists; still list Codex under
    **Deferred hosts** and do **not** chase MCP multi-project / stale home skills
    until the user is on Codex (or asks). Fix command when needed:
    `ark-check --install-agent-gates --skills-only --codex-home --force`

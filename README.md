@@ -245,8 +245,9 @@ ark.config.json
 
 - **Presets:** hexagonal, layered, feature-sliced, monorepo, ui-surface, vertical-slice, ddd-bounded-contexts (+ aliases clean-architecture / onion-architecture). Layers start optional; doctor suggests tightening populated cores. Cross-slice / cross-context bans use optional `peerIsolation` rules.
 - **Versioned config:** generated contracts include `$schema` + `schemaVersion`; CLI, MCP, and
-  ESLint validate through the same loader. Unknown keys fail with their JSON path. See the
-  [configuration and editor guide](docs/configuration.md).
+  ESLint validate through the same loader. Unknown keys fail with their JSON path. Strict merge
+  also compares the contract transition and blocks unacknowledged weakening with hashes and stable
+  finding ids. See the [configuration and editor guide](docs/configuration.md).
 - **Frameworks:** Nest / Next / express / library layouts get sensible globs on init so day-one coverage is real.
 - **Brownfield:** baseline ratchet, refuse to freeze a wrong contract, `/ark-adopt` for mature trees.
 - **Agents:** `ark start` asks for (or detects) one active host and writes one compact router, not copied skill packs, in at most five project files and 25 KB. Use `ark-check --install-agent-gates --skills-only --tools <host>` later when you explicitly want the full `/ark-*` skill set. Reports are opt-in with `ark-check --report`.

@@ -30,7 +30,7 @@ infrastructure beyond how this package is published.
 | T1 | Agent bypasses hook (direct `fs` / alternate tool) | Ungoverned code lands | CI gate; optional pre-commit (Q3); doctor writePath honesty |
 | T2 | Human commits without agent path | Same as T1 | `templates/hooks/pre-commit-ark`; branch protection + required check (Q3 external) |
 | T3 | CI job missing / not required | Merge green without architecture | doctor `enforcement-ci-*` gaps; `--strict-merge` profile |
-| T4 | Config weakened (`peerIsolation: false`, empty rules) | False green | safety diagnostics; false-green adoption detector |
+| T4 | Config weakened (`peerIsolation: false`, empty rules) | False green | semantic policy-delta guard in strict merge; hash-bound explicit acknowledgement; present-state safety diagnostics |
 | T5 | Baseline ratcheted open | Debt reintroduced | baseline unused/stale signals; occurrence keys |
 | T6 | Dual MCP bin / wrong root | Gate points at wrong tree | migrate-commands; Codex fail-closed temp roots |
 | T7 | Malicious dependency in publish | Compromised gate | signed tags, npm provenance, dependency-review, CodeQL, Semgrep, `verify-package-files` |

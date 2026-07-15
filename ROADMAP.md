@@ -222,14 +222,15 @@ P0/security patches. Do not publish a normal stable feature release until `S01`â
 
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
-| 35 | `T01` | `todo` | M | Phase Q done | Semantic policy-delta guard detects and blocks unacknowledged contract weakening |
+| 35 | `T01` | `doing` | M | Phase Q done | Semantic policy-delta guard detects and blocks unacknowledged contract weakening |
 | 36 | `T02` | `todo` | L | `T01` | CLI/MCP preflight create, update, and delete batches atomically before writes |
 | 37 | `T03` | `todo` | M | `T02` | Optional versioned architecture change map describes planned paths and dependency edges |
 | 38 | `T04` | `todo` | M | `T03` | Read-only convergence reports planned, missing, contradictory, and unplanned structural impact |
 | 39 | `T05` | `todo` | M | `T01`â€“`T04` | Context-independent enforcement ladder, dual-depth remediation, adapter parity, adversarial eval, docs, and release evidence |
 
-**Next:** Phase T is planned; no item is `doing`. Start with `T01` only after explicitly moving it
-to `doing`. Scope and acceptance: [change-integrity-loop](docs/plans/change-integrity-loop/README.md).
+**Next:** Phase T is active with `T01` as the only `doing` item. Start `T02` only after `T01`
+is reviewed, verified, and committed. Scope and acceptance:
+[change-integrity-loop](docs/plans/change-integrity-loop/README.md).
 Latest published patch: **`arkgate@3.0.5`**.
 
 ---

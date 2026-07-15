@@ -906,6 +906,7 @@ describe('ark-mcp read-side tools (ark_check / ark_coverage / ark_place)', () =>
     expect(res.result.tools.map((t: { name: string }) => t.name)).toEqual([
       'validate_code',
       'ark_check',
+      'ark_policy_delta',
       'ark_coverage',
       'ark_place',
       'ark_prepare_write',
@@ -940,6 +941,36 @@ describe('ark-mcp read-side tools (ark_check / ark_coverage / ark_place)', () =>
     const loosePayload = JSON.parse(loose.result.content[0].text);
     expect(loosePayload.ok).toBe(true);
     expect(loose.result.isError).toBe(false);
+  });
+
+  it('ark_policy_delta shares the hash-bound classifier and rejects weakening', async () => {
+    const baseConfig = {
+      include: ['src'],
+      layers: [
+        {
+          name: 'DomainModel',
+          patterns: ['src/domain/**'],
+          forbiddenGlobals: ['Date.now', 'fetch'],
+        },
+        { name: 'PersistenceAdapters', patterns: ['src/infra/**'] },
+      ],
+      rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
+    };
+    const response = await client.request('tools/call', {
+      name: 'ark_policy_delta',
+      arguments: { baseConfig },
+    });
+    const payload = JSON.parse(response.result.content[0].text);
+
+    expect(response.result.isError).toBe(true);
+    expect(payload).toMatchObject({
+      classification: 'weakening',
+      valid: false,
+      requiresAcknowledgement: true,
+    });
+    expect(payload.findings).toContainEqual(
+      expect.objectContaining({ path: '$.layers[DomainModel].forbiddenGlobals' })
+    );
   });
 
   it('ark_place resolves the layer, forbidden globals, and denied import targets', async () => {

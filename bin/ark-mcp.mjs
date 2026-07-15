@@ -18,6 +18,8 @@
  *                                 discarded if post-patch still invalid.
  *   - tool      ark_prepare_write — W2: place + constrain + validate + autoPatch + judgmentBrief
  *                                 + contentHash (composes ark_place + write gate; not a second contract).
+ *   - tool      ark_policy_delta — classifies a base/candidate ark.config.json transition and
+ *                                 rejects weakening without an exact hash-bound acknowledgement.
  *   - tool      ark_recommend   — deterministic application-shape plan (same as
  *                                 ark-check --recommend --json)
  *
@@ -737,6 +739,34 @@ async function main() {
       outputSchema: ARK_ANALYSIS_RESULT_SCHEMA,
     },
     {
+      name: 'ark_policy_delta',
+      description:
+        'Classify a complete ark.config.json transition as strengthening, neutral, ' +
+        'judgment-required, or weakening. Pass the previous baseConfig and optional ' +
+        'candidateConfig (defaults to this project contract). Weakening and judgment-required ' +
+        'results set isError unless acknowledgement exactly matches both policy hashes and all ' +
+        'blocking finding ids. Read-only; never edits the contract.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          baseConfig: {
+            type: 'object',
+            description: 'Previous complete ark.config.json object.',
+          },
+          candidateConfig: {
+            type: 'object',
+            description: 'Candidate complete config; defaults to the current project contract.',
+          },
+          acknowledgement: {
+            type: 'object',
+            description:
+              'Optional schemaVersion/basePolicyHash/candidatePolicyHash/findingIds/reason object.',
+          },
+        },
+        required: ['baseConfig'],
+      },
+    },
+    {
       name: 'ark_coverage',
       description:
         'Report what each layer actually governs: per-layer file counts, the FULL list of ' +
@@ -993,6 +1023,33 @@ async function main() {
     return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }], isError: false };
   }
 
+  function runPolicyDeltaTool(params) {
+    const baseConfig = params?.arguments?.baseConfig;
+    if (!baseConfig || typeof baseConfig !== 'object' || Array.isArray(baseConfig)) {
+      return {
+        content: [{ type: 'text', text: 'ark_policy_delta requires baseConfig (object).' }],
+        isError: true,
+      };
+    }
+    try {
+      const result = ark.analyzePolicyDelta({
+        baseConfig,
+        candidateConfig: params?.arguments?.candidateConfig ?? config,
+        acknowledgement: params?.arguments?.acknowledgement,
+      });
+      return {
+        content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],
+        structuredContent: result,
+        isError: !result.valid,
+      };
+    } catch (error) {
+      return {
+        content: [{ type: 'text', text: error instanceof Error ? error.message : String(error) }],
+        isError: true,
+      };
+    }
+  }
+
   function runRecommendTool() {
     const { data, raw } = runArkCheckJson(['--recommend']);
     if (!data) {
@@ -1193,6 +1250,7 @@ async function main() {
   const TOOL_HANDLERS = {
     validate_code: runValidate,
     ark_check: runCheckTool,
+    ark_policy_delta: runPolicyDeltaTool,
     ark_coverage: runCoverageTool,
     ark_place: runPlace,
     ark_prepare_write: runPrepareWrite,

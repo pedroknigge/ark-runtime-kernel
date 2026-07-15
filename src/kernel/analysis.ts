@@ -24,6 +24,13 @@ import {
   layerForRelativePath,
   patternSpecificity,
 } from '../domain/layerMatch';
+import {
+  classifyArkPolicyDelta,
+  policyDeltaAcknowledgementMatches,
+  type PolicyDeltaAcknowledgement,
+  type PolicyDeltaClassification,
+  type PolicyDeltaFinding,
+} from '../domain/policyDelta';
 
 export {
   collectForbiddenCapabilityUses,
@@ -55,6 +62,26 @@ export type AnalyzeChangeInput = AnalyzeProjectInput & {
 
 export type AnalysisResult = {
   ir: AnalysisIr;
+};
+
+export type AnalyzePolicyDeltaInput = {
+  baseConfig: unknown;
+  candidateConfig: unknown;
+  acknowledgement?: PolicyDeltaAcknowledgement;
+  baseSource?: string;
+  candidateSource?: string;
+};
+
+export type PolicyDeltaAnalysis = {
+  schemaVersion: '1.0';
+  basePolicyHash: string;
+  candidatePolicyHash: string;
+  classification: PolicyDeltaClassification;
+  findings: PolicyDeltaFinding[];
+  blockingFindingIds: string[];
+  requiresAcknowledgement: boolean;
+  acknowledged: boolean;
+  valid: boolean;
 };
 
 export type ArchitectureEngineViolation = {
@@ -113,6 +140,43 @@ export function loadContract(input: unknown, source?: string): AnalysisContract 
       ? parseArkConfigJson(input, source)
       : loadArkConfigContract(input, source);
   return { ...loaded, policyHash: deterministicHash(stableSerialize(loaded.config)) };
+}
+
+export function analyzePolicyDelta(input: AnalyzePolicyDeltaInput): PolicyDeltaAnalysis {
+  const base = loadContract(input.baseConfig, input.baseSource ?? 'base ark.config.json');
+  const candidate = loadContract(
+    input.candidateConfig,
+    input.candidateSource ?? 'candidate ark.config.json'
+  );
+  const delta = classifyArkPolicyDelta(base.config, candidate.config);
+  const blockingFindingIds = delta.findings
+    .filter(
+      (finding) =>
+        finding.classification === 'weakening' ||
+        finding.classification === 'judgment-required'
+    )
+    .map((finding) => finding.id)
+    .sort();
+  const requiresAcknowledgement = blockingFindingIds.length > 0;
+  const acknowledged =
+    requiresAcknowledgement &&
+    policyDeltaAcknowledgementMatches(input.acknowledgement, {
+      basePolicyHash: base.policyHash,
+      candidatePolicyHash: candidate.policyHash,
+      findingIds: blockingFindingIds,
+    });
+
+  return {
+    schemaVersion: delta.schemaVersion,
+    basePolicyHash: base.policyHash,
+    candidatePolicyHash: candidate.policyHash,
+    classification: delta.classification,
+    findings: delta.findings,
+    blockingFindingIds,
+    requiresAcknowledgement,
+    acknowledged,
+    valid: !requiresAcknowledgement || acknowledged,
+  };
 }
 
 function normalizePath(value: string): string {

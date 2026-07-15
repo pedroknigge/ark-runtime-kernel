@@ -24,7 +24,9 @@ try {
     sourcemap: false,
     dts: false,
     clean: true,
-    minify: false,
+    // This committed file ships beside the built public API. Keep the canonical
+    // TypeScript readable while avoiding a second verbose copy in the npm tarball.
+    minify: true,
     treeshake: false,
     silent: true,
     target: 'es2022',

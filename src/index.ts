@@ -260,6 +260,7 @@ export {
   loadContract,
   analyzeProject,
   analyzeChange,
+  analyzePolicyDelta,
   explainViolation,
   evaluateArchitectureGraph,
   collectAnalysisConfigWarnings,
@@ -270,6 +271,8 @@ export {
   type AnalyzeProjectInput,
   type AnalyzeChangeInput,
   type AnalysisResult,
+  type AnalyzePolicyDeltaInput,
+  type PolicyDeltaAnalysis,
   type ArchitectureEngineViolation,
   type ArchitectureEngineEdge,
   type EvaluateArchitectureGraphInput,
@@ -279,6 +282,16 @@ export {
   type SemanticDependency,
   type SemanticDependencyKind,
 } from './kernel/analysis';
+
+export {
+  POLICY_DELTA_SCHEMA_VERSION,
+  classifyArkPolicyDelta,
+  policyDeltaAcknowledgementMatches,
+  type PolicyDelta,
+  type PolicyDeltaAcknowledgement,
+  type PolicyDeltaClassification,
+  type PolicyDeltaFinding,
+} from './domain/policyDelta';
 
 export {
   ANALYSIS_IR_SCHEMA_VERSION,

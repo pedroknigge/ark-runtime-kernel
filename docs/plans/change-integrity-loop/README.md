@@ -4,12 +4,12 @@
 > Related: [ROADMAP.md](../../../ROADMAP.md) · [configuration.md](../../configuration.md) · [package-surface.md](../../package-surface.md) · [agent-guide.md](../../agent-guide.md) · [threat-model.md](../../threat-model.md)<br>
 > `ROADMAP.md` owns order and status. This plan owns the bounded product rationale and acceptance for Phase T.
 
-**Status:** Planned<br>
+**Status:** In progress (`T01`)<br>
 **Slug:** `change-integrity-loop`<br>
 **Kind:** epic<br>
 **Owners:** product (Pedro) + library maintainers<br>
 **Last updated:** 2026-07-14<br>
-**Code path (if any):** none yet; intended to build on the existing analysis IR, policy hash, `analyzeChange`, CLI/MCP adapters, and eval harnesses
+**Code path:** `src/domain/policyDelta.ts`, `src/kernel/analysis.ts`, `bin/lib/policy-delta-io.mjs`, and existing CLI/Action adapters
 
 ---
 
@@ -110,10 +110,10 @@ base tree, and the candidate change.
 
 ## Acceptance criteria
 
-- [ ] **A1 — Contract transition honesty:** Supported contract changes are classified as
+- [x] **A1 — Contract transition honesty:** Supported contract changes are classified as
       `strengthening`, `neutral`, `judgment-required`, or `weakening`; invalid or unknown deltas
       fail closed.
-- [ ] **A2 — Hash-bound exception:** Strict merge rejects an unacknowledged weakening. An explicit
+- [x] **A2 — Hash-bound exception:** Strict merge rejects an unacknowledged weakening. An explicit
       exception names the finding and binds to both old and new policy hashes, so later edits
       invalidate it.
 - [ ] **A3 — Atomic patch verdict:** A single operation accepts creates, updates, and deletes,
@@ -193,6 +193,13 @@ Implementation principles:
 | 3 | `T03` | M | Optional versioned architecture change-map schema + preflight input | Schema fixtures, path/layer/edge resolution, absence remains supported |
 | 4 | `T04` | M | Read-only change-map convergence against actual structural change | Four outcome classes plus clean result; byte-for-byte no writes |
 | 5 | `T05` | M | Context-independent enforcement ladder, dual-depth remediation, adapter parity, adversarial tests, comparative eval, docs, and release gate | No-context casual/senior journeys, honest host capabilities, Phase T verdict parity, fixed feature tests + strict Ark check green |
+
+### Progress evidence
+
+| Item | Current evidence |
+|---|---|
+| `T01` | Locally complete: pure semantic classifier, Kernel/public API, generated CLI parity, strict-merge Git-base resolution, hash-bound acknowledgement, MCP/Action/workflow parity, and unit/property/CLI fixtures. `/review` plus gate verification auto-fixed eight issues (mixed-direction severity, first-adoption base absence, stable root types, missing MCP adapter, misleading human failure text, stale roadmap copy, entrypoint budget, package budget); no judgment input remains. Common gate: 1,058 tests; 90.71% statements / 85.37% branches; 90.79% mutation; architecture, generated-artifact drift, module/package budgets, 411.5 KB tarball, and TypeScript 5.9/6.0/7.0 green. Remote CI remains pending until the phase commit is pushed. |
+| `T02`–`T05` | Not started. |
 
 Only one item may be `doing`, and no Phase T implementation starts from this planning change.
 

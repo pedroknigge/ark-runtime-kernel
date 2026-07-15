@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   analyzeChange as analyzeChangeFromKernel,
+  analyzePolicyDelta as analyzePolicyDeltaFromKernel,
   analyzeProject as analyzeProjectFromKernel,
   collectAnalysisConfigWarnings as collectWarningsFromKernel,
   detectArchitectureCycles,
@@ -9,6 +10,7 @@ import {
 } from '../../../src/index';
 import {
   analyzeChange as analyzeChangeFromBundle,
+  analyzePolicyDelta as analyzePolicyDeltaFromBundle,
   analyzeProject as analyzeProjectFromBundle,
   collectAnalysisConfigWarnings as collectWarningsFromBundle,
   detectArchitectureCycles as detectCyclesFromBundle,
@@ -56,6 +58,17 @@ describe('generated CLI analysis engine', () => {
     expect(analyzeChangeFromBundle({ contract: bundleContract, files, changes })).toEqual(
       analyzeChangeFromKernel({ contract: kernelContract, files, changes })
     );
+  });
+
+  it('matches the canonical Kernel API for policy transitions', () => {
+    const candidate = {
+      ...config,
+      dynamicImportAllowlist: ['src/domain/dynamic.ts'],
+    };
+
+    expect(
+      analyzePolicyDeltaFromBundle({ baseConfig: config, candidateConfig: candidate })
+    ).toEqual(analyzePolicyDeltaFromKernel({ baseConfig: config, candidateConfig: candidate }));
   });
 
   it.each(['strict', 'soft', 'off'] as const)(

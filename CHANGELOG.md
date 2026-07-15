@@ -4,7 +4,19 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 
 ## Unreleased
 
-No changes are scheduled after 3.0.5.
+### Added
+
+- **T01 policy-transition guard:** the public analysis API and generated CLI engine classify
+  `ark.config.json` changes as `strengthening`, `neutral`, `judgment-required`, or `weakening`.
+  `--strict-merge` compares the Git merge-base contract when available; explicit
+  `--policy-base` / `--policy-base-ref` inputs are also supported.
+- **Hash-bound acknowledgement:** weakening and judgment-required findings fail until
+  `--policy-ack` supplies the exact base/candidate policy hashes, complete finding-id set, and a
+  non-empty reason. Any later contract edit invalidates the acknowledgement.
+- **CI base provenance:** generated workflows fetch full history and the composite Action passes
+  the PR/push base SHA through `ARK_POLICY_BASE_REF`.
+- **MCP parity:** `ark_policy_delta` exposes the same read-only classifier for explicit base and
+  candidate contracts and returns blocking transitions as tool errors.
 
 ## 3.0.5 — 2026-07-14
 

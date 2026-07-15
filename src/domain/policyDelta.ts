@@ -13,6 +13,7 @@ export type PolicyDeltaFinding = {
   path: string;
   classification: Exclude<PolicyDeltaClassification, 'neutral'>;
   message: string;
+  nextAction?: string;
   before?: unknown;
   after?: unknown;
 };
@@ -39,6 +40,11 @@ function addFinding(findings: PolicyDeltaFinding[], input: FindingInput): void {
     path: input.path,
     classification: input.classification,
     message: input.message,
+    ...(input.classification === 'weakening' || input.classification === 'judgment-required'
+      ? {
+          nextAction: `Restore the previous protection at ${input.path}, then run ArkGate again.`,
+        }
+      : {}),
     ...(input.before === undefined ? {} : { before: input.before }),
     ...(input.after === undefined ? {} : { after: input.after }),
   });

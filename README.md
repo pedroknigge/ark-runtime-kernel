@@ -206,6 +206,13 @@ project file is written. With `--change-map map.json` (or MCP `changeMap`), the 
 classifies planned structure as satisfied, missing, contradictory, or unplanned. This is structural
 convergence only: behavioral completion is always reported as not evaluated.
 
+Every blocking diagnostic carries stable rule/location/evidence fields plus one deterministic
+`nextAction`; human CLI/hook text prints that same action. A complete Codex `ApplyPatch` payload is
+reconstructed and sent through the same atomic engine before per-file safety checks. Codex remains
+honestly bypassable/advisory because not every Code Mode write dispatches the project hook. The
+verdict depends only on the explicit contract and candidate—not `AGENTS.md`, skills, injected prose,
+or an LLM.
+
 | Need | Skill | Not |
 |------|--------|-----|
 | Only the apply loop for plan **A** (edges) | `/ark-loop` | empty A + design residual → explore |
@@ -259,6 +266,9 @@ ark.config.json
 - **Brownfield:** baseline ratchet, refuse to freeze a wrong contract, `/ark-adopt` for mature trees.
 - **Agents:** `ark start` asks for (or detects) one active host and writes one compact router, not copied skill packs, in at most five project files and 25 KB. Use `ark-check --install-agent-gates --skills-only --tools <host>` later when you explicitly want the full `/ark-*` skill set. Reports are opt-in with `ark-check --report`.
 - **Write protocol (2.10 / Track W):** mechanical-safe **autoPatch** on the write gate (`import type`); MCP **`ark_prepare_write`** (place + validate + patch + judgmentBrief); opt-in hook **`--hook-repair`** (`ARK_REPAIR_JSON`); doctor **`writePath`** (repair vs reject-only); loop-cost eval (`npm run eval:loop-cost`). Port-proof inject is **judgment** (arity change), not silent auto-apply.
+- **Enforcement ladder (Phase T):** doctor JSON exposes `writePath.enforcementLadder` with separate
+  `supported`, `installed`, `active`, `bypassable`, evidence, operation coverage, and required-status
+  honesty. Hook repair JSON carries the operation-scoped ladder; MCP alone remains advisory.
 - **Fail-closed CI (2.11):** `--strict-merge` combines config coverage, shared gate-file
   presence, and bypass diagnostics for dynamic imports, TypeScript suppressions, explicit `any`
   casts, InMemory runtime defaults, and disabled peer isolation. `--strict` is a compatibility
@@ -296,7 +306,7 @@ npx arkgate start --tools codex --apply   # select the host explicitly
 npx arkgate start --install --apply       # also add arkgate to package.json (explicit only)
 npx arkgate start --remove-host codex     # preview compact-host removal; add --apply to confirm
 npx arkgate-check --doctor                # health + Adoption gaps (not just fitness)
-npx arkgate-check --doctor --json         # machine-readable doctor.adoption
+npx arkgate-check --doctor --json         # adoption + explicit writePath.enforcementLadder
 npx arkgate-check --strict                # fail-closed CI + installed-gate/safety checks
 npx arkgate-check --plan                  # safe-to-auto-fix vs your call
 npx arkgate-check --coverage              # Governed: N%

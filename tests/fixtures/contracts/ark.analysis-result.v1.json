@@ -15,7 +15,8 @@
         "target": "src/infra/db.ts",
         "fromLayer": "DomainModel",
         "toLayer": "PersistenceAdapters"
-      }
+      },
+      "nextAction": "Define a port in DomainModel, inject the PersistenceAdapters implementation, then preflight again."
     }
   ]
 }

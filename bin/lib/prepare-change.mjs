@@ -137,14 +137,16 @@ export function renderChangePreflight(result) {
     console.error(
       `Atomic preflight rejected ${result.violations.length + structuralFindings} finding(s):`
     );
-    for (const finding of result.violations) {
+    for (const finding of result.diagnostics.filter(({ severity }) => severity === 'error')) {
       console.error(
-        `  - ${finding.ruleId} ${finding.file ?? '<unknown>'}:${finding.line ?? 1} — ${finding.message}`
+        `  - ${finding.ruleId} ${finding.location.file}:${finding.location.line} — ${finding.message}`
       );
+      console.error(`    Next action: ${finding.nextAction}`);
     }
     for (const finding of convergence?.findings ?? []) {
       if (finding.classification !== 'satisfied') {
         console.error(`  - ${finding.id} — ${finding.message}`);
+        console.error(`    Next action: ${finding.nextAction}`);
       }
     }
     console.error('No project file was written. Fix the complete change set and preflight again.');

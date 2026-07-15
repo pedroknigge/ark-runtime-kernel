@@ -21,6 +21,7 @@ export type ArchitectureConvergenceFinding = {
   classification: ArchitectureConvergenceClassification;
   subject: 'file' | 'dependency';
   message: string;
+  nextAction?: string;
   path?: string;
   from?: string;
   to?: string;
@@ -62,6 +63,13 @@ function dependencyFinding(
     from: dependency.from,
     to: dependency.to,
     message,
+    ...(classification === 'missing'
+      ? { nextAction: `Add the planned dependency ${dependencyKey(dependency)} to the candidate, then preflight again.` }
+      : classification === 'contradictory'
+        ? { nextAction: `Replace the reverse dependency with ${dependencyKey(dependency)}, then preflight again.` }
+        : classification === 'unplanned'
+          ? { nextAction: `Remove the unplanned dependency ${dependencyKey(dependency)} from the candidate, then preflight again.` }
+          : {}),
   };
 }
 
@@ -93,6 +101,7 @@ export function analyzeArchitectureConvergence(
         path: planned.path,
         expectedOperation: planned.operation,
         message: `${planned.path} was planned as ${planned.operation} but is absent from the actual change.`,
+        nextAction: `${planned.operation[0].toUpperCase()}${planned.operation.slice(1)} ${planned.path} in the complete change set, then preflight again.`,
       });
     } else if (actual.operation !== planned.operation) {
       findings.push({
@@ -103,6 +112,7 @@ export function analyzeArchitectureConvergence(
         expectedOperation: planned.operation,
         actualOperation: actual.operation,
         message: `${planned.path} was planned as ${planned.operation} but the actual operation is ${actual.operation}.`,
+        nextAction: `Change ${planned.path} to the planned ${planned.operation} operation, then preflight again.`,
       });
     } else {
       findings.push({
@@ -128,6 +138,7 @@ export function analyzeArchitectureConvergence(
       path: actual.path,
       actualOperation: actual.operation,
       message: `${actual.path} has an unplanned ${actual.operation} operation.`,
+      nextAction: `Remove ${actual.path} from the change set, then preflight again.`,
     });
   }
 

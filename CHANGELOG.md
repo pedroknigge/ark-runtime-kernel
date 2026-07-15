@@ -30,6 +30,16 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   candidate with the current supplied base through the shared analysis IR. Stable findings separate
   satisfied, missing, contradictory, and unplanned file/edge work; structural drift rejects the
   batch without writes, while every result states behavioral completion was not evaluated.
+- **T05 actionable, context-independent enforcement:** blocking diagnostics expose one deterministic
+  `nextAction` across JSON and human output. Doctor and hook repair JSON separate supported,
+  installed, active, and bypassable enforcement with evidence and operation coverage; MCP-only and
+  locally unverifiable required-status state remain labeled honestly.
+- **Complete-patch hook parity:** governed Codex `ApplyPatch` create/update/delete sets use the same
+  atomic preflight as CLI/MCP before per-file safety checks, catching batch-only edges and cycles.
+  Codex remains advisory/bypassable at the host level.
+- **Fixed Phase T evaluation:** `npm run eval:change-integrity` proves identical no-context hashes and
+  verdicts, CLI/MCP/hook/final diagnostic parity, one concise casual denial, prewritten feature
+  acceptance, and strict Ark green without a live LLM or required planning file.
 - **Performance gate stability:** the 10k-file incremental p95 remains hard-gated over 20 samples,
   with a 125 ms shared-runner ceiling justified by two consecutive Linux CI measurements.
 

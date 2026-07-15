@@ -36,6 +36,7 @@ import {
   analyzeArchitectureConvergence,
   type ArchitectureConvergenceResult,
 } from '../domain/changeConvergence';
+import { deterministicNextAction } from '../domain/remediation';
 
 export {
   loadArchitectureChangeMap,
@@ -117,6 +118,7 @@ export type ArchitectureEngineViolation = {
   target?: string;
   fromLayer?: string;
   toLayer?: string;
+  nextAction?: string;
   [key: string]: unknown;
 };
 
@@ -682,7 +684,10 @@ export function preflightChange(input: AnalyzeChangeInput): ChangePreflightResul
       };
     })
     .sort((left, right) => left.path.localeCompare(right.path));
-  const violations = [...inputViolations, ...graphResult.violations];
+  const violations = [...inputViolations, ...graphResult.violations].map((violation) => ({
+    ...violation,
+    nextAction: deterministicNextAction(violation),
+  }));
   const convergence = input.changeMap
     ? analyzeArchitectureConvergence({
         changeMap: input.changeMap,

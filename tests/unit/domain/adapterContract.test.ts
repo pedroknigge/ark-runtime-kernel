@@ -7,6 +7,7 @@ import {
   createAdapterResult,
   toAdapterDiagnostic,
 } from '../../../src/domain/adapterContract';
+import { deterministicNextAction } from '../../../src/domain/remediation';
 import { classifyPublishFacts, looksLikeArkIntent } from '../../../src/domain/sourcePolicy';
 
 describe('cross-adapter result contract v1', () => {
@@ -53,13 +54,56 @@ describe('cross-adapter result contract v1', () => {
           message: 'LEGACY_WARNING',
           location: { file: '<unknown>', line: 1, column: 1 },
           evidence: {},
+          nextAction:
+            'Resolve LEGACY_WARNING without weakening ark.config.json, then run Ark again.',
         },
       ],
     });
     expect(toAdapterDiagnostic({})).toMatchObject({
       ruleId: 'ARK_UNKNOWN',
       severity: 'error',
+      nextAction: 'Resolve ARK_UNKNOWN without weakening ark.config.json, then run Ark again.',
     });
+    expect(
+      ARK_ANALYSIS_RESULT_SCHEMA.properties.diagnostics.items.properties.nextAction
+    ).toEqual({ type: 'string', minLength: 1 });
+  });
+
+  it('gives type-only boundary findings one deterministic mechanical next action', () => {
+    expect(
+      toAdapterDiagnostic({
+        ruleId: 'LAYER_IMPORT_VIOLATION',
+        fromLayer: 'DomainModel',
+        toLayer: 'Kernel',
+        typeOnly: true,
+      }).nextAction
+    ).toBe(
+      'Move the referenced type to a mutually allowed layer, use `import type`, then preflight again.'
+    );
+  });
+
+  it('keeps adapter fallback actions aligned with preflight remediation actions', () => {
+    const violations = [
+      {
+        ruleId: 'LAYER_IMPORT_VIOLATION',
+        fromLayer: 'DomainModel',
+        toLayer: 'Kernel',
+      },
+      { ruleId: 'LAYER_IMPORT_VIOLATION', typeOnly: true },
+      { ruleId: 'LAYER_IMPORT_VIOLATION', peerIsolation: true },
+      { ruleId: 'FORBIDDEN_GLOBAL', target: 'fetch' },
+      { ruleId: 'CIRCULAR_DEPENDENCY' },
+      { ruleId: 'RAW_EVENT_PUBLISH' },
+      { ruleId: 'PUBLISH_MISSING_SOURCE' },
+      { ruleId: 'CUSTOM_RULE' },
+      {},
+    ];
+
+    for (const violation of violations) {
+      expect(toAdapterDiagnostic(violation).nextAction).toBe(
+        deterministicNextAction(violation)
+      );
+    }
   });
 });
 

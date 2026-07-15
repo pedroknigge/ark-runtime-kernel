@@ -4,11 +4,11 @@
 > Related: [ROADMAP.md](../../../ROADMAP.md) · [configuration.md](../../configuration.md) · [package-surface.md](../../package-surface.md) · [agent-guide.md](../../agent-guide.md) · [threat-model.md](../../threat-model.md)<br>
 > `ROADMAP.md` owns order and status. This plan owns the bounded product rationale and acceptance for Phase T.
 
-**Status:** In progress (`T04`)<br>
+**Status:** In progress (`T05`)<br>
 **Slug:** `change-integrity-loop`<br>
 **Kind:** epic<br>
 **Owners:** product (Pedro) + library maintainers<br>
-**Last updated:** 2026-07-14<br>
+**Last updated:** 2026-07-15<br>
 **Code path:** `src/domain/policyDelta.ts`, `src/domain/changeMap.ts`, `src/domain/changeConvergence.ts`, `src/kernel/analysis.ts`, `bin/lib/policy-delta-io.mjs`, `bin/lib/prepare-change.mjs`, and existing CLI/MCP/Action adapters
 
 ---
@@ -127,22 +127,22 @@ base tree, and the candidate change.
 - [x] **A6 — Honest convergence:** The final report distinguishes satisfied structural work,
       planned-but-missing work, contradictions, and unplanned architectural impact. It never says
       the feature is behaviorally complete.
-- [ ] **A7 — Adapter parity:** CLI, MCP, hooks where the host exposes a complete patch, and CI use
+- [x] **A7 — Adapter parity:** CLI, MCP, hooks where the host exposes a complete patch, and CI use
       the same engine and compatible machine-readable verdicts. Unsupported hosts remain reported
       honestly.
-- [ ] **A8 — Evidence before release:** Mutation/property fixtures cover policy deltas; batch
+- [x] **A8 — Evidence before release:** Mutation/property fixtures cover policy deltas; batch
       fixtures cover create/update/delete and cycles; a fixed feature scenario finishes with its
       prewritten acceptance tests and strict Ark check green.
-- [ ] **A9 — Context-independent verdict:** Removing generated `AGENTS.md`, skills, and injected
+- [x] **A9 — Context-independent verdict:** Removing generated `AGENTS.md`, skills, and injected
       session context does not change the verdict for the same explicit contract and candidate.
       No enforcement path calls an LLM.
-- [ ] **A10 — Honest enforcement ladder:** Doctor and machine output distinguish supported,
+- [x] **A10 — Honest enforcement ladder:** Doctor and machine output distinguish supported,
       installed, active, and bypassable enforcement. Hard is reported only for a trusted hook path
       that covers the attempted operation; MCP-only remains advisory; CI evidence is explicit.
-- [ ] **A11 — Actionable denial:** Every blocking finding includes stable rule/evidence fields and
+- [x] **A11 — Actionable denial:** Every blocking finding includes stable rule/evidence fields and
       one deterministic human next action. When a valid governed destination or mechanical-safe
       correction is knowable, the same answer is available in human and JSON output.
-- [ ] **A12 — Dual-user proof:** A fixed low-context journey reaches green from one concise denial
+- [x] **A12 — Dual-user proof:** A fixed low-context journey reaches green from one concise denial
       without reading `AGENTS.md`, while a fixed senior journey can reproduce the same verdict from
       hashes and JSON through CLI and CI. Phase T adds no required default setup file.
 
@@ -201,10 +201,10 @@ Implementation principles:
 | `T01` | Done on pushed commit `13ccb85`: CI and Security green, including 12 onboarding matrices, Node 18–24, TypeScript 5.9–7, fuzz, adapter parity, performance, 90.79% mutation, release artifacts, and strict architecture with an immutable fetched base SHA. `/review` plus gates resolved the original eight issues and both CI-context regressions. |
 | `T02` | Done on pushed commit `484f606`: Security and CI green across CodeQL/Semgrep/dependency review, confidence/90.79% mutation, strict architecture, release artifacts, performance, fuzz, adapter parity, Node 18–24, TypeScript 5.9–7, and all 12 onboarding shards. `/review` resolved six implementation/package issues before commit. |
 | `T03` | Done on pushed commit `0aba7cc`: CI and Security green across all 23 CI jobs plus CodeQL/Semgrep/dependency review. Strict schema `1.0`, path/layer/edge resolution, deterministic hash, schema/package subpaths, optional CLI/MCP input, and no-map compatibility are implemented. `/review` removed duplicate bundle exports, rejected edges involving deleted files, and removed a non-literal generator import. Evidence: 1,081 tests; 90.36% statements / 85.25% branches / 92.35% functions; 90.79% mutation overall / 92.60% critical; TypeScript 5.9.3/6.0.3/7.0.2. CI exposed and verified two environment contracts: a documented 421 KB package ceiling after Linux measured 420,257 bytes, and a hard 125 ms/20-sample incremental p95 ceiling after shared runners measured 106.93/100.57 ms for unchanged `analyzeChange` code. |
-| `T04` | Implemented and locally green: pure DomainModel classification, shared Kernel/generated-engine integration, CLI/MCP parity, dual-depth human output, four outcome classes, clean convergence, and byte-for-byte no-write fixtures. `/review` restored the missing stable-root function export, preserved the protected package-surface doc, and kept the 421 KB ceiling by moving only repository-hosted legacy/runtime docs out of the gate tarball. Evidence: 1,085 tests; 90.26% statements / 85.29% branches / 92.27% functions; 90.79% mutation overall / 92.60% critical; TypeScript 5.9.3/6.0.3/7.0.2; 418,777-byte package with 2,223-byte headroom. Exact-SHA CI/Security evidence pending. |
-| `T05` | Not started. |
+| `T04` | Done on pushed commit `02e0576`: exact-SHA CI and Security are green across all 23 CI jobs plus CodeQL/Semgrep/dependency review. Pure DomainModel classification, shared Kernel/generated-engine integration, CLI/MCP parity, dual-depth human output, four outcome classes, clean convergence, and byte-for-byte no-write fixtures are implemented. `/review` restored the missing stable-root function export, preserved the protected package-surface doc, and kept the 421 KB ceiling by moving only repository-hosted legacy/runtime docs out of the gate tarball. Evidence: 1,085 tests; 90.26% statements / 85.29% branches / 92.27% functions; 90.79% mutation overall / 92.60% critical; TypeScript 5.9.3/6.0.3/7.0.2; 418,777-byte package with 2,223-byte headroom. |
+| `T05` | Implemented, `/review`-autofixed, and locally green: versioned enforcement ladder, deterministic `nextAction`, complete-patch atomic hook parity, context-removal proof, and fixed free-shipping acceptance journey. `eval/change-integrity-report.json` is green without a live LLM. Evidence: 1,104 tests; 90.38% statements / 85.26% branches / 92.67% functions; 91.06% mutation overall / 92.74% critical groups / 93.02% host-capabilities; TypeScript 5.9.3/6.0.3/7.0.2; 425,965-byte package under the documented 427 KB ceiling. `/review` fixed canonical/generated drift, per-file-only patch validation, installed-vs-active enforcement ambiguity, adapter compatibility, a mutation-test blind spot, and shared-dist test races without lowering thresholds. Exact-SHA CI/Security evidence remains pending. |
 
-Only one item may be `doing`, and no Phase T implementation starts from this planning change.
+Only one item may be `doing`; `T05` is the active item.
 
 ## Dependencies & risks
 

@@ -65,6 +65,7 @@ import { loadArkConfigContract } from './lib/config-contract.mjs';
 import { ARK_ANALYSIS_RESULT_SCHEMA, createAdapterResult } from './lib/adapter-contract.mjs';
 import { loadGoldenPattern, attachGoldenToPlacement } from './lib/golden-pattern.mjs';
 import { prepareChangeFromRoot } from './lib/prepare-change.mjs';
+import { detectWritePathCapabilities } from './lib/write-path-detect.mjs';
 
 const arkCheckBin = fileURLToPath(new URL('./ark-check.mjs', import.meta.url));
 
@@ -233,36 +234,94 @@ function applyCodexUpdatePatch(current, lines) {
 }
 
 function codexPatchWrites(patch, root) {
-  if (typeof patch !== 'string' || !patch.includes('*** Begin Patch')) return [];
+  if (typeof patch !== 'string') {
+    return { writes: [], complete: false };
+  }
   const lines = patch.split('\n');
+  const begin = lines.indexOf('*** Begin Patch');
+  const end = lines.indexOf('*** End Patch', begin + 1);
+  if (begin < 0 || end <= begin) return { writes: [], complete: false };
   const writes = [];
-  for (let index = 0; index < lines.length; index += 1) {
+  const seenPaths = new Set();
+  let complete = [
+    ...lines.slice(0, begin),
+    ...lines.slice(end + 1),
+  ].every((line) => line.trim() === '');
+  let sawFileDirective = false;
+  for (let index = begin + 1; index < end; index += 1) {
     const match = lines[index].match(/^\*\*\* (Add|Update|Delete) File: (.+)$/);
-    if (!match) continue;
+    if (!match) {
+      if (lines[index].trim() !== '') complete = false;
+      continue;
+    }
+    sawFileDirective = true;
     const [, action, relativePath] = match;
     const body = [];
-    for (index += 1; index < lines.length && !lines[index].startsWith('*** '); index += 1) {
+    for (index += 1; index < end && !lines[index].startsWith('*** '); index += 1) {
       body.push(lines[index]);
     }
     index -= 1;
-    if (action === 'Delete') continue;
     const filePath = path.resolve(root, relativePath);
+    const rel = path.relative(root, filePath);
+    if (
+      seenPaths.has(filePath) ||
+      rel.startsWith(`..${path.sep}`) ||
+      rel === '..' ||
+      path.isAbsolute(rel)
+    ) {
+      complete = false;
+      continue;
+    }
+    seenPaths.add(filePath);
+    if (action === 'Delete') {
+      if (body.some((line) => line.trim() !== '') || !fs.existsSync(filePath)) {
+        complete = false;
+        continue;
+      }
+      writes.push({ path: relativePath, delete: true });
+      continue;
+    }
     let content;
     if (action === 'Add') {
+      if (
+        body.length === 0 ||
+        fs.existsSync(filePath) ||
+        body.some((line) => !line.startsWith('+'))
+      ) {
+        complete = false;
+        continue;
+      }
       content = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1)).join('\n');
       if (body.some((line) => line.startsWith('+'))) content += '\n';
     } else {
+      if (
+        !body.some((line) => line.startsWith('@@')) ||
+        body.some((line) => !line.startsWith('@@') && !/^[ +\-]/.test(line))
+      ) {
+        complete = false;
+        continue;
+      }
       let current;
       try {
         current = fs.readFileSync(filePath, 'utf8');
       } catch {
+        complete = false;
         continue;
       }
       content = applyCodexUpdatePatch(current, body);
+      if (content === null) complete = false;
     }
-    if (typeof content === 'string') writes.push({ filePath, content });
+    if (typeof content === 'string') writes.push({ path: relativePath, filePath, content });
   }
-  return writes;
+  return { writes, complete: complete && sawFileDirective };
+}
+
+function hookEnforcement(root, host, operation, completePatch = false) {
+  return detectWritePathCapabilities(root, host, {
+    boundary: 'pre-tool',
+    operation,
+    completePatch,
+  }).enforcementLadder;
 }
 
 /**
@@ -312,22 +371,75 @@ function runHook(gate, config, args, ts) {
   runHookPayload(payload, gate, config, args, ts);
 }
 
-function runHookPayload(payload, gate, config, args, ts) {
+function runHookPayload(payload, gate, config, args, ts, attemptContext) {
   const { toolName, toolInput, grokStyle } = normalizeHookPayload(payload);
   if (toolName === 'ApplyPatch') {
     const patch = toolInput.patch ?? toolInput.input ?? toolInput.content;
-    for (const write of codexPatchWrites(patch, args.root)) {
-      runHookPayload(
-        {
-          tool_name: 'Write',
-          tool_input: { file_path: write.filePath, content: write.content },
-        },
-        gate,
+    const parsedPatch = codexPatchWrites(patch, args.root);
+    // Codex ApplyPatch is only preflighted when Ark can reconstruct every file operation.
+    // An incomplete reconstruction must not be mislabeled as atomic or hard enforcement.
+    if (!parsedPatch.complete) return;
+    const patchWrites = parsedPatch.writes;
+    const governedWrites = patchWrites.filter((change) => {
+      const relative = String(change.path).replace(/\\/g, '/');
+      if (!SOURCE_FILE.test(relative) || relative.endsWith('.d.ts')) return false;
+      return Boolean(inferLayer(path.resolve(args.root, relative), config, args.root));
+    });
+    const changes = governedWrites.map(({ path: relativePath, content, delete: deleted }) =>
+      deleted ? { path: relativePath, delete: true } : { path: relativePath, content }
+    );
+    if (changes.length === 0) return;
+    let result;
+    try {
+      result = prepareChangeFromRoot({
+        root: args.root,
         config,
-        args,
-        ts
+        configSource: path.isAbsolute(args.config)
+          ? args.config
+          : path.join(args.root, args.config),
+        changes,
+      });
+    } catch {
+      return;
+    }
+    if (result.valid) {
+      for (const write of governedWrites) {
+        if (typeof write.content !== 'string') continue;
+        runHookPayload(
+          {
+            tool_name: 'Write',
+            tool_input: { file_path: write.filePath, content: write.content },
+          },
+          gate,
+          config,
+          args,
+          ts,
+          { host: 'codex', operation: 'apply_patch', completePatch: true }
+        );
+      }
+      return;
+    }
+    const message = [
+      `Ark architecture gate blocked this complete ${toolName} (${changes.length} governed file(s)):`,
+      ...result.diagnostics.map(
+        (diagnostic) =>
+          `- [${diagnostic.ruleId}] ${diagnostic.message}\n  Next action: ${diagnostic.nextAction}`
+      ),
+      'No project file was written. Fix the complete patch and retry.',
+    ].join('\n');
+    process.stderr.write(`${message}\n`);
+    if (args.hookRepair) {
+      process.stderr.write(
+        `ARK_REPAIR_JSON:${JSON.stringify({
+          ...result,
+          mode: 'repair',
+          decision: 'deny',
+          enforcement: hookEnforcement(args.root, 'codex', 'apply_patch', true),
+          autoPatch: null,
+        })}\n`
       );
     }
+    process.exitCode = 2;
     return;
   }
   const filePath = toolInput.file_path;
@@ -396,9 +508,9 @@ function runHookPayload(payload, gate, config, args, ts) {
     violations: newViolations.map((violation) => ({ ...violation, file: normalizedRel })),
   });
 
-  const lines = newViolations.map(
-    (violation) =>
-      `- [${violation.ruleId}] ${violation.message}${violation.line ? ` (line ${violation.line})` : ''}`
+  const lines = adapterResult.diagnostics.map(
+    (diagnostic) =>
+      `- [${diagnostic.ruleId}] ${diagnostic.message}${diagnostic.location.line ? ` (line ${diagnostic.location.line})` : ''}\n  Next action: ${diagnostic.nextAction}`
   );
   // Surface the per-violation fix hints (the gate carries them in `suggestion`,
   // but the hook was dropping them). Dedupe so two infra violations sharing one
@@ -440,6 +552,13 @@ function runHookPayload(payload, gate, config, args, ts) {
       mode: 'repair',
       decision: 'deny',
       filePath: normalizedRel,
+      enforcement: hookEnforcement(
+        args.root,
+        attemptContext?.host ?? (grokStyle ? 'grok' : 'claude'),
+        attemptContext?.operation ??
+          (grokStyle ? (toolName === 'Edit' ? 'search_replace' : 'write') : toolName),
+        Boolean(attemptContext?.completePatch)
+      ),
       ...(layer ? { layer } : {}),
       ...(autoPatch
         ? {

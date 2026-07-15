@@ -1435,6 +1435,7 @@ async function main() {
         console.error(
           `${color.red('policy')} ${finding.classification} ${finding.path}: ${finding.message}`
         );
+        console.error(`  Next: ${finding.nextAction}`);
       }
       console.error(
         `Policy transition blocked (${policyDelta.basePolicyHash} → ${policyDelta.candidatePolicyHash}). ` +

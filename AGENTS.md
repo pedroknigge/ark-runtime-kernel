@@ -67,12 +67,13 @@ The project is only considered Ark-enforced when the write gate, CI gate, and ru
 
 ## Product plans (library epic queue seeds)
 
-Implementation queue remains **`ROADMAP.md`** (one `doing` at a time). Narrative epics that
-are not yet folded into the ordered queue live under `docs/plans/`:
+Implementation queue remains **`ROADMAP.md`** (one `doing` at a time). Narrative epic seeds and
+retained shipped rationale live under `docs/plans/`:
 
 | Plan | Status | Purpose |
 |------|--------|---------|
-| [power-simple-shape](docs/plans/power-simple-shape/README.md) | Planned | Dual depth (dev power + newbie simplicity) → AI-clear, maintainable code after Enforce |
+| [power-simple-shape](docs/plans/power-simple-shape/README.md) | Shipped | Dual depth (dev power + newbie simplicity) → AI-clear, maintainable code after Enforce |
+| [change-integrity-loop](docs/plans/change-integrity-loop/README.md) | Planned | Context-independent contract guard, atomic patch preflight, dual-depth remediation, and structural convergence |
 
 Do not treat a plan as authorization to start work until its IDs appear as `doing`/`todo` in
 `ROADMAP.md`.

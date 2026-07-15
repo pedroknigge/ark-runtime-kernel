@@ -206,17 +206,23 @@ function applyCodexUpdatePatch(current, lines) {
   let source = current.split('\n');
   let cursor = 0;
   const hunks = [];
-  let hunk = [];
+  let hunk = null;
   for (const line of lines) {
     if (line.startsWith('@@')) {
-      if (hunk.length > 0) hunks.push(hunk);
-      hunk = [];
+      if (hunk) hunks.push(hunk);
+      hunk = { anchor: line.slice(2).trim(), entries: [] };
     } else if (/^[ +\-]/.test(line)) {
-      hunk.push(line);
+      if (!hunk) return null;
+      hunk.entries.push(line);
     }
   }
-  if (hunk.length > 0) hunks.push(hunk);
-  for (const entries of hunks) {
+  if (hunk) hunks.push(hunk);
+  for (const { anchor, entries } of hunks) {
+    if (anchor) {
+      const anchorAt = source.findIndex((line, index) => index >= cursor && line === anchor);
+      if (anchorAt < 0) return null;
+      cursor = anchorAt + 1;
+    }
     const oldLines = entries.filter((line) => !line.startsWith('+')).map((line) => line.slice(1));
     const newLines = entries.filter((line) => !line.startsWith('-')).map((line) => line.slice(1));
     let found = -1;

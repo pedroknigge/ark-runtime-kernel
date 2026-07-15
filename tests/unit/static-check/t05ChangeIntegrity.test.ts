@@ -28,7 +28,7 @@ function setupRoot(): string {
     schemaVersion: '1.0',
     include: ['src'],
     layers: [
-      { name: 'DomainModel', patterns: ['src/domain/**'] },
+      { name: 'DomainModel', patterns: ['src/domain/**'], forbiddenGlobals: ['fetch'] },
       { name: 'Kernel', patterns: ['src/kernel/**'] },
     ],
     rules: [{ from: 'DomainModel', to: 'Kernel', allowed: false }],
@@ -165,6 +165,38 @@ describe('T05 context-independent enforcement proof', () => {
       'export const existing = true;\n'
     );
     expect(fs.existsSync(path.join(root, 'src/kernel/obsolete.ts'))).toBe(true);
+  });
+
+  it('honors named update anchors before reconstructing a complete ApplyPatch', () => {
+    const root = setupRoot();
+    write(
+      root,
+      'src/domain/existing.ts',
+      [
+        'export function first() {',
+        '  return 1;',
+        '}',
+        'export function target() {',
+        '  return 1;',
+        '}',
+        '',
+      ].join('\n')
+    );
+    const patch = [
+      '*** Begin Patch',
+      '*** Update File: src/domain/existing.ts',
+      '@@ export function target() {',
+      '-  return 1;',
+      "+  return fetch('/price');",
+      '*** End Patch',
+    ].join('\n');
+    const run = runHook(root, { tool_name: 'ApplyPatch', tool_input: { patch } });
+
+    expect(run.status, run.stderr).toBe(2);
+    expect(repairPayload(run.stderr).diagnostics[0]).toMatchObject({
+      ruleId: 'FORBIDDEN_GLOBAL',
+      location: { file: 'src/domain/existing.ts', line: 5 },
+    });
   });
 
   it('never labels a partially reconstructed ApplyPatch as complete enforcement', () => {

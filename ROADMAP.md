@@ -250,7 +250,8 @@ Phase T shipped in **`arkgate@3.1.0`**. Retained evidence:
 | 45 | `U06` | `todo` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
 | 46 | `U07` | `todo` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
 
-**Next:** review U01's open decisions, then move only U01 to `doing`. No U-item authorizes
+**Next (after Phase W ships — see the owner decision below):** review U01's open decisions, then
+move only U01 to `doing`. No U-item authorizes
 mandatory inlining, function/file-length rules, class bans, broad codemods, runtime work, or
 LLM-derived verdicts. Narrative scope and kill-switches:
 [understandable-execution](docs/plans/understandable-execution/README.md).
@@ -263,13 +264,14 @@ that live in the contract itself, not in the governed code. **Owner decision (20
 Phase W runs before Phase U — it has no technical dependency on U (it reads the contract and
 existing coverage data, not code effects), it is small and advisory-only, and the field feedback
 is fresh. Order is `W03 → W01 → W02`. Timebox: if `W01` grows beyond M, park it where it stands
-and start `U01`. Phase U remains next after W ships.
+and start `U01`. Phase U remains next after W ships. Order numbers record insertion order in this
+file; for the U/W pair, the execution order is the one stated here (W before U).
 
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
-| 48 | `W03` | `done` | S | Phase T shipped | Positioning docs name the advisory-local / hard-CI boundary as a deliberate trade-off |
-| 49 | `W01` | `todo` | M | `W03` | Doctor reports deterministic contract smells (meta-lint of `ark.config.json` itself) |
-| 50 | `W02` | `todo` | S | `W01` | Governance-weight evidence is reported descriptively without becoming a score or gate |
+| 47 | `W03` | `done` | S | Phase T shipped | Positioning docs name the advisory-local / hard-CI boundary as a deliberate trade-off |
+| 48 | `W01` | `todo` | M | `W03` | Doctor reports deterministic contract smells (meta-lint of `ark.config.json` itself) |
+| 49 | `W02` | `todo` | S | `W01` | Governance-weight evidence is reported descriptively without becoming a score or gate |
 
 ### Next-round package budget guardrail
 
@@ -301,7 +303,7 @@ the first implementation item starts.
 
 - **Status:** `todo`
 - **Depends on:** Phase T shipped
-- **Likely files:** new `docs/adr/0009-*.md`, `docs/plans/understandable-execution/README.md`,
+- **Likely files:** a new ADR at the next free `docs/adr/` number, `docs/plans/understandable-execution/README.md`,
   fixed positive/negative fixtures and eval design only as required by the ADR
 
 **Outcome:** Define supported capability IDs, evidence, config compatibility, and the threshold
@@ -1537,8 +1539,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: W03 — enforcement-boundary trade-off in positioning docs (Phase W runs before Phase U by owner decision)
-Next action: finish W03, then W01, then W02; Phase U (starting at U01) resumes after W ships
+Item: W01 — deterministic contract smells (Phase W runs before Phase U by owner decision; W03 is done)
+Next action: implement W01, then W02; Phase U (starting at U01) resumes after W ships
 Retained proof: T01–T05 commits, /review autofixes, fixed eval, confidence/release gates, exact-SHA CI/Security
 Released baseline: npm arkgate@3.1.0; Phase T shipped from PR #64
 ```

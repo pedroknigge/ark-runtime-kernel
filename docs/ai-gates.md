@@ -7,7 +7,7 @@ their hard repository check. Codex 0.123+ dispatches hooks for its native `apply
 but Code Mode hosts can execute deferred nested writes without that project hook event. See the
 [canonical host support matrix](../README.md#host-enforcement-support) before installing. The
 advisory-local / hard-CI split is a deliberate trade-off: local surfaces optimize feedback speed,
-while the required merge status is the only boundary every write path shares.
+while a required merge status is the one boundary a repository can make every write path share.
 
 Everything below uses the same `ark.config.json` as `arkgate-check` / `ark-check` (CI) — one
 contract shared by every surface. Generate it once:

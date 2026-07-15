@@ -102,18 +102,28 @@ describe('canonical public host support matrix', () => {
     const readme = read('README.md');
     const matrixEnd = readme.indexOf(MATRIX_END);
     expect(matrixEnd).toBeGreaterThanOrEqual(0);
-    const afterMatrix = readme.slice(matrixEnd, matrixEnd + 3500);
 
-    // The rationale lives directly after the matrix and names the split as deliberate.
-    expect(afterMatrix).toContain('#### Why the hard guarantee lives at the merge gate');
-    expect(afterMatrix).toMatch(/deliberate trade-off, not a gap/i);
-    expect(afterMatrix).toMatch(/pressure sensor/i);
-    // It must not strengthen any guarantee: the merge gate stays conditional on a required status.
-    expect(afterMatrix).toMatch(/required/i);
+    // The rationale heading sits directly after the matrix block, not somewhere later.
+    const heading = '#### Why the hard guarantee lives at the merge gate';
+    const headingAt = readme.indexOf(heading, matrixEnd);
+    expect(headingAt).toBeGreaterThanOrEqual(0);
+    expect(headingAt - matrixEnd).toBeLessThanOrEqual(200);
 
-    // Detailed host docs point to the rationale, not only to the table.
-    expect(read('docs/ai-gates.md')).toMatch(/deliberate trade-off/i);
-    expect(read('docs/agent-guide.md')).toMatch(/deliberate trade-off/i);
+    // The rationale section runs from the heading to the next horizontal rule.
+    const sectionEnd = readme.indexOf('\n---', headingAt);
+    const section = readme.slice(headingAt, sectionEnd === -1 ? undefined : sectionEnd);
+    expect(section).toMatch(/deliberate trade-off, not a gap/i);
+    expect(section).toMatch(/pressure sensor/i);
+    // It must not strengthen any guarantee: pin the exact conditional phrase, not just a keyword.
+    expect(section).toMatch(/only when\s+the repository\s+makes that status\s+required/i);
+
+    // Detailed host docs carry the rationale next to their canonical-matrix links.
+    for (const doc of ['docs/ai-gates.md', 'docs/agent-guide.md']) {
+      const content = read(doc);
+      const linkAt = content.indexOf('README.md#host-enforcement-support');
+      expect(linkAt, doc).toBeGreaterThanOrEqual(0);
+      expect(content.slice(linkAt, linkAt + 600), doc).toMatch(/deliberate trade-off/i);
+    }
   });
 
   it('marks every promoted runtime surface experimental', () => {

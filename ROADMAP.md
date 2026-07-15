@@ -226,11 +226,11 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 36 | `T02` | `done` | L | `T01` | CLI/MCP preflight create, update, and delete batches atomically before writes |
 | 37 | `T03` | `done` | M | `T02` | Optional versioned architecture change map describes planned paths and dependency edges |
 | 38 | `T04` | `done` | M | `T03` | Read-only convergence reports planned, missing, contradictory, and unplanned structural impact |
-| 39 | `T05` | `doing` | M | `T01`–`T04` | Context-independent enforcement ladder, dual-depth remediation, adapter parity, adversarial eval, docs, and release evidence |
+| 39 | `T05` | `done` | M | `T01`–`T04` | Context-independent enforcement ladder, dual-depth remediation, adapter parity, adversarial eval, docs, and release evidence |
 
-**Next:** Phase T is active with `T05` as the only `doing` item. `T04` is green on pushed commit
-`02e0576`; close the phase only after the no-context journeys, adapter parity, documentation, and
-exact-SHA CI/Security evidence are green. Scope and acceptance:
+**Next:** Phase T implementation is complete on pushed commits `6e5ddf4` and `0b9e456`; exact-SHA
+CI run `29393783076` and Security run `29393783072` are green. Draft PR #64 remains unmerged and
+unpublished. No item is `doing`; any next phase must be added here before implementation. Evidence:
 [change-integrity-loop](docs/plans/change-integrity-loop/README.md).
 Latest published patch: **`arkgate@3.0.5`**.
 
@@ -1294,10 +1294,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: T05 doing — context-independent enforcement and dual-user proof
-First result: red fixtures for enforcement-ladder honesty, actionable denials, and complete-patch parity
-Then: fixed no-context feature journey across CLI/MCP/hook/final check with acceptance behavior
-Primary surfaces: doctor writePath.enforcementLadder, shared diagnostics, ApplyPatch atomic preflight, eval report
-Required finish: /review autofix + full confidence/release gates + exact-SHA CI/Security
-Released baseline: npm arkgate@3.0.5; Phase T remains unreleased on the dedicated feature branch
+Item: none — Phase T implementation is complete; the roadmap has no active `doing` item
+Next action: define and review a bounded roadmap item before starting more implementation
+Retained proof: T01–T05 commits, /review autofixes, fixed eval, confidence/release gates, exact-SHA CI/Security
+Released baseline: npm arkgate@3.0.5; Phase T remains unmerged and unpublished in draft PR #64
 ```

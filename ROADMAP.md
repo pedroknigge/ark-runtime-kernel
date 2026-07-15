@@ -235,9 +235,25 @@ P0/security patches. Do not publish a normal stable feature release until `S01`�
 | 38 | `T04` | `done` | M | `T03` | Read-only convergence reports planned, missing, contradictory, and unplanned structural impact |
 | 39 | `T05` | `done` | M | `T01`–`T04` | Context-independent enforcement ladder, dual-depth remediation, adapter parity, adversarial eval, docs, and release evidence |
 
-**Next:** Phase T shipped in **`arkgate@3.1.0`**. No item is `doing`; any next phase must be added
-here before implementation. Retained evidence:
+Phase T shipped in **`arkgate@3.1.0`**. Retained evidence:
 [change-integrity-loop](docs/plans/change-integrity-loop/README.md).
+
+### Phase U — understandable execution (explicit effects + legible core)
+
+| Order | ID | Status | Size | Depends on | Outcome |
+|---:|---|---|---:|---|---|
+| 40 | `U01` | `todo` | S | Phase T shipped | ADR locks architecture-vs-style boundary, capability vocabulary, compatibility, and fixed corpus |
+| 41 | `U02` | `todo` | M | `U01` | Separate self-hosted cohesion pilots clear the named canonical god-module evidence without public drift |
+| 42 | `U03` | `todo` | L | `U01`, `U02` | Canonical analysis IR reports typed effect capabilities with stable evidence and generated-bundle parity |
+| 43 | `U04` | `todo` | L | `U03` | Opted-in layer capability walls block complete invalid patches consistently across every adapter |
+| 44 | `U05` | `todo` | M | `U03` | Ambient mutable-state sensor remains advisory until blocker-grade precision is proven |
+| 45 | `U06` | `todo` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
+| 46 | `U07` | `todo` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
+
+**Next:** review U01's open decisions, then move only U01 to `doing`. No U-item authorizes
+mandatory inlining, function/file-length rules, class bans, broad codemods, runtime work, or
+LLM-derived verdicts. Narrative scope and kill-switches:
+[understandable-execution](docs/plans/understandable-execution/README.md).
 
 ### Next-round package budget guardrail
 
@@ -260,6 +276,114 @@ requirements.
 **Next-round verification:** `npm pack --json --dry-run`, `npm run check:package-files`, and
 `npm run check:release-artifacts` must agree on the candidate contents and recorded budget before
 the first implementation item starts.
+
+---
+
+## Phase U — understandable execution (detail)
+
+### U01 — Lock effect/state semantics and the architecture-vs-style boundary
+
+- **Status:** `todo`
+- **Depends on:** Phase T shipped
+- **Likely files:** new `docs/adr/0009-*.md`, `docs/plans/understandable-execution/README.md`,
+  fixed positive/negative fixtures and eval design only as required by the ADR
+
+**Outcome:** Define supported capability IDs, evidence, config compatibility, and the threshold
+for blocker-grade precision. Explicitly exclude mandatory inlining, LOC/function-length rules,
+class bans, generic `const` lint, style scoring, and from-scratch rewrites.
+
+**Acceptance:** The ADR answers all five plan open decisions or records a bounded deferment; every
+proposed blocking capability has deterministic positive and negative fixtures; no production
+behavior or public schema changes in this item.
+
+### U02 — Dogfood cohesive pure-core pilots
+
+- **Status:** `todo`
+- **Depends on:** `U01`
+- **Likely files:** `src/domain/configContract.ts`, `src/kernel/analysis.ts`, focused sibling modules,
+  generators/parity tests, existing public-surface tests
+
+**Outcome:** Handle `src/domain/configContract.ts` and `src/kernel/analysis.ts` as separate
+one-pilot-at-a-time cohesion changes. Split only stable responsibilities; preserve linear local
+flow and stop if extraction increases coupling or call-site hopping.
+
+**Acceptance:** Exact public API, schema, hashes, diagnostics, generated bundle, adapter parity,
+performance, and package budgets remain green; self-doctor no longer reports either current file as
+a god-module candidate; no module budget is raised to land the pilots.
+
+### U03 — Add typed effect capabilities to the canonical analysis IR
+
+- **Status:** `todo`
+- **Depends on:** `U01`, `U02`
+- **Likely files:** Domain analysis vocabulary, Kernel semantic analysis, generated CLI bundle,
+  JSON Schema/public exports if authorized by U01, parity/property/fuzz tests
+
+**Outcome:** Canonical analysis reports ordered, typed evidence for the U01-approved effects such
+as network, filesystem, clock, randomness, environment, process, and persistence without creating
+a second scanner or adapter-owned verdict.
+
+**Acceptance:** Identical content/compiler/policy inputs reproduce capability uses and hashes;
+shadowing, type-only, aliasing, dynamic-import, and legitimate-adapter negative cases are covered;
+generated bundle drift and public compatibility gates pass.
+
+### U04 — Enforce opted-in capability walls over complete patches
+
+- **Status:** `todo`
+- **Depends on:** `U03`
+- **Likely files:** config contract/schema/migration, analysis/preflight, CLI/MCP/ESLint/hook adapters,
+  atomic candidate and adapter-parity fixtures
+
+**Outcome:** Layers may opt into U01-approved effect policies. Existing `forbiddenGlobals`
+behavior remains compatible, absence of the new surface changes no verdict, and atomic preflight
+cannot miss a denied capability introduced across several files.
+
+**Acceptance:** CLI, MCP, ESLint, hooks, package API, and strict CI agree on the same complete
+candidate; policy weakening follows the existing hash-bound acknowledgment path; clean brownfield
+fixtures do not gain surprise blockers.
+
+### U05 — Prove ambient mutable-state diagnostics before strictness
+
+- **Status:** `todo`
+- **Depends on:** `U03`
+- **Likely files:** semantic analysis, doctor/design-smell vocabulary, fixed state corpus,
+  adapter-parity and false-positive tests
+
+**Outcome:** Detect supported module-scope mutable-state shapes in explicitly pure layers, while
+distinguishing legitimate stateful adapters, registries, caches, tests, and experimental runtime.
+The MVP diagnostic is advisory unless U01's evidence bar is met by the completed corpus.
+
+**Acceptance:** Stable evidence and plain remediation exist; no strict default is introduced from
+an incomplete corpus; any strict option requires explicit policy and zero known false-positive
+blockers in the fixed matrix.
+
+### U06 — Ship dual-depth remediation and profile the real pre-tool path
+
+- **Status:** `todo`
+- **Depends on:** `U04`, `U05`
+- **Likely files:** remediation vocabulary, doctor/prepare-write/preflight responses, hook/MCP
+  benchmark harness, Linux performance budgets and CI
+
+**Outcome:** Casual users receive one action such as defining a Clock/Random/HTTP/storage port;
+seniors receive stable JSON evidence and hashes. Cold and incremental measurements cover the full
+hook/MCP path before any optimization or fixed threshold is approved.
+
+**Acceptance:** No LLM decides the verdict or remediation ID; adapter responses remain equivalent;
+profiles justify every optimization; reproducible CI budgets include measured runner headroom and
+do not weaken correctness checks.
+
+### U07 — Adoption and release evidence
+
+- **Status:** `todo`
+- **Depends on:** `U01`–`U06`
+- **Likely files:** adoption/eval fixtures, README/configuration/agent/package-surface docs,
+  CHANGELOG/release notes, package and compatibility checks
+
+**Outcome:** Prove the new architecture capability path for expert and casual flows without adding
+a new command, skill namespace, preset pack, runtime wedge, or package-budget ratchet.
+
+**Acceptance:** Fixed adoption and adversarial corpora, full confidence gate, architecture check,
+TypeScript compatibility, package allowlist/artifact budgets, and exact-SHA CI/Security are green;
+the phase plan is marked Shipped only after release evidence exists.
 
 ---
 
@@ -1321,8 +1445,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: none — Phase T implementation is complete; the roadmap has no active `doing` item
-Next action: define and review a bounded roadmap item before implementation
+Item: none — Phase U is planned; no item is active until U01 is deliberately moved to `doing`
+Next action: review U01 capability/config/corpus decisions, then start only U01
 Retained proof: T01–T05 commits, /review autofixes, fixed eval, confidence/release gates, exact-SHA CI/Security
 Released baseline: npm arkgate@3.1.0; Phase T shipped from PR #64
 ```

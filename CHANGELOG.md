@@ -26,6 +26,8 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
 - **T03 optional architecture change map:** strict schema `1.0` describes canonical operations,
   resolved layers, and local edges. CLI/MCP preflight binds its deterministic hash; no map is
   installed by default. Both published schema subpaths are parity-checked with the Domain contract.
+- **Performance gate stability:** the 10k-file incremental p95 remains hard-gated over 20 samples,
+  with a 125 ms shared-runner ceiling justified by two consecutive Linux CI measurements.
 
 ## 3.0.5 — 2026-07-14
 

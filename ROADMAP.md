@@ -236,7 +236,7 @@ here before implementation. Retained evidence:
 
 Before any post-T item moves to `doing`, recalibrate the gate-package budget from a clean packed
 candidate. The current `427 KB` packed ceiling is an internal release guardrail, not an npm
-requirement, and its remaining `930` bytes must not become an accidental product constraint.
+requirement, and its remaining `221` bytes must not become an accidental product constraint.
 
 - Keep `250 KB` packed / `1 MB` unpacked as the long-term optimization target, not as a reason to
   remove useful CLI, MCP, schema, or coaching surfaces.

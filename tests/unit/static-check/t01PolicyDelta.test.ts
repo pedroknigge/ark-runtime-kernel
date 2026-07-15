@@ -100,7 +100,10 @@ describe('T01 strict policy transition guard', () => {
     expect(normalizePolicyBaseRef('  HEAD  ')).toBe('HEAD');
 
     const { root } = setupRoot();
-    const result = run(root, ['--strict-merge'], { ARK_POLICY_BASE_REF: '0'.repeat(40) });
+    const result = run(root, ['--strict-merge'], {
+      ARK_POLICY_BASE_REF: '0'.repeat(40),
+      GITHUB_BASE_REF: '',
+    });
     expect(result.status, result.stderr).toBe(0);
   });
 

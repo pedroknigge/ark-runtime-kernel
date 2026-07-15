@@ -35,6 +35,10 @@ ArkGate is an architecture write firewall plus a coach, not a prompt convention.
   same verdict and evidence without an LLM deciding pass/fail.
 - Every rejection teaches: concise human cause and next action for a casual user, plus stable JSON,
   hashes, and exact evidence for an experienced engineer.
+- After structural validity, help improve architecture and code organization: suggest where new
+  code belongs, surface design smells, recommend a consistent pattern, and propose one small
+  extraction pilot at a time. These evidence-backed judgment aids never masquerade as deterministic
+  pass/fail enforcement.
 
 ### Product boundary
 
@@ -239,7 +243,8 @@ candidate. The current `427 KB` packed ceiling is an internal release guardrail,
 requirement, and its remaining `221` bytes must not become an accidental product constraint.
 
 - Keep `250 KB` packed / `1 MB` unpacked as the long-term optimization target, not as a reason to
-  remove useful CLI, MCP, schema, or coaching surfaces.
+  remove useful deterministic enforcement or architecture/organization coaching surfaces such as
+  CLI, MCP, schemas, placement guidance, design-smell diagnostics, or extraction pilots.
 - Set the hard packed, unpacked, and file-count ceilings once for the roadmap cycle with at least
   10% headroom over the measured clean candidate; do not ratchet them upward item by item.
 - Any item projected to consume more than 25% of that cycle's headroom must record the user value,

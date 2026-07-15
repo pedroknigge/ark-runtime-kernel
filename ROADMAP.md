@@ -255,6 +255,19 @@ mandatory inlining, function/file-length rules, class bans, broad codemods, runt
 LLM-derived verdicts. Narrative scope and kill-switches:
 [understandable-execution](docs/plans/understandable-execution/README.md).
 
+### Phase W — contract health (candidate backlog, parked)
+
+Origin: 2026-07-15 external field analysis of a governed production Next.js project (10 layers,
+~90 rules, 228 files, 0 violations). The analysis validated enforcement but surfaced three gaps
+that live in the contract itself, not in the governed code. Items stay `parked` until Phase U
+ships; activating one requires moving it to `todo` deliberately after `U07`.
+
+| Order | ID | Status | Size | Depends on | Outcome |
+|---:|---|---|---:|---|---|
+| 48 | `W01` | `parked` | M | `U07` | Doctor reports deterministic contract smells (meta-lint of `ark.config.json` itself) |
+| 49 | `W02` | `parked` | S | `W01` | Governance-weight evidence is reported descriptively without becoming a score or gate |
+| 50 | `W03` | `parked` | S | `U07` | Positioning docs name the advisory-local / hard-CI boundary as a deliberate trade-off |
+
 ### Next-round package budget guardrail
 
 **Recalibrated 2026-07-15:** the gate-package ceilings now retain at least 10% headroom over the
@@ -384,6 +397,73 @@ a new command, skill namespace, preset pack, runtime wedge, or package-budget ra
 **Acceptance:** Fixed adoption and adversarial corpora, full confidence gate, architecture check,
 TypeScript compatibility, package allowlist/artifact budgets, and exact-SHA CI/Security are green;
 the phase plan is marked Shipped only after release evidence exists.
+
+---
+
+## Phase W — contract health (candidate detail)
+
+ArkGate validates code against the contract; nothing yet validates the contract against known
+contract anti-patterns or reports its governance cost. All three items are advisory-only surfaces:
+they never change a pass/fail verdict, never auto-apply, and respect every existing hard line
+(no numeric trust score, no LLM-derived verdict, no gate weakening).
+
+### W01 — Deterministic contract smells (meta-lint of the contract)
+
+- **Status:** `parked`
+- **Depends on:** `U07`
+- **Likely files:** `bin/lib/design-smells.mjs` (new contract-smell family), `bin/lib/doctor-plan.mjs`,
+  `docs/agent-guide.md`, fixture matrix, focused static-check tests
+
+**Outcome:** Doctor emits stable, evidence-backed smell ids for contract shapes that permit future
+degradation even at 0 violations: mutually-allowed (bidirectional) edges between two layers,
+peripheral layers (observability/audit-style) allowed to depend on orchestration or persistence,
+lateral adapter-to-adapter edges, and rules never exercised by any governed file (dead rules).
+Complements `soft-contract` (which detects missing rules) by detecting *permissive or unused*
+rules. Waiver/exception recurrence on the same edge, where already recorded, is surfaced as
+supporting evidence ("architectural pressure"), not as a new tracking system.
+
+**Acceptance:** Every smell has deterministic positive and negative fixtures (a legitimate
+bidirectional edge fixture must stay clean when explicitly acknowledged); ids follow the P02/Q02
+pattern with plain-language `outcome`; advisory severity only — no smell blocks a merge gate or
+downgrades ENFORCE; no new skill name, preset, or config key beyond an optional acknowledgment
+field decided in the item's opening ADR note.
+
+### W02 — Governance-weight evidence (descriptive, never a score)
+
+- **Status:** `parked`
+- **Depends on:** `W01`
+- **Likely files:** `bin/lib/doctor-plan.mjs` or coverage reporting, `docs/agent-guide.md`,
+  `docs/brownfield-adoption.md`, focused tests
+
+**Outcome:** Doctor/coverage JSON reports descriptive governance-weight facts — rules per governed
+file, layers relative to governed file count, denied edges per layer — with Q02-style human outcome
+language, so a maintainer can see when a contract is unusually heavy or light for the tree it
+governs (e.g. "10 layers / 90 rules for 228 files is heavier than typical"). Feeds `ark start`
+and adoption guidance for casual users, where the field-observed failure mode is copying a
+heavyweight contract onto a small project.
+
+**Acceptance:** Output is raw counts and ratios with fixed comparative wording — explicitly not a
+composite score, ranking, or gate input (the final gate stays binary per the hard lines); wording
+never tells a user to delete layers, only to justify new ones; fixtures pin a light, a typical,
+and a heavy contract; absence of the surface changes no verdict.
+
+### W03 — Name the enforcement-boundary trade-off in positioning docs
+
+- **Status:** `parked`
+- **Depends on:** `U07`
+- **Likely files:** `README.md`, `docs/ai-gates.md`, `docs/agent-guide.md`, host-support-matrix
+  wording, docs regression snapshot
+
+**Outcome:** Docs-only. S03/S06 already report per-host truth (hard write for Claude/Grok,
+advisory write + hard CI merge for Cursor/Codex); this item names that boundary as a deliberate
+design trade-off rather than a gap, in plain language: local checks coach at the earliest
+available boundary, the non-bypassable guarantee lives at the merge gate, and the contract also
+works as a pressure sensor that shows when the existing design stopped being enough. External
+field analysis reached exactly this reading unaided; the positioning should state it first.
+
+**Acceptance:** README/positioning contain the trade-off rationale next to the existing support
+matrix without strengthening any guarantee claim; the S06 docs regression still passes; no code,
+schema, or template behavior changes.
 
 ---
 

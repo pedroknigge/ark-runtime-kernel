@@ -17,7 +17,7 @@ import {
   classifyArkPolicyDelta,
   policyDeltaAcknowledgementMatches,
 } from '../domain/policyDelta';
-import { capabilityUsesFor, importEdges, normalizePath, violationsFor } from './moduleGraph';
+import { moduleFactsFor, normalizePath, violationsFor } from './moduleGraph';
 import type {
   AnalysisContract,
   AnalysisResult,
@@ -85,12 +85,16 @@ export function analyzeProject(input: AnalyzeProjectInput): AnalysisResult {
     })
     .sort((left, right) => left.path.localeCompare(right.path));
   const fileByPath = new Map(files.map((file) => [file.path, file]));
-  const edges = files.flatMap((file) => importEdges(file, fileByPath));
-  // U03: import-based capability evidence from the same specifier scan — files
-  // are sorted, so identical content reproduces identical ordered uses.
-  const capabilityUses: AnalysisCapabilityUse[] = files.flatMap((file) =>
-    capabilityUsesFor(file)
-  );
+  // U03: ONE specifier scan per file yields edges and import-based capability
+  // evidence together (V01 budget); files are sorted, so identical content
+  // reproduces identical ordered output.
+  const edges: ReturnType<typeof moduleFactsFor>['edges'] = [];
+  const capabilityUses: AnalysisCapabilityUse[] = [];
+  for (const file of files) {
+    const facts = moduleFactsFor(file, fileByPath);
+    edges.push(...facts.edges);
+    capabilityUses.push(...facts.capabilityUses);
+  }
   const violations = violationsFor(edges, input.contract.config);
 
   return {

@@ -122,10 +122,17 @@ export function capabilityForModuleSpecifier(specifier: string): CapabilityId | 
   if (!specifier || specifier.startsWith('.') || specifier.startsWith('/')) return null;
   const direct = IMPORT_CAPABILITY_MODULES[specifier];
   if (direct) return direct;
-  for (const [entry, capability] of Object.entries(IMPORT_CAPABILITY_MODULES)) {
-    if (specifier.startsWith(`${entry}/`)) return capability;
-  }
-  return null;
+  // Subpath matching via O(1) lookups on the package root (and, for scoped or
+  // node:-style entries, the first two segments) — never a linear entry walk,
+  // never substring matching.
+  const first = specifier.indexOf('/');
+  if (first < 0) return null;
+  const root = specifier.slice(0, first);
+  const rootHit = IMPORT_CAPABILITY_MODULES[root];
+  if (rootHit) return rootHit;
+  const second = specifier.indexOf('/', first + 1);
+  if (second < 0) return null;
+  return IMPORT_CAPABILITY_MODULES[specifier.slice(0, second)] ?? null;
 }
 
 /** Classify a matched ambient name (as returned by the symbol-aware collector). */

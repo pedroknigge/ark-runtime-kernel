@@ -146,14 +146,36 @@ function moduleSpecifiers(source: string): ModuleSpecifier[] {
   return result;
 }
 
-export function importEdges(
+export type ModuleFacts = {
+  edges: AnalysisImportEdge[];
+  capabilityUses: AnalysisCapabilityUse[];
+};
+
+/**
+ * ONE specifier scan per file producing both import edges and import-based
+ * capability evidence (V01 budgets: analyzeProject must not walk content twice).
+ */
+export function moduleFactsFor(
   file: AnalysisFile,
   files: ReadonlyMap<string, AnalysisFile>
-): AnalysisImportEdge[] {
+): ModuleFacts {
   const edges: AnalysisImportEdge[] = [];
+  const capabilityUses: AnalysisCapabilityUse[] = [];
   for (const moduleSpecifier of moduleSpecifiers(file.content)) {
     const specifier = moduleSpecifier.value;
-    if (!specifier.startsWith('.')) continue;
+    if (!specifier.startsWith('.')) {
+      if (moduleSpecifier.typeOnly) continue;
+      const capability = capabilityForModuleSpecifier(specifier);
+      if (!capability) continue;
+      const line = file.content.slice(0, moduleSpecifier.offset).split('\n').length;
+      capabilityUses.push({
+        file: file.path,
+        symbol: specifier,
+        capability,
+        evidence: { kind: 'import', file: file.path, line, excerpt: moduleSpecifier.excerpt },
+      });
+      continue;
+    }
     const line = file.content.slice(0, moduleSpecifier.offset).split('\n').length;
     const evidence: AnalysisEvidence = {
       kind: 'import',
@@ -172,7 +194,14 @@ export function importEdges(
       evidence,
     });
   }
-  return edges;
+  return { edges, capabilityUses };
+}
+
+export function importEdges(
+  file: AnalysisFile,
+  files: ReadonlyMap<string, AnalysisFile>
+): AnalysisImportEdge[] {
+  return moduleFactsFor(file, files).edges;
 }
 
 function resolveSpecifier(
@@ -199,23 +228,10 @@ function resolveSpecifier(
  * Import-based capability evidence the pure engine can prove from content
  * alone (ADR 0009 — U03). Ambient globals need symbols and belong to
  * src/kernel/capabilityAnalysis.ts; relative specifiers are project code.
- * Ordering is deterministic: specifier occurrence order within the file.
+ * Prefer moduleFactsFor when edges are needed too — one scan, both facts.
  */
 export function capabilityUsesFor(file: AnalysisFile): AnalysisCapabilityUse[] {
-  const uses: AnalysisCapabilityUse[] = [];
-  for (const moduleSpecifier of moduleSpecifiers(file.content)) {
-    if (moduleSpecifier.typeOnly || moduleSpecifier.value.startsWith('.')) continue;
-    const capability = capabilityForModuleSpecifier(moduleSpecifier.value);
-    if (!capability) continue;
-    const line = file.content.slice(0, moduleSpecifier.offset).split('\n').length;
-    uses.push({
-      file: file.path,
-      symbol: moduleSpecifier.value,
-      capability,
-      evidence: { kind: 'import', file: file.path, line, excerpt: moduleSpecifier.excerpt },
-    });
-  }
-  return uses;
+  return moduleFactsFor(file, new Map()).capabilityUses;
 }
 
 export function violationsFor(

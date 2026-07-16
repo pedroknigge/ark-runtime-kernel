@@ -146,6 +146,84 @@ export function capabilityForAmbientName(name: string): CapabilityId | null {
   return null;
 }
 
+/** The layer-policy slice this module reads (structural subset of ArkConfigLayer). */
+export type CapabilityLayerPolicy = {
+  capabilities?: { deny?: readonly string[] };
+  pure?: boolean;
+  forbiddenGlobals?: readonly string[];
+};
+
+/**
+ * Effective capability deny set for a layer (ADR 0009 D2): `pure: true` denies
+ * all seven; otherwise the declared deny list (deduped, sorted, unknown ids
+ * dropped — the schema rejects them before this runs).
+ */
+export function effectiveCapabilityDeny(layer: CapabilityLayerPolicy | null | undefined): CapabilityId[] {
+  if (layer?.pure === true) return [...CAPABILITY_IDS].sort();
+  const declared = layer?.capabilities?.deny ?? [];
+  const known = declared.filter((id): id is CapabilityId =>
+    (CAPABILITY_IDS as readonly string[]).includes(id)
+  );
+  return [...new Set(known)].sort();
+}
+
+/**
+ * D7 dedup helper: an ambient use whose matched path is already covered by the
+ * layer's forbiddenGlobals must report only FORBIDDEN_GLOBAL — the surface the
+ * user declared wins; one violation, one voice.
+ */
+export function ambientCoveredByForbiddenGlobals(
+  symbol: string,
+  forbiddenGlobals: readonly string[]
+): boolean {
+  if (forbiddenGlobals.length === 0) return false;
+  const entries = new Set(forbiddenGlobals);
+  const segments = symbol.split('.');
+  for (let length = segments.length; length >= 1; length -= 1) {
+    if (entries.has(segments.slice(0, length).join('.'))) return true;
+  }
+  return false;
+}
+
+/**
+ * D6: a layer's protection expressed as COVERAGE ATOMS — the finest-grained
+ * units either surface can protect. `ambient:<entry>` atoms are the known
+ * ambient map entries a forbiddenGlobals prefix or a wall covers; `import:<id>`
+ * atoms are a wall's module-import enforcement (forbiddenGlobals never cover
+ * imports). Policy-delta classifies on atoms, never on keys or bare capability
+ * ids: losing ANY atom is a real loss (fetch → XMLHttpRequest, Date → Date.now,
+ * wall → forbiddenGlobals all weaken), while an equivalent-or-stronger
+ * migration never needs an acknowledgment. Unlowerable custom globals stay in
+ * `rawGlobals` for the key-by-key comparison.
+ */
+export function loweredLayerCoverage(layer: CapabilityLayerPolicy | null | undefined): {
+  atoms: string[];
+  rawGlobals: string[];
+} {
+  const atoms = new Set<string>();
+  const rawGlobals = new Set<string>();
+  const ambientEntries = Object.keys(AMBIENT_CAPABILITY_MAP);
+  for (const entry of layer?.forbiddenGlobals ?? []) {
+    // The shipped matcher is prefix-based: fg `Date` also flags `Date.now`,
+    // fg `process` also flags `process.env` — expand to every covered entry.
+    const covered = ambientEntries.filter(
+      (candidate) => candidate === entry || candidate.startsWith(`${entry}.`)
+    );
+    if (covered.length === 0) rawGlobals.add(entry);
+    else for (const candidate of covered) atoms.add(`ambient:${candidate}`);
+  }
+  for (const capability of effectiveCapabilityDeny(layer)) {
+    atoms.add(`import:${capability}`);
+    // A wall's ambient dimension uses longest-match classification, so it
+    // covers exactly the entries that CLASSIFY as this capability (bare
+    // `process` does not cover `process.env` — that is `environment`).
+    for (const entry of ambientEntries) {
+      if (capabilityForAmbientName(entry) === capability) atoms.add(`ambient:${entry}`);
+    }
+  }
+  return { atoms: [...atoms].sort(), rawGlobals: [...rawGlobals].sort() };
+}
+
 /**
  * Coverage-faithful lowering of a forbiddenGlobals entry (ADR 0009 D6).
  * A prefix-matched global lowers to EVERY capability its matches cover: the

@@ -1,3 +1,4 @@
+import { loweredLayerCoverage } from './capabilities';
 import type { ArkConfig, ArkConfigLayer, ArkConfigRule } from './configContract';
 
 export const POLICY_DELTA_SCHEMA_VERSION = '1.0' as const;
@@ -192,16 +193,36 @@ function compareLayers(
       addedMessage: 'Additional paths are excluded from this layer.',
       removedMessage: 'Fewer paths are excluded from this layer.',
     });
+    // ADR 0009 D6: classify ambient/capability protection on the LOWERED semantic
+    // space, never key-by-key — migrating forbiddenGlobals to an equivalent (or
+    // stronger) capability wall is neutral. Unlowerable custom globals keep the
+    // raw key comparison so no protection silently escapes classification.
+    const previousCoverage = loweredLayerCoverage(previous);
+    const candidateCoverage = loweredLayerCoverage(candidate);
     compareStringSets(
       findings,
       `${path}.forbiddenGlobals`,
-      previous.forbiddenGlobals,
-      candidate.forbiddenGlobals,
+      previousCoverage.rawGlobals,
+      candidateCoverage.rawGlobals,
       {
         added: 'strengthening',
         removed: 'weakening',
         addedMessage: 'Additional forbidden globals are enforced in this layer.',
         removedMessage: 'A forbidden-global protection was removed from this layer.',
+      }
+    );
+    compareStringSets(
+      findings,
+      `${path}.capabilities`,
+      previousCoverage.atoms,
+      candidateCoverage.atoms,
+      {
+        added: 'strengthening',
+        removed: 'weakening',
+        addedMessage:
+          'Additional ambient/import protection is enforced in this layer (coverage atoms).',
+        removedMessage:
+          'An ambient/import protection was lost from this layer (coverage atoms).',
       }
     );
 

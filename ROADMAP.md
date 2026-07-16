@@ -245,14 +245,14 @@ Phase T shipped in **`arkgate@3.1.0`**. Retained evidence:
 | 40 | `U01` | `done` | S | Phase T shipped | ADR locks architecture-vs-style boundary, capability vocabulary, compatibility, and fixed corpus |
 | 41 | `U02` | `done` | M | `U01` | Separate self-hosted cohesion pilots clear the named canonical god-module evidence without public drift |
 | 42 | `U03` | `done` | L | `U01`, `U02` (soft) | Canonical analysis IR reports typed effect capabilities with stable evidence and generated-bundle parity |
-| 43 | `U04` | `todo` | L | `U03` | Opted-in layer capability walls block complete invalid patches consistently across every adapter |
-| 44 | `U05` | `todo` | M | `U03` | Ambient mutable-state sensor remains advisory until blocker-grade precision is proven |
-| 45 | `U06` | `todo` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
-| 46 | `U07` | `todo` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
+| 43 | `U04` | `done` | L | `U03` | Opted-in layer capability walls block complete invalid patches consistently across every adapter |
+| 44 | `U05` | `done` | M | `U03` | Ambient mutable-state sensor remains advisory until blocker-grade precision is proven |
+| 45 | `U06` | `done` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
+| 46 | `U07` | `done` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
 
-**Next:** review U01's open decisions (now eight — including T01 policy-delta semantics for the
-capability surface, the surface-ownership map, and W02 governance-weight reconciliation), then
-move only U01 to `doing`. No U-item authorizes mandatory inlining, function/file-length rules,
+**Slice 1 shipped in `arkgate@3.3.0`** (2026-07-16): U01–U03 published from PR
+[#68](https://github.com/pedroknigge/arkgate/pull/68) (squash `64e5def`), signed tag `v3.3.0`,
+GitHub Release, `publish-npm.yml` run 29514425825, npm `latest` = 3.3.0. **Next:** review U04. No U-item authorizes mandatory inlining, function/file-length rules,
 class bans, broad codemods, runtime work, or LLM-derived verdicts.
 
 **Release slicing (owner decision 2026-07-15):** Phase U ships as two stable minors — `U01–U03`
@@ -420,7 +420,7 @@ artifacts, and strict architecture green. Evidence-only: nothing blocks until U0
 
 ### U04 — Enforce opted-in capability walls over complete patches
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `U03`
 - **Likely files:** config contract/schema/migration, analysis/preflight, CLI/MCP/ESLint/hook adapters,
   atomic candidate and adapter-parity fixtures
@@ -433,9 +433,25 @@ cannot miss a denied capability introduced across several files.
 candidate; policy weakening follows the existing hash-bound acknowledgment path; clean brownfield
 fixtures do not gain surprise blockers.
 
+**Local evidence (2026-07-16):** Layers opt in via `capabilities: { deny: [...] }` (seven-id enum
+in the versioned schema, path-specific rejection of unknown ids) or the dual-depth sugar
+`pure: true`; absence changes no verdict (brownfield case pinned). Enforcement is judgment-class
+`CAPABILITY_VIOLATION` with a port-injection `nextAction`, emitted by the pure IR engine
+(import-based), by atomic preflight over the complete candidate (A4 — multi-file case pinned),
+and by the symbol-aware CLI scan path (ambient + import; scan cache bumped to v8). D7 dedup: an
+ambient use covered by the layer's `forbiddenGlobals` reports only `FORBIDDEN_GLOBAL` (CLI case
+pinned). T01 now classifies the ambient surface on the LOWERED capability space via
+`loweredLayerCoverage` — the corpus D6 pair is executable (neutral migration passes without ack;
+real lowered loss requires it; bare `process` → deny `[process]` alone is weakening), and
+unlowerable custom globals keep the raw comparison. The two tests that pinned the pre-D6 finding
+path were updated to the designed semantics. `u04CapabilityWalls.test.ts` 15/15; corpus policy
+fixtures flipped executable; full suite 1184/1184; confidence gate green (aggregate 92.75%;
+config-loading range realigned 355-431 after the schema grew); artifacts, drift checks, budgets,
+and strict architecture green. Docs: package-surface, agent-guide, configuration.
+
 ### U05 — Prove ambient mutable-state diagnostics before strictness
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `U03`
 - **Likely files:** semantic analysis, doctor/design-smell vocabulary, fixed state corpus,
   adapter-parity and false-positive tests
@@ -448,9 +464,20 @@ The MVP diagnostic is advisory unless U01's evidence bar is met by the completed
 an incomplete corpus; any strict option requires explicit policy and zero known false-positive
 blockers in the fixed matrix.
 
+**Local evidence (2026-07-16):** `bin/lib/ambient-state.mjs` detects module-scope `let`/`var` in
+`pure: true` layers only (opt-in; MVP shape per D4), with sorted findings, an honest truncation
+count, and bounded sidecar acks at `.ark/ambient-state-acks.json` (malformed file suppresses
+nothing). Surfaced as `doctor.ambientState` + a human advisory section via the new
+`doctor-advisories.mjs` aggregator (doctor-plan stays inside its 920-LOC budget); when TypeScript
+is absent the sensor reports `available: false` instead of guessing. The fixed FP matrix is
+pinned by `u05AmbientState.test.ts` (6/6): const bindings, function-local state, non-pure layers,
+and acknowledged registries all stay silent; the doctor case proves `designFitness` and the
+verdict are untouched. **No strict mode exists anywhere** — strictness remains a later evidence
+decision (A5 checked in the plan).
+
 ### U06 — Ship dual-depth remediation and profile the real pre-tool path
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `U04`, `U05`
 - **Likely files:** remediation vocabulary, doctor/prepare-write/preflight responses, hook/MCP
   benchmark harness, Linux performance budgets and CI
@@ -463,9 +490,21 @@ hook/MCP path before any optimization or fixed threshold is approved.
 profiles justify every optimization; reproducible CI budgets include measured runner headroom and
 do not weaken correctness checks.
 
+**Local evidence (2026-07-16):** Dual depth for capability walls across EVERY surface: the U06
+tests exposed and closed two parity gaps — the human `nextAction` fell to the generic fallback
+(adapterContract's own switch gained the CAPABILITY_VIOLATION case) and, critically, **the real
+PreToolUse hook did not enforce walls at all** (the AICodeGate now takes `capabilityWalls` with
+the same D7 dedup; `ark-mcp --hook` blocks a denied-capability Write end-to-end with exit 2 —
+pinned by a fresh-child-process test). ESLint gained `ark/no-denied-capabilities` (import
+dimension, recommended config) for adapter parity. `scripts/hook-path-bench.mjs` measures the
+COMPLETE paths (hook cold/warm + doctor cold, 1k/10k, fresh processes); the D5 method is locked
+in `eval/performance/hook-budgets.v1.json` — RECORDING mode until the Linux CI baseline exists,
+ceilings = baseline + fixed headroom, guarded by a test that forbids an invented ceiling without
+its baseline. CI job added. FIX_HINTS carries the casual port hint. Suite 1200/1200.
+
 ### U07 — Adoption and release evidence
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `U01`–`U06`
 - **Likely files:** adoption/eval fixtures, README/configuration/agent/package-surface docs,
   CHANGELOG/release notes, package and compatibility checks
@@ -476,6 +515,28 @@ a new command, skill namespace, preset pack, runtime wedge, or package-budget ra
 **Acceptance:** Fixed adoption and adversarial corpora, full confidence gate, architecture check,
 TypeScript compatibility, package allowlist/artifact budgets, and exact-SHA CI/Security are green;
 the phase plan is marked Shipped only after release evidence exists.
+
+**Started (2026-07-16):** the 3.4.0 release train is prepared (version sync across package.json,
+lockfile, src/version.ts, server.json; CHANGELOG section; `docs/releases/3.4.0.md` with the
+opt-in honesty lines and maintainer checklist; release-surface parity test extended;
+README/package-surface pointers). U06's /review fixes are folded in: the bench dropped its
+fictional cold/warm split (the hook never consumes the scan cache — one honest distribution),
+armed ceilings that resolve no measurement now FAIL instead of silently passing, non-zero child
+exits abort a run, and the ESLint rule gained all-type named-list erasure parity plus a
+behavioral test.
+
+**Local evidence (2026-07-16, closed):** CI run 29528935846 is fully green on `89173ed`
+(including the perf job: the V01 incremental regression the previous run caught — the specifier
+scan's unconditional word probes — was fixed with first-letter guards; Linux 10k incremental
+p95 112.5 ms < 125, and locally 41.2 ms vs 45.7 on main). The same run recorded the first Linux
+hook-path baseline: hook@10k p95 635.14 ms, doctorCold@10k p95 4063.72 ms — adopted as ceilings
+800 / 5100 ms (baseline + ~25% runner headroom, set once for this cycle per D5; the bench
+enforces them from now on, and the recording-mode guard test keeps invented ceilings impossible).
+Full local gates green at the release candidate: suite 1203/1203, confidence (aggregate 92.75%),
+release artifacts within budgets, `npm publish --dry-run` → `+ arkgate@3.4.0`, TS 5/6/7 compat,
+strict architecture. No new command, skill namespace, preset pack, runtime wedge, or
+package-budget ratchet was added anywhere in the phase. Phase U implementation is COMPLETE;
+the plan is marked Shipped after the 3.4.0 release evidence exists.
 
 ---
 
@@ -1644,9 +1705,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: none implementable without maintainer action — U01–U03 done; 3.3.0 release train PREPARED (slice 1 of Phase U)
-Next action: maintainer merges PR #68 and authorizes the 3.3.0 publish (checklist in docs/releases/3.3.0.md); slice 2 (U04 walls → U07) starts after slice 1 ships per the owner decision
-Blocked: U04–U07 are gated behind slice 1 shipping (field maturation of the evidence corpus)
+Item: none — Phase U implementation COMPLETE (U01–U07 done); 3.4.0 release train PREPARED with green CI on 89173ed
+Next action: maintainer merges PR #69 and authorizes the 3.4.0 publish (checklist in docs/releases/3.4.0.md); after release evidence, mark the understandable-execution plan Shipped
+Released baseline: npm arkgate@3.3.0
 Released baseline note: MCP registry 3.2.0 published (isLatest) alongside npm/GitHub
 Retained proof: T01–T05 commits, /review autofixes, fixed eval, confidence/release gates, exact-SHA CI/Security
 Released baseline: npm arkgate@3.2.0; Phase W shipped from PR #66 (Phase T from PR #64)

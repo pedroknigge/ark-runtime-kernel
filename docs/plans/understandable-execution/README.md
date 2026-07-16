@@ -206,6 +206,15 @@ pattern; U07's release evidence closes the second slice.
    for `governanceWeight` ratios. If they do, wall adopters drift toward the `heavy` band; either
    exclude them from the count or document the effect before U04 ships.
 
+**Draft direction (owner-reviewed, 2026-07-15):** all eight decisions have a drafted answer in
+[ADR 0009](../../adr/0009-effect-capability-boundary.md) (Status: Proposed). Load-bearing calls:
+both config dialects **lower** to one capability semantic space (makes D6 mechanical and keeps
+one engine authoritative); `pure: true` is the casual-user surface (dual-depth); **direct
+evidence blocks, transitive inference never does**; ambient state stays doctor-only with sidecar
+acks (W01 precedent); capability policies are a governance-weight fact, not a rule count. The ADR
+locks to Accepted only when the U01 fixture obligations are met — the plan does not treat the
+draft as the contract.
+
 ## Promotion
 
 This epic is already linked into the ordered roadmap. When implementation begins:

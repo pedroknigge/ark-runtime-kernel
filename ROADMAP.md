@@ -250,9 +250,9 @@ Phase T shipped in **`arkgate@3.1.0`**. Retained evidence:
 | 45 | `U06` | `todo` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
 | 46 | `U07` | `todo` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
 
-**Next:** review U01's open decisions (now eight — including T01 policy-delta semantics for the
-capability surface, the surface-ownership map, and W02 governance-weight reconciliation), then
-move only U01 to `doing`. No U-item authorizes mandatory inlining, function/file-length rules,
+**Slice 1 shipped in `arkgate@3.3.0`** (2026-07-16): U01–U03 published from PR
+[#68](https://github.com/pedroknigge/arkgate/pull/68) (squash `64e5def`), signed tag `v3.3.0`,
+GitHub Release, `publish-npm.yml` run 29514425825, npm `latest` = 3.3.0. **Next:** review U04. No U-item authorizes mandatory inlining, function/file-length rules,
 class bans, broad codemods, runtime work, or LLM-derived verdicts.
 
 **Release slicing (owner decision 2026-07-15):** Phase U ships as two stable minors — `U01–U03`
@@ -1644,9 +1644,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: none implementable without maintainer action — U01–U03 done; 3.3.0 release train PREPARED (slice 1 of Phase U)
-Next action: maintainer merges PR #68 and authorizes the 3.3.0 publish (checklist in docs/releases/3.3.0.md); slice 2 (U04 walls → U07) starts after slice 1 ships per the owner decision
-Blocked: U04–U07 are gated behind slice 1 shipping (field maturation of the evidence corpus)
+Item: none — Phase U slice 1 SHIPPED in arkgate@3.3.0 (PR #68 → 64e5def; tag v3.3.0; publish-npm run 29514425825; npm latest=3.3.0)
+Next action: review U04 (opted-in capability walls: capabilities schema + pure: true, D6 lowered-space policy-delta, D7 dedup across adapters), then move only U04 to `doing`
+Released baseline: npm arkgate@3.3.0; slice 2 (U04–U07) is now unblocked
 Released baseline note: MCP registry 3.2.0 published (isLatest) alongside npm/GitHub
 Retained proof: T01–T05 commits, /review autofixes, fixed eval, confidence/release gates, exact-SHA CI/Security
 Released baseline: npm arkgate@3.2.0; Phase W shipped from PR #66 (Phase T from PR #64)

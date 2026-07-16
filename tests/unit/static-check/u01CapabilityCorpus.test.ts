@@ -2,8 +2,9 @@
  * U01 — capability fixture corpus (ADR 0009 exit obligation).
  *
  * Structural guard only: U03 implements detection; this test proves the corpus
- * exists, is complete per the ADR matrix, and is deterministic. Every future
- * capability behavior lands against these exact files.
+ * exists, is complete per the ADR matrix, matches its own claims (content vs
+ * manifest evidence), and is deterministic. Every future capability behavior
+ * lands against these exact files.
  */
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ import ts from 'typescript';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const CORPUS = path.join(REPO, 'tests/fixtures/capability-corpus');
 
-/** ADR 0009 D1 — seven fixed IDs with declared evidence sources. */
+/** ADR 0009 D1 — seven fixed IDs with declared evidence sources (filesystem is import-based only in the MVP). */
 const CAPABILITIES: Record<string, string[]> = {
   network: ['ambient-global', 'import-based'],
   filesystem: ['import-based'],
@@ -24,19 +25,40 @@ const CAPABILITIES: Record<string, string[]> = {
   process: ['ambient-global'],
   persistence: ['import-based'],
 };
+const KINDS = ['positive', 'negative', 'policy-allowed'];
+const SOURCES = ['ambient-global', 'import-based'];
 
 type Case = {
   id: string;
   capability: string;
-  kind: 'positive' | 'negative' | 'policy-allowed';
-  evidenceSource: 'ambient-global' | 'import-based';
+  kind: string;
+  evidenceSource: string;
   category?: string;
   file: string;
+  evidence: { pattern?: string; importOf?: string; typeOnly?: boolean };
   notes?: string;
 };
 
 function manifest() {
   return JSON.parse(fs.readFileSync(path.join(CORPUS, 'manifest.v1.json'), 'utf8'));
+}
+
+function readCase(rel: string): string {
+  return fs.readFileSync(path.join(CORPUS, rel), 'utf8');
+}
+
+function importsOf(fileName: string, body: string): Array<{ specifier: string; typeOnly: boolean }> {
+  const source = ts.createSourceFile(fileName, body, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
+  const found: Array<{ specifier: string; typeOnly: boolean }> = [];
+  for (const statement of source.statements) {
+    if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+      found.push({
+        specifier: statement.moduleSpecifier.text,
+        typeOnly: statement.importClause?.isTypeOnly === true,
+      });
+    }
+  }
+  return found;
 }
 
 describe('U01 capability corpus — completeness per ADR 0009', () => {
@@ -47,6 +69,24 @@ describe('U01 capability corpus — completeness per ADR 0009', () => {
     expect(Object.keys(m.capabilities).sort()).toEqual(Object.keys(CAPABILITIES).sort());
     for (const [id, sources] of Object.entries(CAPABILITIES)) {
       expect(m.capabilities[id].evidenceSources.slice().sort(), id).toEqual(sources.slice().sort());
+    }
+  });
+
+  it('every case is runtime-valid: known kind, source, capability, and declared source for it', () => {
+    const m = manifest();
+    const cases: Case[] = m.cases;
+    for (const c of cases) {
+      expect(KINDS, `${c.id} kind`).toContain(c.kind);
+      expect(SOURCES, `${c.id} evidenceSource`).toContain(c.evidenceSource);
+      expect(Object.keys(CAPABILITIES), `${c.id} capability`).toContain(c.capability);
+      expect(
+        m.capabilities[c.capability].evidenceSources,
+        `${c.id} source declared for ${c.capability}`
+      ).toContain(c.evidenceSource);
+      expect(
+        Boolean(c.evidence?.pattern) || Boolean(c.evidence?.importOf),
+        `${c.id} has evidence`
+      ).toBe(true);
     }
   });
 
@@ -70,7 +110,6 @@ describe('U01 capability corpus — completeness per ADR 0009', () => {
 
   it('covers the required negative matrix per evidence source', () => {
     const cases: Case[] = manifest().cases;
-    // Ambient-global capabilities: local shadowing and type-only value absence must NOT detect.
     for (const [id, sources] of Object.entries(CAPABILITIES)) {
       if (sources.includes('ambient-global')) {
         expect(
@@ -87,35 +126,64 @@ describe('U01 capability corpus — completeness per ADR 0009', () => {
         ).toBe(true);
       }
     }
-    // Type-only *value* use for at least one ambient capability (Date as a type).
     expect(cases.some((c) => c.kind === 'negative' && c.category === 'type-only-global')).toBe(true);
-    // Similar-name non-driver imports for persistence and network.
-    for (const id of ['persistence', 'network']) {
+    // Similar-name non-driver imports for every import-based capability (ADR: no substring matching).
+    for (const id of ['persistence', 'network', 'filesystem']) {
       expect(
         cases.some((c) => c.capability === id && c.kind === 'negative' && c.category === 'similar-name'),
         `${id} similar-name negative`
       ).toBe(true);
     }
-    // Legitimate adapter-layer use: detected but allowed by layer policy (kind policy-allowed).
     expect(cases.some((c) => c.kind === 'policy-allowed' && c.capability === 'persistence')).toBe(
       true
     );
   });
 
-  it('every case file exists, is non-empty, parses as TypeScript, and ids are unique + sorted', () => {
+  it('case files parse as TS, match their claimed evidence, and cannot silently drift', () => {
     const cases: Case[] = manifest().cases;
     const ids = cases.map((c) => c.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toEqual([...ids].sort());
+    const files = cases.map((c) => c.file);
+    expect(new Set(files).size, 'no case shares a file').toBe(files.length);
+
+    // Orphan guard: every on-disk case file must be declared in the manifest.
+    const onDisk = fs.readdirSync(path.join(CORPUS, 'cases')).sort();
+    expect(onDisk).toEqual(files.map((f) => path.basename(f)).sort());
+
     for (const c of cases) {
-      const abs = path.join(CORPUS, c.file);
-      const body = fs.readFileSync(abs, 'utf8');
+      const body = readCase(c.file);
       expect(body.length, c.file).toBeGreaterThan(10);
-      const source = ts.createSourceFile(c.file, body, ts.ScriptTarget.ES2022, true, ts.ScriptKind.TS);
-      // parseDiagnostics is internal but stable across the supported TS matrix.
-      const diags = (source as unknown as { parseDiagnostics: unknown[] }).parseDiagnostics;
-      expect(diags.length, `${c.file} parse`).toBe(0);
+      // Public API for syntax diagnostics (no TS internals).
+      const out = ts.transpileModule(body, {
+        reportDiagnostics: true,
+        compilerOptions: { target: ts.ScriptTarget.ES2022 },
+      });
+      expect(out.diagnostics?.length ?? 0, `${c.file} parse`).toBe(0);
+
+      // Content-vs-claim: the corpus cannot be swapped for unrelated code and stay green.
+      if (c.evidence.pattern) {
+        expect(new RegExp(c.evidence.pattern).test(body), `${c.file} pattern`).toBe(true);
+      }
+      if (c.evidence.importOf) {
+        const hit = importsOf(c.file, body).find((i) => i.specifier === c.evidence.importOf);
+        expect(hit, `${c.file} imports ${c.evidence.importOf}`).toBeDefined();
+        expect(hit!.typeOnly, `${c.file} typeOnly flag`).toBe(c.evidence.typeOnly === true);
+      }
     }
+  });
+
+  it('carries the D7 adapter-policy artifact wiring the policy-allowed case', () => {
+    const m = manifest();
+    expect(m.policyLayer.executable).toBe(false);
+    expect(m.policyLayer.activatesIn).toBe('U04');
+    const policy = JSON.parse(readCase(m.policyLayer.file));
+    const layers = policy.layers as Array<{ name: string; patterns: string[]; capabilities?: { deny: string[] } }>;
+    const adapter = layers.find((l) => l.name === 'PersistenceAdapters');
+    const domain = layers.find((l) => l.name === 'DomainModel');
+    expect(adapter?.patterns).toContain('cases/persistence-adapter-allowed.ts');
+    expect(adapter?.capabilities).toBeUndefined();
+    expect(domain?.capabilities?.deny).toContain('persistence');
   });
 
   it('carries the D6 lowered-policy pair (neutral migration vs real weakening)', () => {
@@ -129,24 +197,28 @@ describe('U01 capability corpus — completeness per ADR 0009', () => {
     ] as const) {
       expect(pd.pairs[name].expectedClassification).toBe(expected);
     }
-    for (const rel of [
-      'policy-delta/base.config.json',
-      'policy-delta/candidate-neutral.config.json',
-      'policy-delta/candidate-weakening.config.json',
-    ]) {
-      const body = JSON.parse(fs.readFileSync(path.join(CORPUS, rel), 'utf8'));
-      expect(Array.isArray(body.layers), rel).toBe(true);
-    }
-    // The neutral candidate must cover every lowered capability of the base's forbiddenGlobals.
-    const base = JSON.parse(
-      fs.readFileSync(path.join(CORPUS, 'policy-delta/base.config.json'), 'utf8')
+    const readJson = (rel: string) => JSON.parse(readCase(rel));
+    const base = readJson('policy-delta/base.config.json');
+    const neutral = readJson('policy-delta/candidate-neutral.config.json');
+    const weakening = readJson('policy-delta/candidate-weakening.config.json');
+    for (const cfg of [base, neutral, weakening]) expect(Array.isArray(cfg.layers)).toBe(true);
+
+    // Lowering map: string → capability[] (prefix-matched globals cover several).
+    const lowered: Record<string, string[]> = m.lowering.map;
+    expect(lowered['process'], 'bare process covers env reads today (prefix match)').toContain(
+      'environment'
     );
-    const neutral = JSON.parse(
-      fs.readFileSync(path.join(CORPUS, 'policy-delta/candidate-neutral.config.json'), 'utf8')
-    );
-    const lowered: Record<string, string> = m.lowering;
-    const baseCaps = (base.layers[0].forbiddenGlobals as string[]).map((g) => lowered[g]).sort();
+    const baseCaps = (base.layers[0].forbiddenGlobals as string[])
+      .flatMap((g) => lowered[g])
+      .sort();
     const neutralCaps = (neutral.layers[0].capabilities.deny as string[]).slice().sort();
+    const weakeningCaps = (weakening.layers[0].capabilities.deny as string[]).slice().sort();
+    // Neutral must cover the full lowered base set…
     for (const cap of baseCaps) expect(neutralCaps, `neutral covers ${cap}`).toContain(cap);
+    // …and the weakening candidate must actually LOSE at least one lowered capability.
+    expect(
+      baseCaps.some((cap) => !weakeningCaps.includes(cap)),
+      'weakening drops a lowered capability'
+    ).toBe(true);
   });
 });

@@ -31,9 +31,10 @@ proposed, never auto-applied; advisory is always labeled advisory; one contract,
 - The analysis IR extends **additively** within its current major (precedent: the analysis-result
   envelope moved `1.0 → 1.1` additively in 3.1.0). No breaking IR change is authorized by Phase U.
 - Each ID declares its **evidence source** in the fixture corpus: ambient-global (`clock`,
-  `randomness`, `environment`, `process`), import-based (`persistence` via known driver modules),
-  hybrid (`network` = `fetch`/`XMLHttpRequest` globals + known client imports; `filesystem` =
-  `node:fs` family imports + related process APIs).
+  `randomness`, `environment`, `process`), import-based (`persistence` via known driver modules;
+  `filesystem` via the `node:fs` family — import-based **only** in the MVP: `process.cwd`-style
+  APIs belong to the `process` capability), hybrid (`network` = `fetch`/`XMLHttpRequest` globals
+  + known client imports).
 
 ### D2 — Config: both dialects lower to one semantic space; `pure: true` is the casual surface
 
@@ -83,6 +84,12 @@ Because both dialects lower to one capability space (D2), the T01 transition cla
   **neutral**, even though the old keys disappear — nothing was lost in the lowered set.
 - Any real loss in the lowered set → **weakening**; the existing hash-bound acknowledgment path
   applies unchanged.
+
+Lowering must be **coverage-faithful for prefix-matched globals**: the shipped matcher flags
+`process.env.NODE_ENV` when `forbiddenGlobals` contains bare `process`, so `process` lowers to
+**both** `process` and `environment` — migrating it to `capabilities.deny: ["process"]` alone is
+a real loss and classifies as weakening. Equivalence is always computed on the full lowered set,
+never key-by-key.
 
 Without this rule, every legitimate migration trips the weakening guard and users learn to
 acknowledge reflexively — which destroys the guard's meaning.
@@ -139,12 +146,14 @@ until U03 makes it executable. Per capability ID and applicable evidence source:
 - **Positives:** at least one per declared evidence source, including the adversarial
   `globalThis` alias (which must still detect — S05 precedent, so it is a *positive*, not a
   negative).
-- **Negatives per ambient-global source:** local shadowing, plus type-only *value* use (`Date` as
-  a type annotation) for at least one capability.
-- **Negatives per import-based source:** `import type` (must not count), and — for
-  `persistence`/`network`/`filesystem` — a non-driver import with a similar name (`pgn-parser`,
-  `refetch-hints`, `fsm-machine`): no substring matching.
+- **Negatives per ambient-global source:** local shadowing, plus type-position-only use of a
+  value global (`Date` used solely as a type annotation) for at least one capability.
+- **Negatives per import-based source:** `import type` (must not count), and — for every
+  import-based capability (`persistence`/`network`/`filesystem`) — a non-driver import with a
+  similar name (`pgn-parser`, `refetch-hints`, `fsm-machine`): no substring matching.
 - **Policy-allowed:** one legitimate adapter-layer persistence use — detection fires, the layer
-  policy allows it, the verdict stays green (D7).
+  policy allows it, the verdict stays green (D7). The corpus carries the wiring artifact
+  (`adapter-policy.config.json`) assigning the case to a no-deny adapter layer, so U04 does not
+  invent the policy later.
 - **D6 lowered-policy pair:** `policy-delta/` holds base + neutral-migration + real-weakening
   configs with expected classifications; marked non-executable until U04's schema lands.

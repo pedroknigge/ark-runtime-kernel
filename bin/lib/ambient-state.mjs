@@ -6,6 +6,11 @@
  * acknowledged in a bounded `.ark/` sidecar (W01 precedent) — a malformed file
  * suppresses nothing. Doctor-only: no strict default may be introduced from
  * this sensor until the fixed corpus proves blocker-grade precision (A5).
+ *
+ * Documented envelope: only top-level statements are walked — `let` inside a
+ * `namespace` body (real runtime state on the namespace object) is out of the
+ * MVP shape; `declare` ambients and `using` bindings never count (no state /
+ * not reassignable).
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -50,7 +55,9 @@ export function loadAmbientStateAcks(root) {
       a.name.length > 0
   );
   if (!wellFormed) return invalid('every ack needs string file and name');
-  return { path: relPath, exists: true, acks };
+  // Normalize separators so a Windows-authored ack file still matches.
+  const normalized = acks.map((a) => ({ ...a, file: a.file.replace(/\\/g, '/') }));
+  return { path: relPath, exists: true, acks: normalized };
 }
 
 function isAcknowledged(ackState, file, name) {
@@ -86,7 +93,8 @@ export function detectAmbientState(ts, root, config, files, ackState = { exists:
 
   const resolvedRoot = path.resolve(root);
   const findings = [];
-  let acknowledgedCount = 0;
+  const acknowledgedPairs = new Set();
+  let skippedFiles = 0;
   for (const file of files) {
     const layer = layerForFile(root, file, layers);
     if (!layer || !pureLayers.has(layer)) continue;
@@ -94,7 +102,11 @@ export function detectAmbientState(ts, root, config, files, ackState = { exists:
     let source;
     try {
       const stats = fs.statSync(file);
-      if (!stats.isFile() || stats.size === 0 || stats.size > MAX_FILE_BYTES) continue;
+      if (!stats.isFile() || stats.size === 0) continue;
+      if (stats.size > MAX_FILE_BYTES) {
+        skippedFiles += 1;
+        continue;
+      }
       source = fs.readFileSync(file, 'utf8');
     } catch {
       continue;
@@ -102,15 +114,26 @@ export function detectAmbientState(ts, root, config, files, ackState = { exists:
     const sourceFile = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
     for (const statement of sourceFile.statements) {
       if (!ts.isVariableStatement(statement)) continue;
+      // `declare` ambients allocate no runtime state.
+      if (
+        statement.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword
+        )
+      ) {
+        continue;
+      }
       const flags = statement.declarationList.flags;
-      if ((flags & ts.NodeFlags.Const) !== 0) continue;
+      // const never reassigns; `using`/`await using` bindings are not reassignable.
+      const immutableFlags =
+        ts.NodeFlags.Const | (ts.NodeFlags.Using ?? 0) | (ts.NodeFlags.AwaitUsing ?? 0);
+      if ((flags & immutableFlags) !== 0) continue;
       const kind = (flags & ts.NodeFlags.Let) !== 0 ? 'module-let' : 'module-var';
       for (const declaration of statement.declarationList.declarations) {
         const names = [];
         bindingIdentifiers(ts, declaration.name, names);
         for (const name of names) {
           if (isAcknowledged(ackState, rel, name)) {
-            acknowledgedCount += 1;
+            acknowledgedPairs.add(`${rel}\u0000${name}`);
             continue;
           }
           const line =
@@ -120,6 +143,7 @@ export function detectAmbientState(ts, root, config, files, ackState = { exists:
       }
     }
   }
+  const acknowledgedCount = acknowledgedPairs.size;
   findings.sort(
     (left, right) =>
       left.file.localeCompare(right.file) ||
@@ -127,7 +151,13 @@ export function detectAmbientState(ts, root, config, files, ackState = { exists:
       left.name.localeCompare(right.name)
   );
   const truncated = Math.max(0, findings.length - MAX_FINDINGS);
-  return { active: true, findings: findings.slice(0, MAX_FINDINGS), acknowledgedCount, truncated };
+  return {
+    active: true,
+    findings: findings.slice(0, MAX_FINDINGS),
+    acknowledgedCount,
+    truncated,
+    skippedFiles,
+  };
 }
 
 /** JSON summary for doctor. Advisory only — never a verdict input. */
@@ -139,6 +169,7 @@ export function summarizeAmbientState(result, ackState = { exists: false, acks: 
     findingCount: result.findings.length,
     acknowledged: ackState?.invalid ? 0 : result.acknowledgedCount,
     ...(result.truncated > 0 ? { truncated: result.truncated } : {}),
+    ...(result.skippedFiles > 0 ? { skippedFiles: result.skippedFiles } : {}),
     note: result.active
       ? 'Module-scope mutable state in pure layers — advisory only; acknowledge deliberate registries in the sidecar or move the state behind a port.'
       : 'No pure: true layer opted in; the sensor is idle.',

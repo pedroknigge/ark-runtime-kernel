@@ -83,6 +83,42 @@ describe('U05 sensor — detection in pure layers only', () => {
     expect(result.findings).toEqual([]);
   });
 
+  it('declare ambients, using bindings, and oversized files are handled honestly (/review)', () => {
+    const root = mk();
+    write(
+      root,
+      'src/domain/decl.ts',
+      'declare let ambientDecl: number;\nexport const use = () => ambientDecl;\n'
+    );
+    write(
+      root,
+      'src/domain/using.ts',
+      'declare const mk: () => { [Symbol.dispose](): void };\nusing res = mk();\nexport const r = res;\n'
+    );
+    write(root, 'src/domain/big.ts', `let bigStateVar = 1;\nexport const pad = \`${'x'.repeat(300 * 1024)}\`;\n`);
+    const files = ['src/domain/decl.ts', 'src/domain/using.ts', 'src/domain/big.ts'].map((rel) =>
+      path.join(root, rel)
+    );
+    const result = detectAmbientState(ts, root, CONFIG, files, loadAmbientStateAcks(root));
+    // declare/using never count; the oversized file is skipped but REPORTED.
+    expect(result.findings).toEqual([]);
+    expect(result.skippedFiles).toBe(1);
+  });
+
+  it('an ack matching a legal redeclaration counts once; backslash paths normalize (/review)', () => {
+    const root = mk();
+    write(root, 'src/domain/re.ts', 'var counter = 0;\nvar counter = 1;\nexport const f = () => counter;\n');
+    write(
+      root,
+      AMBIENT_STATE_ACKS_PATH,
+      JSON.stringify({ acks: [{ file: 'src\\domain\\re.ts', name: 'counter', reason: 'legacy tally' }] })
+    );
+    const acks = loadAmbientStateAcks(root);
+    const result = detectAmbientState(ts, root, CONFIG, [path.join(root, 'src/domain/re.ts')], acks);
+    expect(result.findings).toEqual([]);
+    expect(summarizeAmbientState(result, acks).acknowledged).toBe(1);
+  });
+
   it('is inactive without any pure layer (opt-in only)', () => {
     const root = mk();
     write(root, 'src/domain/state.ts', 'let x = 1;\nexport const f = () => x;\n');

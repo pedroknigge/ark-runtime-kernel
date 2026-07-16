@@ -379,9 +379,13 @@ edges), `graphEvaluate` (cycles + layer policy), `analysisCore` (load/analyze/po
 `changePreflight` (atomic candidate), `configWarnings` (config diagnostics) — every consumer
 import path unchanged; the tsup engine bundle regenerated. Self-doctor now reports **zero design
 smells and `designWeak: false`** on this repository for the first time. Mutation line ranges for
-`config-loading` were realigned (never widened); the runtime tarball exceeded its packed budget
-by 149 bytes from facade indirection and was brought back by minifying its duplicate ESM/CJS
-dist (the gate bundle's documented precedent) — 160,149→126,053 packed, **no ceiling raised**.
+`config-loading` were realigned with a deliberate 2-line widening (the previously-truncated tail
+of `withArkConfigMetadata` is now mutated — scope-positive, measured green at 93.85%); the
+runtime tarball exceeded its packed budget by 149 bytes from facade indirection and was brought
+back by minifying its duplicate ESM/CJS dist with `keepNames: true` (gate-bundle precedent;
+class/function `.name` stays stable for name-keyed reflection and Nest diagnostics — cross-model
+review catch) — 160,149→132,438 packed, **no ceiling raised**. `ArkConfigSchemaVersion` is one
+additive public type export.
 Full suite 1131/1131; confidence gate green (config-loading 93.85%, aggregate 92.75%); layer-match,
 cli-pure, analysis-engine drift, package files, TS 5/6/7 compat, and strict architecture all green.
 

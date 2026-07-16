@@ -19,6 +19,9 @@ export default defineConfig({
   // duplicate ESM/CJS distribution so the experimental runtime stays inside its
   // release artifact budget instead of ratcheting the ceiling.
   minify: true,
+  // Minification must not break name-keyed reflection or Nest diagnostics:
+  // class/function .name stays stable across ESM/CJS.
+  keepNames: true,
   treeshake: false,
   cjsInterop: true,
   target: 'es2022',

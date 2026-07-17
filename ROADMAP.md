@@ -297,9 +297,9 @@ gated on the usual promotion discipline.
 | 48b | `X02` | `done` | S | `X01` | Contract-smell acknowledgments gain a lifecycle (review-by/staleness vs origin) so migration acks cannot fossilize |
 | 49b | `X03` | `done` | S | — | Lateral-adapter smell recognizes family infrastructure (adapter → its own infra base is not a lateral peer) |
 | 50b | `X04` | `parked` | L | `X02`, plan doc + ADR | Reshape co-pilot: physicalCohesion sensor + reshape plan as a T03 change map, agent-executed one pilot at a time (moves/merges are judgment; never a codemod) |
-| 51b | `X05` | `parked` | S | `X02` | Stale acknowledgments are surfaced (`ackLifecycle.stale` + human line) so an ack orphaned by a quieted smell is deleted, not silently carried |
-| 52b | `X06` | `parked` | S | `X03` | Family-infra heuristic covers mid-name families (`<Domain><Family>Adapters -> <Family>Infrastructure`) without weakening the cross-family default |
-| 53b | `X07` | `parked` | XS | `X01` | HTML report evidence lists carry their own honest `(+N more)` overflow marker (today capped at 6 with no marker) |
+| 51b | `X05` | `done` | S | `X02` | Stale acknowledgments are surfaced (`ackLifecycle.stale` + human line) so an ack orphaned by a quieted smell is deleted, not silently carried |
+| 52b | `X06` | `done` | S | `X03` | Family-infra heuristic covers mid-name families (`<Domain><Family>Adapters -> <Family>Infrastructure`) without weakening the cross-family default |
+| 53b | `X07` | `done` | XS | `X01` | HTML report evidence lists carry their own honest `(+N more)` overflow marker (today capped at 6 with no marker) |
 
 X01–X03 shipped in **`arkgate@3.5.0`** (2026-07-16): X01 from PR
 [#71](https://github.com/pedroknigge/arkgate/pull/71) (squash `a5106b7`); X02+X03 and the release
@@ -348,6 +348,44 @@ sidecar restored byte-identical (sha `0945fa87…`).
 - **Ambient-state candidate evidence:** the flagship adopter has zero `pure: true` layers after
   full adoption — the strict-mode candidate still has NO field corpus; consider a doctor nudge to
   opt in when the golden pattern names pure modules but no layer declares purity.
+
+### X05–X07 — field warm-ups (stale acks, mid-name families, evidence overflow)
+
+- **Status:** `done` (all three)
+- **Depends on:** `X02` / `X03` / `X01` respectively
+
+**X05 outcome:** `analyzeContractSmells` collects detected canonical edges BEFORE ack filtering;
+any ack entry matching none (orphaned by a fixed contract or quieted heuristic, unknown id,
+typo'd edge) lands in `ackLifecycle.stale` (`staleCount` + list capped at 12). Doctor prints a
+dim line with the exact edges ("fix the edge string or delete the entry"), the report renders it
+with its own overflow marker, and both surface even at zero visible smells. An invalid sidecar
+reports zero stale — a broken file is never inspected.
+
+**X06 outcome:** `isFamilyInfrastructureEdge` matches the target's family token against ANY
+source token (case-insensitive, length ≥ 2), not only the leading one — the target must still be
+a pure `<Family><InfraWords…>` base (every remaining token an infra word), so non-base siblings,
+cross-family edges, and base → member keep firing. Hardening from self-review: a generic role
+word (`adapter(s)`/`gateway(s)`) never counts as a family token — otherwise `AdaptersCore` would
+read as every `*Adapters` layer's base and silently quiet genuine cross-family edges
+(`Persistence` stays a valid family).
+
+**X07 outcome:** the report's per-finding evidence list announces its 6-item cap with
+`…(+N more in doctor JSON)`; at or under the cap no marker appears.
+
+**Live validation (amarilla worktree, 2026-07-17, local build):** doctor over the real tree now
+reports `acknowledged: 26`, `staleCount: 3` listing exactly the three orphaned
+`*->PersistenceInfrastructure` acks (the X03-quieted edge plus the two X06 mid-name edges
+`HoursPersistenceAdapters` / `MoneyPersistenceAdapters`), with the human line naming them —
+the adopter now gets told precisely what to delete. Zero visible smells, verdict untouched.
+
+**Local evidence (2026-07-17):** `x05StaleAcks.test.ts` (7/7), X06 describe block in
+`x03FamilyInfra.test.ts` with amarilla's verbatim layer names (13/13 total), X07 case in
+`reportParity.test.ts`; `x02AckLifecycle.test.ts` updated for the extended `ackLifecycle` shape.
+Cross-model review: 2 findings fixed (stale output now sorted stable under sidecar reordering;
+the report's stale note says plain `(+N more)` instead of over-promising "in doctor JSON" past
+the JSON cap, and the expired note gained the same honest marker) and 1 rejected as the intended
+X06 shape (`PaymentsPersistenceAdapters -> PersistenceInfrastructure` is family membership by
+design — pinned as a documented-trade-off test).
 
 ### X01 — Report parity with doctor advisories
 
@@ -1839,8 +1877,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: none — X01–X03 shipped in arkgate@3.5.0 and field-validated on amarilla; parked queue: X05 (stale acks, S), X06 (mid-name family heuristic, S), X07 (report evidence overflow marker, XS), X04 (reshape co-pilot, L)
-Next action: promote X05–X07 as S/XS warm-ups when a session opens (each has field evidence recorded above); promoting X04 requires its plan doc + ADR first (live corpus recorded: 211 route.ts vs 167 handlers); other recorded candidates: transitive capability inference, strict ambient-state after a field corpus (still no corpus — consider the pure-layer doctor nudge), the node:process dual, template-interpolation specifiers
+Item: X04 (reshape co-pilot) — X05–X07 implemented and live-validated on amarilla (unreleased; ride the next train); X04 starts with its plan doc + ADR (live corpus recorded: 211 route.ts vs 167 handlers)
+Next action: maintainer merges the X05–X07 PR; X04 plan doc + ADR before any X04 code; other recorded candidates: transitive capability inference, strict ambient-state after a field corpus (still no corpus — consider the pure-layer doctor nudge), the node:process dual, template-interpolation specifiers
 Released baseline: npm arkgate@3.5.0 + MCP registry 3.5.0 isLatest (X01 from PR #71; X02+X03 + release train from PR #72)
 Released baseline: npm arkgate@3.4.0; Phase U shipped from PR #69 (slice 1 from #68)
 Released baseline note: MCP registry 3.2.0 published (isLatest) alongside npm/GitHub

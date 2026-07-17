@@ -95,3 +95,64 @@ describe('X03 lateral-adapter smell — family infrastructure carve-out', () => 
     ).toBeDefined();
   });
 });
+
+describe('X06 mid-name families (field: amarilla layer names)', () => {
+  it('a domain-scoped adapter carrying the family mid-name reaches its family base quietly', () => {
+    // amarilla: HoursPersistenceAdapters / MoneyPersistenceAdapters over
+    // PersistenceInfrastructure — the family token sits mid-name, not leading.
+    for (const from of ['HoursPersistenceAdapters', 'MoneyPersistenceAdapters']) {
+      expect(
+        lateralFor([{ from, to: 'PersistenceInfrastructure', allowed: true }]),
+        `${from} -> PersistenceInfrastructure`
+      ).toBeUndefined();
+    }
+  });
+
+  it('cross-family edges without the family token anywhere still fire', () => {
+    for (const from of ['IntegrationAdapters', 'PresentationAdapters']) {
+      expect(
+        lateralFor([{ from, to: 'PersistenceInfrastructure', allowed: true }]),
+        `${from} -> PersistenceInfrastructure`
+      ).toBeDefined();
+    }
+  });
+
+  it('same family toward a non-base sibling still fires', () => {
+    expect(
+      lateralFor([{ from: 'MoneyPersistenceAdapters', to: 'PersistenceAdapters', allowed: true }])
+    ).toBeDefined();
+  });
+
+  it('the reverse direction — base into a member adapter — still fires', () => {
+    for (const to of ['MoneyPersistenceAdapters', 'PersistenceAdapters']) {
+      expect(
+        lateralFor([{ from: 'PersistenceInfrastructure', to, allowed: true }]),
+        `PersistenceInfrastructure -> ${to}`
+      ).toBeDefined();
+    }
+  });
+
+  it('a domain-prefixed member of the same family is quiet by design (documented trade-off)', () => {
+    // Cross-model review flagged this as suppression; it is the intended X06
+    // shape: PaymentsPersistenceAdapters IS a persistence-family member, same
+    // as amarilla's HoursPersistenceAdapters. Membership = carrying the
+    // family token; the miss cost stays a warning line, never a verdict.
+    expect(
+      lateralFor([
+        { from: 'PaymentsPersistenceAdapters', to: 'PersistenceInfrastructure', allowed: true },
+      ])
+    ).toBeUndefined();
+  });
+
+  it('a generic role word never becomes a family — AdaptersCore is not everyone\'s base', () => {
+    // Self-review finding: with any-position matching, family "Adapters"
+    // would quiet every *Adapters -> AdaptersCore edge. Role words are
+    // excluded as family tokens; real families like Persistence still work.
+    expect(
+      lateralFor([{ from: 'IntegrationAdapters', to: 'AdaptersCore', allowed: true }])
+    ).toBeDefined();
+    expect(
+      lateralFor([{ from: 'PaymentsGateway', to: 'GatewayShared', allowed: true }])
+    ).toBeDefined();
+  });
+});

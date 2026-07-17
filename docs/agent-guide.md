@@ -134,7 +134,9 @@ applied acks only, and a malformed sidecar or edge string suppresses nothing. X0
 lifecycle: an optional `reviewBy` (`YYYY-MM-DD`) marks when the exception must be re-reviewed;
 past that date the ack stops applying and the smell returns annotated (`(ack expired …)`).
 Undated acks keep applying but are counted in `contractHealth.ackLifecycle.undated` — give
-migration acks a date so they cannot fossilize.
+migration acks a date so they cannot fossilize. X05 — acks matching no detected edge are listed
+as `ackLifecycle.stale`: fix the edge string or delete the entry. X06 — the family-infra
+carve-out also matches mid-name families (`HoursPersistenceAdapters -> PersistenceInfrastructure`).
 
 **Effect capabilities (U03, evidence-only):** the analysis IR reports typed capability uses for
 seven closed ids (`network`, `filesystem`, `clock`, `randomness`, `environment`, `process`,

@@ -1927,8 +1927,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: none — Phase X complete: X01–X03 shipped in 3.5.0; X04 (ADR 0010 + physicalCohesion + reshape pilot + skill deepening) and X05–X07 implemented and live-validated on amarilla (unreleased; ride the next train, likely 3.6.0)
-Next action: maintainer merges the X05–X07 and X04 PRs, then decides the 3.6.0 train; the supervised reshape field pilot on amarilla is the first post-release activity; other recorded candidates: transitive capability inference, strict ambient-state after a field corpus (still no corpus — consider the pure-layer doctor nudge), the node:process dual, template-interpolation specifiers
+Item: none — Phase X complete: X01–X03 shipped in 3.5.0; X04–X07 implemented, live-validated on amarilla, multi-repo-harness validated, and the pilot loop executed end to end; **release 3.6.0 prepared in-branch** (version sync, CHANGELOG, release note with checklist, q06 CURRENT)
+Next action: maintainer merges the chain #73 → #74 → #75, then authorizes the 3.6.0 train (tag, GitHub Release, publish-npm, MCP registry); the supervised reshape field pilot on amarilla is the first post-release activity; other recorded candidates: transitive capability inference, strict ambient-state after a field corpus (still no corpus — consider the pure-layer doctor nudge), the node:process dual, template-interpolation specifiers
 Released baseline: npm arkgate@3.5.0 + MCP registry 3.5.0 isLatest (X01 from PR #71; X02+X03 + release train from PR #72)
 Released baseline: npm arkgate@3.4.0; Phase U shipped from PR #69 (slice 1 from #68)
 Released baseline note: MCP registry 3.2.0 published (isLatest) alongside npm/GitHub

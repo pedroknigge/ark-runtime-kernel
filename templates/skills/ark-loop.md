@@ -87,7 +87,9 @@ Never auto: free value uses of imports, multi-import files, dynamic import/requi
 When `ark-check --doctor --json` carries `doctor.physicalCohesion.reshapePilot.nextPilot`,
 you may run **that one pilot** — never more:
 
-1. Read the card: `pilotTarget`, `moveSample`/`movesTotal`, `successSignal`, `killSwitch`, `doNot[]`.
+1. Read `physicalCohesion.reshapeDecisions` first. A current rejected/deferred target has no live
+   card: respect the explicit record and do not reconstruct it from raw facts. Read a live card's
+   `pilotTarget`, `decisionTarget`, `moveSample`/`movesTotal`, `successSignal`, `killSwitch`, `doNot[]`.
 2. Moves are **proposed only** — enumerate the full move set for the pilot anchor, express it as
    an architecture change map, and validate through the atomic preflight (`ark_prepare_change` /
    the write gate) **before** any file moves. A move the preflight rejects is a finding, not a
@@ -97,6 +99,10 @@ you may run **that one pilot** — never more:
 4. After the move set: full gate re-run + re-doctor. Success = the concept's cluster count drops
    and the verdict stays green; otherwise use the kill switch (revert the move set, nothing else).
 5. Re-doctor decides whether a next card exists. One pilot per loop iteration, always.
+6. If the user accepts, defers, or rejects the target, persist that explicit verdict in
+   `.ark/reshape-decisions.json` using the card's exact `decisionTarget`, a reason, and optional
+   `reviewBy`. `accepted` keeps this execution path; `deferred`/`rejected` stop repeat pressure.
+   Never infer a decision from `.ark/golden-pattern.json` prose.
 
 ## Steps
 

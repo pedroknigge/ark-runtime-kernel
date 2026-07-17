@@ -150,6 +150,12 @@ Useful split: **core product tree** | **field path** (`examples/`, starters) | *
 
 Mark the **golden** pattern to copy. Do not only list layer file counts.
 
+When `doctor.physicalCohesion` includes `reshapeDecisions`, treat current rejected/deferred
+targets as explicit adopter decisions, not residual to re-fight. Keep their mirror facts in the
+map. When the user accepts, defers, or rejects a live `reshapePilot.nextPilot`, record the card's
+exact `decisionTarget` with a reason (and optional `reviewBy`) in
+`.ark/reshape-decisions.json`. Never infer or suppress from free-form golden-pattern prose.
+
 ### C. Coupling & debt (measure, don’t guess)
 Prefer evidence over aesthetics:
 - **Fan-in / importers** of hot modules (who imports the suspect file?).

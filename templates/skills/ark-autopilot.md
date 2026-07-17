@@ -54,6 +54,11 @@ decision-grade explore pass **and** without opening violating files.
 7. **Q04 pilot loop for B:** when design-weak, take **`pilotLoop.nextPilot`** (one extraction card)
    → apply **only** that pilot with user OK → **re-doctor**. Never multi-pilot batch B; residual
    outside the pilot may remain and must not be called “healthy finished.”
+8. **Y01 reshape verdicts:** read `doctor.physicalCohesion.reshapeDecisions` before acting on
+   mirror facts. Outcome first: a current rejected/deferred verdict means “intentional/deferred
+   layout — no pilot”; never reconstruct that dead card from `findings`. When the user accepts,
+   defers, or rejects a live card, persist its exact `decisionTarget` with a non-empty reason and
+   optional `reviewBy` in `.ark/reshape-decisions.json`; never infer a verdict from golden prose.
 
 
 ## Subagent fan-out (optional, host-dependent)

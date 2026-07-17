@@ -336,7 +336,7 @@ lives only in prose: each names the gate that promotes it, and none may start wh
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
 | 54 | `Y05` | `done` | S | 3.6.0 shipped | Cycle ceilings (package + perf budgets) are re-measured and set once with evidence-backed headroom |
-| 55 | `Y01` | `todo` | M | `X04`, `X02` | A rejected reshape pilot is a recorded decision the doctor respects, not advisory pressure re-fought every session |
+| 55 | `Y01` | `done` | M | `X04`, `X02` | A rejected reshape pilot is a recorded decision the doctor respects, not advisory pressure re-fought every session |
 | 56 | `Y02` | `todo` | M | `P02` | Deterministic hollow-persistence smell: HTTP/route definition living in Persistence-role layers is visible as an advisory |
 | 57 | `Y03` | `todo` | S | — | Governed files that fail to parse are surfaced honestly (a file the scanner cannot read is never silently "clean") |
 | 58 | `Y04` | `todo` | S | — | Skill mechanical-edit hygiene rules close the three observed codemod defects |
@@ -423,7 +423,7 @@ security, confidence/mutation, package-isolation, artifact, and strict architect
 
 ### Y01 — Reshape decisions are recorded (physical-cohesion verdict memory)
 
-- **Status:** `todo`
+- **Status:** `done`
 - **Depends on:** `X04`, `X02`
 
 **Outcome:** a proposed reshape pilot can be **accepted, deferred, or rejected with a reason**,
@@ -437,6 +437,26 @@ mirror is a layout, not a smell.
 
 **Non-negotiables:** decisions are explicit adopter records (sidecar), never inferred silently;
 the underlying cohesion facts keep rendering; cross-anchor evidence never changes the verdict.
+
+**Implemented shape:** bounded `.ark/reshape-decisions.json` records bind a required reason and
+`accepted|deferred|rejected` verdict to the concept + complete sorted anchor set, with optional
+X02-style `reviewBy`. File-count/evidence drift keeps the decision current; anchor membership
+drift makes it stale. Accepted targets keep the X04 change-map/preflight path; current
+rejected/deferred targets suppress only the card and advance the one-at-a-time selector to the
+next undecided finding. Broken/duplicate/oversized, expired, malformed, and stale records suppress
+nothing. Doctor JSON/human output and the HTML report render the memory while the original
+`physicalCohesion.findings` remain byte-stable.
+
+**Golden candidate decision:** not inferred in Y01. Q03's `norm` and `newCodeHome` are free-form
+guidance, not structured role directories; parsing them to suppress a pilot would violate the
+explicit-record non-negotiable. Teams record the rejection explicitly and may cite the golden
+layout in `reason`.
+
+**Local evidence (2026-07-17):** `bin/lib/reshape-decisions.mjs` is 285/300 LOC; 60 focused tests
+passed across Y01, X04, X02, X05, and report parity (including count drift, anchor stale,
+next-finding selection, malformed/bounds/duplicates, golden non-inference, human/JSON/HTML
+surfaces). Typecheck, JS syntax, module budgets, `git diff --check`, and strict architecture all
+passed.
 
 ### Y02 — Hollow-persistence smell (HTTP in Persistence-role layers)
 
@@ -2137,8 +2157,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: Y05 — cycle budget recalibration (`todo`; runs first per the package-budget guardrail), then Y01–Y04 (Phase Y, candidates from the 2026-07-17 3.6.0 field validation)
-Next action: recalibrate cycle ceilings (package at 98.9%; doctorCold p95 ceiling breached by a docs-only PR), then Y01 reshape-decision record. Y06–Y10 hold every retained candidate as a parked queue entry with a named promotion gate (pure-layer nudge → strict ambient-state; node:process dual; template-interpolation specifiers; transitive capability inference). The supervised reshape field pilot is superseded — the flagship mirror is golden-consistent; it waits for a corpus target whose mirroring is not golden-explained
+Item: Y02 — hollow-persistence advisory (`todo`; Y05 and Y01 are done)
+Next action: implement Y02 against the field-calibrated HTTP-in-Persistence shape, then Y03–Y04. Y06–Y10 hold every retained candidate as a parked queue entry with a named promotion gate (pure-layer nudge → strict ambient-state; node:process dual; template-interpolation specifiers; transitive capability inference). The supervised reshape field pilot is superseded — the flagship mirror is golden-consistent; it waits for a corpus target whose mirroring is not golden-explained
 Released baseline: npm arkgate@3.6.0 (Phase X close from PR #76, squash 5d368f5)
 Released baseline: npm arkgate@3.5.0 + MCP registry 3.5.0 isLatest (X01 from PR #71; X02+X03 + release train from PR #72)
 Released baseline: npm arkgate@3.4.0; Phase U shipped from PR #69 (slice 1 from #68)

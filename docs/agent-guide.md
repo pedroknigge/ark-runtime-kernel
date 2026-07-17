@@ -164,6 +164,29 @@ never move. `reshapePilot.nextPilot` is a **proposed** one-at-a-time card (`move
 write gate + atomic preflight; merges are `/ark-architect` judgment cards. `notAScore`, never a
 verdict/`designFitness` input; there is no apply path.
 
+**Reshape decision memory (Y01):** when the team accepts, defers, or rejects that target, record
+the explicit verdict in `.ark/reshape-decisions.json` using the card's exact
+`decisionTarget` (`concept` + complete sorted `anchors`), a non-empty `reason`, and optional
+`reviewBy` (`YYYY-MM-DD`). Current rejected/deferred decisions hide only the repeated pilot card;
+the physical facts keep rendering. Accepted keeps the same `/ark-loop` path. Expired/malformed
+dates and decisions whose anchor set changed no longer apply; doctor/report list them. The golden
+pattern is never parsed to infer a decision — cite it in `reason` when it explains the layout.
+
+```json
+{
+  "schemaVersion": "1",
+  "decisions": [
+    {
+      "concept": "projects",
+      "anchors": ["src/app/api", "src/lib/api-handlers", "src/lib/repositories"],
+      "verdict": "rejected",
+      "reason": "These role directories are our thin-shell-handlers-data golden layout.",
+      "reviewBy": "2027-01-31"
+    }
+  ]
+}
+```
+
 **Governance weight (W02):** `contractHealth.governanceWeight` reports raw facts (layers, rules,
 governed files, files/layer, rules/layer) plus a fixed band (`heavy` / `typical` / `light` /
 `unknown`) with fixed wording. It is explicitly `notAScore` — never a gate input. Read `heavy` as

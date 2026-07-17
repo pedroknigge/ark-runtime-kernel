@@ -110,7 +110,10 @@ If the “fix” is really a missing business intent or Domain home for a rule:
 If `doctor.physicalCohesion` fires while you fix: do **not** fold reshape moves into your fix
 batch. Physical moves run only through `/ark-loop`'s one-pilot loop; merge decisions only as
 `/ark-architect` merge cards. A cohesion finding is context for your fix, never a license to
-reorganize.
+reorganize. Respect `physicalCohesion.reshapeDecisions`: never revive a current rejected/deferred
+target from the still-visible facts. If the user makes a verdict while reviewing the finding,
+record its exact `decisionTarget` + reason in `.ark/reshape-decisions.json`; never infer one from
+golden-pattern prose.
 
 ## Done
 

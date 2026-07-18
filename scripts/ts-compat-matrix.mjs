@@ -289,14 +289,14 @@ export function managerInvocation(packageManager, managerVersion, args) {
     : { command: packageManager, args: [...args] };
 }
 
-function managerInstallArgs(packageManager) {
+export function managerInstallArgs(packageManager) {
   if (packageManager === 'npm') {
     return ['install', '--ignore-scripts', '--no-audit', '--no-fund'];
   }
   if (packageManager === 'pnpm') {
     return ['install', '--ignore-scripts', '--no-frozen-lockfile'];
   }
-  return ['install', '--mode=skip-build'];
+  return ['install', '--mode=skip-build', '--no-immutable'];
 }
 
 export function managerBinaryArgs(packageManager, binary, args) {

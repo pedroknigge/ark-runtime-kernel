@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   expectedTypeScriptHost,
   managerBinaryArgs,
+  managerInstallArgs,
   managerInvocation,
   parseArguments,
   parseJsonOutput,
@@ -64,6 +65,14 @@ describe('Z02 packed TypeScript compatibility harness', () => {
       '--',
       'ark-check',
       '--version',
+    ]);
+  });
+
+  it('allows Yarn to create the ephemeral fixture lockfile in CI', () => {
+    expect(managerInstallArgs('yarn')).toEqual([
+      'install',
+      '--mode=skip-build',
+      '--no-immutable',
     ]);
   });
 

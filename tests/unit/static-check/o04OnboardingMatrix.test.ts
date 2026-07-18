@@ -109,10 +109,8 @@ function assertPackageManagerCommand(commands: string[], packageManager: Package
 
 describe('O04 clean-room onboarding matrix', () => {
   const cells = matrix();
-  const fixtureGroups = SHARD
-    ? SHAPES.flatMap((shape) => SIZES.map((size) => ({ shape, size }))).filter(
-        ({ shape, size }) => `${shape}/${size}` === SHARD
-      )
+  const fixtureCells = SHARD
+    ? cells.filter(({ shape, size }) => `${shape}/${size}` === SHARD)
     : [];
 
   it('defines all 144 supported cells', () => {
@@ -120,49 +118,47 @@ describe('O04 clean-room onboarding matrix', () => {
     expect(new Set(cells.map((cell) => `${cell.shape}/${cell.size}/${cell.host}/${cell.packageManager}`)).size).toBe(144);
   });
 
-  it.each(fixtureGroups)(
-    '$shape/$size covers its 12 host and package-manager cells',
-    ({ shape, size }) => {
-    for (const { host, packageManager } of cells.filter((cell) => cell.shape === shape && cell.size === size)) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-o04-'));
-    try {
-      fs.cpSync(path.join(FIXTURES, shape, size), root, { recursive: true });
-      writePackageManagerSignal(root, packageManager);
+  it.each(fixtureCells)(
+    '$shape/$size/$host/$packageManager completes the clean-room journey',
+    ({ shape, size, host, packageManager }) => {
+      const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-o04-'));
+      try {
+        fs.cpSync(path.join(FIXTURES, shape, size), root, { recursive: true });
+        writePackageManagerSignal(root, packageManager);
 
-      const before = snapshot(root);
-      const preview = start(root, host);
-      expect(snapshot(root)).toEqual(before);
-      expect(preview.projectedCoverage.percent).toBeGreaterThanOrEqual(90);
-      expect(preview.projectedCoverage.classifiedFiles).toBe(preview.projectedCoverage.totalFiles);
-      assertPackageManagerCommand(preview.commands, packageManager);
+        const before = snapshot(root);
+        const preview = start(root, host);
+        expect(snapshot(root)).toEqual(before);
+        expect(preview.projectedCoverage.percent).toBeGreaterThanOrEqual(90);
+        expect(preview.projectedCoverage.classifiedFiles).toBe(preview.projectedCoverage.totalFiles);
+        assertPackageManagerCommand(preview.commands, packageManager);
 
-      const applied = start(root, host, true);
-      const after = snapshot(root);
-      expect(changedPaths(before, after)).toEqual(applied.changes.map((change) => change.path).sort());
-      expect(applied.projectedCoverage).toEqual(preview.projectedCoverage);
-      assertNoUnrelatedHostFiles(root, host);
+        const applied = start(root, host, true);
+        const after = snapshot(root);
+        expect(changedPaths(before, after)).toEqual(applied.changes.map((change) => change.path).sort());
+        expect(applied.projectedCoverage).toEqual(preview.projectedCoverage);
+        assertNoUnrelatedHostFiles(root, host);
 
-      const strict = run(ARK_CHECK, ['--root', root, '--strict-merge'], root, host);
-      expect(strict.status, `${strict.stdout}\n${strict.stderr}`).toBe(0);
-      const doctor = run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host);
-      expect(doctor.status, doctor.stderr).toBe(0);
-      const governed = JSON.parse(doctor.stdout).doctor.governed;
-      expect(governed).toEqual(preview.projectedCoverage);
+        const strict = run(ARK_CHECK, ['--root', root, '--strict-merge'], root, host);
+        expect(strict.status, `${strict.stdout}\n${strict.stderr}`).toBe(0);
+        const doctor = run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host);
+        expect(doctor.status, doctor.stderr).toBe(0);
+        const governed = JSON.parse(doctor.stdout).doctor.governed;
+        expect(governed).toEqual(preview.projectedCoverage);
 
-      const rerun = start(root, host);
-      expect(rerun.changes).toEqual([]);
+        const rerun = start(root, host);
+        expect(rerun.changes).toEqual([]);
 
-      if (shape === 'library' && size === 'small' && packageManager === 'npm') {
-        const installArgs = ['--root', root, '--install-agent-gates', '--tools', host];
-        if (host === 'claude' || host === 'grok') installArgs.push('--require-write-hook', host);
-        const installed = run(ARK_CHECK, installArgs, root, host);
-        expect(installed.status, `${installed.stdout}\n${installed.stderr}`).toBe(0);
-        const writePath = JSON.parse(run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host).stdout).doctor.writePath;
-        expect(writePath.capabilities).toMatchObject(CANONICAL_CAPABILITIES[host]);
+        if (shape === 'library' && size === 'small' && packageManager === 'npm') {
+          const installArgs = ['--root', root, '--install-agent-gates', '--tools', host];
+          if (host === 'claude' || host === 'grok') installArgs.push('--require-write-hook', host);
+          const installed = run(ARK_CHECK, installArgs, root, host);
+          expect(installed.status, `${installed.stdout}\n${installed.stderr}`).toBe(0);
+          const writePath = JSON.parse(run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host).stdout).doctor.writePath;
+          expect(writePath.capabilities).toMatchObject(CANONICAL_CAPABILITIES[host]);
+        }
+      } finally {
+        fs.rmSync(root, { recursive: true, force: true });
       }
-    } finally {
-      fs.rmSync(root, { recursive: true, force: true });
-    }
-    }
   }, 60_000);
 });

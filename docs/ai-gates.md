@@ -182,6 +182,10 @@ The MCP server exposes a resource and tools agents can use proactively (not an e
 - **`validate_code`** (tool) — validates a snippet against the architecture on demand (the write-path gate). May return additive **`autoPatch`** (W1) for mechanical-safe import-type rewrites.
 - **`ark_prepare_write`** (tool) — **W2:** place + constrain + validate + optional autoPatch + judgmentBrief + contentHash in one call (composes `ark_place` + write gate).
 - **`ark_prepare_change`** (tool) — **T02–T05:** read-only atomic create/update/delete preflight with cross-file edge/cycle findings and candidate fingerprints. Optional `changeMap` accepts strict schema `1.0` intent and returns its hash plus satisfied/missing/contradictory/unplanned structural convergence; behavioral completion is not evaluated. Omission is supported. MCP registration remains advisory unless the host makes invocation non-bypassable.
+- **3.7.0 corrective boundary:** the compiler-free candidate graph can miss aliases/workspace
+  edges that final TypeScript-backed CI resolves. Keep the strict CI backstop mandatory while
+  [Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
+  restores differential parity.
 - Blocking CLI/MCP/hook diagnostics include the same deterministic `nextAction`. `AGENTS.md`, skill
   catalogs, session prose, and live LLM calls are not inputs to the enforcement verdict.
 - **`ark_place`** (tool) — given a target file path, returns its layer, forbidden globals, and which layers it may / must not import. Call it *before* writing a new file so generated code lands in a governed location.

@@ -8,8 +8,9 @@ hard-CI split is a deliberate trade-off, not a gap: local hooks and MCP coach at
 while a required merge status is the one boundary a repository can make every write path share.
 
 CLI names: prefer **`arkgate` / `arkgate-check` / `arkgate-mcp`**; aliases `ark` / `ark-check` /
-`ark-mcp` still work for one major. TypeScript **5.x / 6.x / 7.x** as the project compiler:
-see [typescript-support.md](typescript-support.md).
+`ark-mcp` still work for one major. TypeScript **5.x / 6.x** project compilers are supported. The
+TS7-only packed-consumer claim is suspended in 3.7.0; use the exact workaround and full-gate rule
+in [typescript-support.md](typescript-support.md).
 
 ## Architecture playbook and `ark-check --recommend`
 
@@ -376,6 +377,12 @@ Prefer preparing the write before the host commits it to disk:
 | PreToolUse **`--hook-repair`** | On deny: `ARK_REPAIR_JSON` / `ARK_AUTOPATCH_JSON` on stderr (still exit 2 — never silent write) |
 | Doctor **`writePath`** | Reports installed mode plus `enforcementLadder` (`supported` / `installed` / `active` / `bypassable`, evidence, operation coverage, required-status honesty) |
 | Doctor **`goldenPattern`** | Optional Q03 advisory summary (`present` / `invalid`); never clears design-weak |
+
+**Known 3.7.0 limitation:** atomic preflight's compiler-free graph can miss aliases/workspace
+edges that full TypeScript-backed CI resolves. A valid preflight is early feedback, not permission
+to skip the normal strict gate, until
+[Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
+closes adapter parity.
 
 Port-proof inject binding is **judgment** for auto-apply (signature/arity change), not write-path autoPatch.
 Full reference: [ai-gates.md](ai-gates.md). Loop-cost harness: `npm run eval:loop-cost`.

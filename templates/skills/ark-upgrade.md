@@ -18,10 +18,12 @@ npx arkgate-check --install-agent-gates --force
 
 Guide: `docs/migrate-from-ark-runtime-kernel.md` in the package (or on GitHub).
 
-**TypeScript 7 projects:** ArkGate falls back to a nested JS-API TypeScript when the
-project's `typescript` main export is version-only (TS 7.0). After upgrade, point users at
-`docs/typescript-support.md` if the gate or `ARK_DEBUG_TS=1` mentions fallback. Dual install
-(TS6 JS API + TS7 CLI) is optional for tooling that still needs classic `tsc` APIs.
+**TypeScript 7 projects:** the TS7-only packed-consumer support claim is suspended in ArkGate
+3.7.0. Package-manager deduplication can remove the intended compatible JS-API fallback; full
+check then exits unavailable, while `--plan --json` can incorrectly report `goal.met: true`.
+Do not describe the fallback as guaranteed. Keep an API-compatible TypeScript 5/6 package under
+the project `typescript` name, run the full strict gate, and point users at
+`docs/typescript-support.md`. A dual TS6-JS-API / TS7-CLI install is the documented workaround.
 
 **MCP double-bin check (identity cutover):** after upgrade, open `.mcp.json` and
 `.cursor/mcp.json`. `args` must contain **exactly one** of `arkgate-mcp` / `ark-mcp`

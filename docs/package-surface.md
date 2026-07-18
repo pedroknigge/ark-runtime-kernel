@@ -47,6 +47,21 @@ hardening guide remains repository-hosted rather than duplicated in the gate tar
 | **GitHub Action** | `pedroknigge/arkgate` (see `action.yml`) | The `uses:` tag/SHA selects the checker source; `version` remains an optional exact npm compatibility override. |
 | **Package metadata** | `arkgate/package.json` | Stable resource subpath for tooling that needs the installed manifest. |
 
+### Known 3.7.0 corrective limitations
+
+The stable names above remain supported, but two current behavior claims are under a release hold:
+
+- a packed TS7-only consumer may deduplicate away ArkGate's intended compatible JS-API fallback;
+  `--plan` must not be trusted as green when the analysis host is unavailable;
+- compiler-free atomic preflight does not resolve every alias/workspace edge that final
+  TypeScript-backed CI resolves, and AICodeGate can add a same-layer path heuristic after the
+  declared contract allows an edge.
+
+Until [Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
+closes the packed and differential matrices, use full strict CI as final authority. This explicitly
+suspends the TS7-only fallback and cross-adapter parity claims for 3.7.0; TypeScript 5/6 support is
+unchanged, and no limitation is permission to suppress the final gate.
+
 Gates need **no application code imports**. Most projects only use the CLI + MCP + config.
 
 ## Programmatic root API

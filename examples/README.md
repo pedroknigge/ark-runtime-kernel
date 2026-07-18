@@ -19,10 +19,17 @@ passing `arkgate-check` / `ark-check --strict-config`. For deep teaching exercis
 Pick the closest shape, copy the directory, then run:
 
 ```bash
-npm install      # installs arkgate → ark-check
+npm install --save-dev arkgate@latest
+npm pkg set scripts.check="ark-check --root . --config ark.config.json --strict-config"
 npm run check    # inside the starter — must stay green
-ark-check --doctor
+npx ark-check --doctor
 ```
+
+> **Known 3.7.0 gallery limitation:** some source-tree starter manifests still use an old ArkGate
+> range or a repository-relative check command. After copying, install `arkgate@latest` and make
+> the `check` script invoke `ark-check --root . --config ark.config.json --strict-config`.
+> [Phase Z](../docs/plans/enforcement-truth-at-speed/README.md) makes that clean-room journey
+> executable and test-pinned for every starter.
 
 `/ark-architect` points here in step 7 after it scaffolds phase-1 layers.
 

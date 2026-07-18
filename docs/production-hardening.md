@@ -55,6 +55,23 @@ completed steps are compensated when handlers exist, and the workflow ends faile
 effects and compensations must therefore be idempotent, and audit/snapshot stores must be
 operational dependencies rather than best-effort telemetry.
 
+### Known intra-process commit gaps (`K01`, parked)
+
+The experimental event bus does not yet define one atomic commit boundary for every in-process
+mutation and callback. A first-principles audit confirmed three gaps:
+
+- dependency-graph flow registration occurs before hard publish-policy evaluation, and a rejection
+  does not roll the graph mutation back;
+- successful-publish history is appended before a fallible event-buffer enqueue, so an enqueue
+  failure can leave history for a publish that did not reach handlers;
+- subscriber-handler failures reject publish only when `rethrowHandlerErrors` is enabled;
+  projections are installed as the `onPublish` hook, whose failures are always reduced to
+  `hook.error` trace/audit evidence.
+
+Roadmap candidate `K01` retains this work outside the gate-product Phase Z. These limitations do not
+authorize production use or a runtime feature cycle; promotion requires explicit ADR 0004/runtime-
+hardening authorization plus failing rollback, enqueue, and hook-policy fault tests.
+
 ### Required recovery semantics (not implemented by built-ins)
 
 | Contract | Required definition before a production claim |

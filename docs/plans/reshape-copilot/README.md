@@ -81,8 +81,13 @@ Acceptance:
 ### R3 — skill deepening + field pilot
 
 `/ark-loop` gains the execute-one-pilot loop (read card → move → gate → re-doctor → stop);
-`/ark-architect` and `/ark-fix` gain the judgment framing for merge cards. Then one real pilot
-on the field-adopter worktree (maintainer-supervised, no push/merge) becomes the acceptance evidence.
+`/ark-architect` and `/ark-fix` gain the judgment framing for merge cards.
+
+**Closure:** the flagship field-adopter pilot was correctly rejected because its mirror is the
+declared golden role layout; Phase Y superseded repeatedly attempting it. Execution was proven on
+the synthetic complete-import-graph pilot, including a naive move blocked by preflight, rollback,
+the judgment-corrected move, and re-doctor convergence. A future non-golden real corpus may add
+field evidence, but it is not unfinished X04/R3 implementation work.
 
 ## Corpus obligations (before R1 lands)
 

@@ -44,10 +44,12 @@ npx arkgate upgrade
 
 ### TypeScript 7
 
-If the project uses **TypeScript 7** as `tsc`, the gate still works: ArkGate embeds a JS-API
-TypeScript host and falls back when `require('typescript')` is version-only. See
-[typescript-support.md](typescript-support.md). Optional dual-install (TS 6 for tools + TS 7
-CLI) is documented there.
+The TS7-only packed-consumer support claim is suspended in ArkGate 3.7.0. Package-manager
+deduplication can remove the intended JS-API fallback; full check then exits unavailable, while
+`--plan --json` can incorrectly report `goal.met: true`. Keep an API-compatible TypeScript 5/6
+package under the project `typescript` name and run the full strict gate. The optional dual-install
+(TS6 JS API + TS7 CLI) workaround is documented in
+[typescript-support.md](typescript-support.md).
 
 ### MCP args (avoid double binary)
 

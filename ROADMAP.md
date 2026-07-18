@@ -31,8 +31,10 @@ ArkGate is an architecture write firewall plus a coach, not a prompt convention.
 - Validate at the earliest available boundary and enforce at the earliest non-bypassable one: hard
   PreToolUse when covered, transactional MCP preparation for proactive feedback, and a required
   CI/merge check as the final boundary.
-- Given the same base tree, candidate change, compiler inputs, and policy, every adapter returns the
-  same verdict and evidence without an LLM deciding pass/fail.
+- Given the same base tree, candidate change, compiler inputs, and policy, every parity-capable
+  adapter returns the same verdict and evidence without an LLM deciding pass/fail. A retained
+  lexical compatibility mode that lacks required facts reports incomplete and never borrows the
+  parity claim.
 - Every rejection teaches: concise human cause and next action for a casual user, plus stable JSON,
   hashes, and exact evidence for an experienced engineer.
 - After structural validity, help improve architecture and code organization: suggest where new
@@ -111,10 +113,42 @@ for current truth.
 | `RB-04` | P1 | `closed` | S05 closed the confirmed semantic false positives and dependency bypasses |
 | `RB-05` | P1 | `closed` | S02 restored executable coverage and mutation gates |
 | `RB-06` | P1 | `closed` | O03 compact active-host setup passed PR #41 CI and merged as `105cd39` |
+| `RB-07` | P0 operational | `open` | Z01 must prevent release tooling from recursively deleting unowned targets or unrelated tarballs |
+| `RB-08` | P1 | `open` | Z02 must make the packed TS7 fallback and incomplete-analysis verdict truthful |
+| `RB-09` | P1 | `open` | Z03–Z04 must decide and restore one candidate graph and verdict across preflight, API, write gate, and final CI |
+| `RB-10` | P1 journey | `open` | Z05–Z06 must make the installed starter, upgrade, enforcement, and package journey reproducible |
+| `RB-11` | P1 claim | `open` | Z07–Z09 must earn the 10x feedback, causal-evidence, retained-adoption, and independent-close claims |
 
 `RB-01`–`RB-06` are closed by the corresponding completed items and their recorded evidence.
-V05 passed its binary exit gate in PR #49. The separately authorized stable `3.0.0` release
-completed on 2026-07-13; closing `RB-06` had removed the onboarding release blocker.
+V05 passed its then-current binary exit gate in PR #49. The separately authorized stable `3.0.0`
+release completed on 2026-07-13; closing `RB-06` had removed the onboarding release blocker.
+The post-3.7.0 audit below supersedes that evidence as proof of *current* release readiness:
+`RB-07`–`RB-11` are open, so the stabilization stop condition applies again.
+
+### Post-3.7.0 audit reset (2026-07-17)
+
+A first-principles audit of the installed artifact and full field path confirmed four classes of
+false assurance. The shipped history remains `done`; its closure evidence is historical and cannot
+stand in for the new corrective proof.
+
+- A real `arkgate@3.7.0` tarball installed beside TypeScript 7 can deduplicate away the promised
+  JS-API fallback. Full check fails unavailable, while `--plan --json` can report `goal.met: true`
+  over an unanalyzed violating fixture.
+- The compiler-free atomic preflight does not resolve `tsconfig` aliases/workspace packages that
+  final TypeScript-backed CI resolves. The public API also delegates governed-scope invariants to
+  its Tooling adapter, and AICodeGate may apply a hidden same-layer path heuristic after the
+  contract allows an edge.
+- Release cleanup accepts broad caller-selected output and package isolation removes unrelated
+  tarballs; copied gallery starters and managed upgrades do not all satisfy their documented
+  clean-room journey.
+- The live-agent workflow currently selects a skipped case; adoption `firstGreen` stops before the
+  strict check, excludes non-green cells from its median, and records false blocks/bypasses as
+  constants. The prior independent-review gate verifies a declaration, not reviewer independence.
+
+These are exactly the roadmap's stop conditions: a confirmed destructive path, adapter verdict
+divergence, and package/release proof that a clean consumer cannot reproduce. Phase Z runs before
+new feature work. Narrative scope and kill switches:
+[enforcement-truth-at-speed](docs/plans/enforcement-truth-at-speed/README.md).
 
 ---
 
@@ -170,9 +204,15 @@ Stop the queue and add a new stabilization item before continuing when any of th
 - Onboarding writes product source or rewrites an unrelated user file without explicit consent.
 - A package/release check cannot be reproduced from a clean checkout.
 
-While any `RB-*` blocker is open, allow only canary releases on a non-`latest` dist-tag and emergency
-P0/security patches. Do not publish a normal stable feature release until `S01`–`S07` and `O03` are
-`done`.
+While any `RB-*` blocker is open, do not publish a normal feature release or repeat a claim owned by
+that blocker. A stable corrective release may close a strict subset of blockers when it reduces
+risk, names every remaining limitation, and passes the item-specific packed-candidate gate. Use a
+patch when no stable public API is added; an explicitly approved backward-compatible corrective
+minor is allowed only when the blocker cannot close without a new stable export/API, and it may add
+no unrelated surface. Additive evidence/schema fields that make a false-green state explicit must
+follow `docs/package-surface.md` and their schema/type/adapter compatibility gate. Otherwise use a
+non-`latest` canary. The active phase must name its corrective-release lanes explicitly so a
+correctness fix is not serialized behind unrelated performance or longitudinal evidence.
 
 ---
 
@@ -250,16 +290,16 @@ Phase T shipped in **`arkgate@3.1.0`**. Retained evidence:
 | 45 | `U06` | `done` | M | `U04`, `U05` | Dual-depth remediation and measured end-to-end pre-tool/MCP budgets ship without style scoring |
 | 46 | `U07` | `done` | S | `U01`–`U06` | Adoption, docs, package, compatibility, and release evidence close the phase |
 
-**Slice 1 shipped in `arkgate@3.3.0`** (2026-07-16): U01–U03 published from PR
-[#68](https://github.com/pedroknigge/arkgate/pull/68) (squash `64e5def`), signed tag `v3.3.0`,
-GitHub Release, `publish-npm.yml` run 29514425825, npm `latest` = 3.3.0. **Next:** review U04. No U-item authorizes mandatory inlining, function/file-length rules,
-class bans, broad codemods, runtime work, or LLM-derived verdicts.
+**Phase close:** Slice 1 (`U01`–`U03`) shipped in `arkgate@3.3.0` from PR
+[#68](https://github.com/pedroknigge/arkgate/pull/68) (squash `64e5def`); Slice 2 (`U04`–`U07`)
+shipped in `arkgate@3.4.0` from PR [#69](https://github.com/pedroknigge/arkgate/pull/69).
+No U-item authorizes mandatory inlining, function/file-length rules, class bans, broad codemods,
+runtime work, or LLM-derived verdicts.
 
-**Release slicing (owner decision 2026-07-15):** Phase U ships as two stable minors — `U01–U03`
-first (advisory capability evidence in the IR, no enforcement; corpus matures in the field), then
-`U04–U07` (opted-in walls, state sensor, budgets, release evidence) — mirroring the Phase W
-advisory-first pattern. `U02` is a hygiene dependency for `U03`, not a logic one: if a pilot's
-kill-switch fires, record it as that pilot's evidence and start `U03` anyway. Narrative scope and
+**Release slicing (owner decision 2026-07-15, completed):** Phase U shipped as two stable minors —
+`U01–U03` first (advisory capability evidence in the IR, no enforcement), then `U04–U07` (opted-in
+walls, state sensor, budgets, release evidence) — mirroring the Phase W advisory-first pattern.
+`U02` was a hygiene dependency for `U03`, not a logic one. Narrative scope and retained
 kill-switches: [understandable-execution](docs/plans/understandable-execution/README.md).
 
 ### Phase W — contract health
@@ -356,6 +396,251 @@ Ark's product-policy or governed-scope enforcement.
 | 61 | `Y08` | `done` | S | gate met: deterministic harness | `node:process` module-import dual of the `process` ambient forbidden global is detected with the same evidence discipline |
 | 62 | `Y09` | `parked` | S | gate: field case | Template-interpolation import specifiers are surfaced as an unresolvable-edge advisory instead of silently unresolved |
 | 63 | `Y10` | `parked` | L | gate: field demand | Transitive capability inference: a wall sees capabilities reached through local call chains, not only direct uses |
+
+### Phase Z — enforcement truth at speed
+
+Origin: the post-3.7.0 audit reset above. This is stabilization work, not a feature round. It
+restores the product invariant from the packed consumer inward, then optimizes only the proven
+path and replaces self-referential evidence with causal field proof.
+
+Phase X has no pending work. Y06, Y07, Y09, and Y10 remain parked behind their existing gates:
+alias resolution is not Y09's dynamic-template case, direct resolution is not Y10's transitive
+inference, and neither supplies the `pure: true` field corpus required by Y06/Y07. The experimental
+runtime remains outside the product phase under ADR 0004 and `docs/production-hardening.md`; its
+confirmed intra-process commit gaps are retained separately as parked candidate `K01` rather than
+silently dropped.
+
+`Z01` starts with a failing destructive-target fixture; do **not** run the unsafe
+`check:release-artifacts` path or make budget measurement a prerequisite to its fix. After `Z01` is
+done, run release-artifact verification only against a validated tool-owned temporary directory,
+measure the clean candidate, and set the Phase Z package/perf ceilings before `Z02`. No later item
+may raise those ceilings merely to fit its own implementation.
+
+| Order | ID | Status | Size | Depends on | Outcome |
+|---:|---|---|---:|---|---|
+| 64 | `Z01` | `todo` | S | — | Release tooling deletes only validated, tool-owned targets and files |
+| 65 | `Z02` | `todo` | L | `Z01` | Packed TS5/6/7 analysis is available or explicitly non-green; incomplete analysis never satisfies the goal |
+| 66 | `Z03` | `todo` | M | `Z02` | The resolved-facts/public-API boundary and generated CLI parity seam are decided before implementation |
+| 67 | `Z04` | `todo` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
+| 68 | `Z05` | `todo` | L | `Z02`, `Z04` | Every starter and supported package manager completes the installed tarball journey in a clean consumer |
+| 69 | `Z06` | `todo` | L | `Z05` | Upgrade touches only identity-proven managed assets and doctor reports actual enforcement state |
+| 70 | `Z07` | `todo` | L | `Z04`, `Z05` | A measured warm incremental control plane delivers order-of-magnitude feedback without semantic drift |
+| 71 | `Z08` | `todo` | L | `Z06`, `Z07` | Live-agent and causal evaluation count every outcome and defend the corrected path with mutation proof |
+| 72 | `Z09` | `todo` | L | `Z08` | Retained field adoption and a verifiably independent review earn the Phase Z product claims |
+
+#### Corrective-release lanes
+
+- Repository truth corrections do not wait for performance or field evidence. The warning may
+  merge immediately; the npm readme remains stale until a corrective package is published.
+- After `Z01` and `Z02` close `RB-07`/`RB-08`, a stable corrective patch may publish the safe
+  release path, truthful completeness schema, and packed TS compatibility. It must continue to name
+  `RB-09`–`RB-11` as open.
+- After `Z04`, adapter parity may publish as a patch when the selected seam is internal. If `Z03`
+  requires a new stable export/API, use an explicitly approved backward-compatible corrective minor
+  (or a canary until its compatibility gate passes), never an unrelated feature minor. After `Z06`,
+  the clean installed and managed-upgrade journey can become the stable baseline and `RB-10` closes.
+- `Z07` gates only the 10x latency claim. `Z08` and `Z09` gate causal productivity, retained
+  adoption, independent-close, and epic-shipped claims. They do not delay a completed safety or
+  correctness patch, but no feature release or broad product claim is allowed while `RB-11` is open.
+
+### Z01 — Make release cleanup tool-owned and path-safe
+
+- **Status:** `todo`
+- **Depends on:** —
+
+**Outcome:** release-artifact verification refuses repository roots, ancestors, broad caller-owned
+directories, and any output without the expected ownership boundary. Package-isolation cleanup
+removes only tarballs created by that invocation.
+
+**Acceptance:** failing fixtures cover `--out .`, the repository root, a parent, a non-owned
+existing directory, symlink escape, and an unrelated pre-existing `.tgz`. Valid temporary output
+still produces the same tarballs, manifests, SBOMs, checksums, and budget verdict. Close `RB-07`
+only after the focused tests and release-artifact smoke pass from a clean checkout.
+
+### Z02 — Make analysis completeness and TS compatibility truthful
+
+- **Status:** `todo`
+- **Depends on:** `Z01`
+
+**Outcome:** TypeScript host loading has an API-compatible fallback that package-manager deduplication
+cannot silently replace with an unusable TS7 export. Public JSON distinguishes complete, partial,
+and unavailable analysis; only complete analysis may return a satisfied architecture goal.
+Parse-invalid governed files fail closed at `--strict-merge` while doctor may retain its advisory
+detail.
+
+**Acceptance:** the compatibility job installs the candidate tarball, not checkout `bin/`, across
+the supported Node/package-manager matrix with TS5, TS6, and TS7. It executes plan, full strict
+check, hook/MCP smoke, ESM/CJS imports, and types against a known violating fixture. Missing host,
+rejected host, and parse-incomplete cases never emit `goal.met: true` or a green strict verdict.
+The additive completeness contract is semantically aligned across
+`schemas/ark.analysis-result.schema.json`, exported TypeScript types, CLI/MCP JSON, snapshots, and
+user docs through contract/drift tests; artifacts generated from the same canonical source remain
+byte-identical. Compatibility tests read those surfaces from the tarball, and the dual TS6/TS7
+fixture executes the documented commands rather than only inspecting installed packages.
+Close `RB-08` only on that packed matrix and schema/type/adapter parity proof.
+
+### Z03 — Decide the resolved-facts and public API boundary
+
+- **Status:** `todo`
+- **Depends on:** `Z02`
+
+**Outcome:** a decision record selects exactly one parity-capable contract before implementation:
+a Tooling-owned resolver/facts port or an additive supplied-facts API. ADR 0002's lexical supplied-
+content API may remain only as an explicitly incomplete compatibility mode excluded from parity,
+and then a named parity-capable programmatic surface is mandatory. The decision preserves the four-
+layer dependency direction unless a new public contract is intentionally approved. It also pins how
+the ADR 0003 generated CLI bundle consumes the same versioned facts/verdict seam without importing
+Kernel from Tooling.
+
+**Acceptance:** reproduce the alias/workspace/API differential in one minimal fixture; compare the
+resolver-port and supplied-facts options plus lexical-compatibility treatment across dependency
+direction, sync/async/API compatibility, schema/versioning, generated artifact, and migration
+consequences; select the parity-capable surface and record why the rejected shape fails the
+invariant. Amend an existing ADR only when its decision remains intact; create a new ADR when the
+public input, sync contract, or ownership boundary changes. `Z04` cannot start with this choice open
+or with a lexical-only API as the promised parity surface.
+
+### Z04 — Build one candidate facts → IR → verdict pipeline
+
+- **Status:** `todo`
+- **Depends on:** `Z03`
+
+**Outcome:** under the selected boundary, the TypeScript/Tooling edge resolves the complete virtual
+candidate into serializable facts; the pure Domain/Kernel path evaluates those facts without
+filesystem or compiler imports.
+Governed scope/layer classification is a shared invariant. Once source and target resolve to
+governed layers, `ark.config.json` is the final authority, including same-layer edges; legacy path
+heuristics cannot add an undeclared blocker.
+
+**Acceptance:** one differential corpus covers relative paths, `paths`/`baseUrl`, workspace and
+project packages, symlinks, creates/updates/deletes, `import = require`, CommonJS, dynamic literal
+imports, type-only forms, unresolved evidence, parse failure, exclusions, and unclassified paths.
+The parity-capable programmatic surface selected in `Z03`, atomic preflight, CLI, MCP, complete-
+patch hook/AICodeGate, ESLint within its documented envelope, and final CI agree on verdict, rule
+identity, and evidence. Any retained lexical compatibility API reports incomplete for facts it
+cannot resolve and is excluded by name from the parity claim. Y09/Y10 remain outside this item.
+Close `RB-09` only when no differential cell disagrees.
+
+**Kill switch:** if implementation imports TypeScript, filesystem, or process state into
+Domain/Kernel, violates the `Z03` decision, or makes the generated CLI a second semantic authority,
+stop. Return to the decision record rather than hiding the difference in an adapter.
+
+### Z05 — Prove the installed starter and package journey
+
+- **Status:** `todo`
+- **Depends on:** `Z02`, `Z04`
+
+**Outcome:** documentation and generated assets describe commands that work outside this mother
+repository. Every gallery starter comes from one catalog, is copied to a temporary directory,
+installs the candidate tarball, and passes its documented install, check, doctor, start preview,
+atomic preflight, strict merge, and package-import path.
+
+**Acceptance:** clean-room tests cover every starter and supported package manager; no package uses
+stale registry ranges, repository-relative bins, or an unpublishable `file:../..` path for its
+consumer proof. Fixtures run from the packed candidate and verify both success and one deliberate
+architecture violation. No unconsented source or unrelated-file rewrite is allowed.
+
+### Z06 — Make managed upgrade and enforcement state truthful
+
+- **Status:** `todo`
+- **Depends on:** `Z05`
+
+**Outcome:** upgrade refreshes only Ark-managed assets, preserves user-owned edits, and reports
+stale, missing, customized, and conflicted states from content identities rather than version stamps
+alone. Doctor separately reports analyzed, configured, installed, active, bypassable, and required
+enforcement state from observed evidence.
+
+**Acceptance:** candidate-tarball fixtures cover unmodified managed assets, locally edited managed
+assets, deleted assets, old-version assets with identical content, and unrelated similarly named
+files across every supported host. Preview/apply is idempotent; conflicts require explicit consent;
+no source or user-owned file changes. Doctor's human/JSON/schema/type views agree, and a negative
+fixture proves required CI status remains `unverified` without provider evidence—local files or
+workflow names never imply branch protection. Close `RB-10` only after the complete `Z05` clean-
+room matrix and this managed-content matrix are green.
+
+### Z07 — Deliver a warm incremental control plane
+
+- **Status:** `todo`
+- **Depends on:** `Z04`, `Z05`
+
+**Outcome:** the proven facts pipeline can reuse a project snapshot keyed by policy, compiler, and
+content identities. A resident MCP/worker transport is a pilot, not a dependency; the current
+one-shot path remains the compatibility and recovery fallback. Pure command tests run in parallel,
+with only a small installed CLI suite retaining serial subprocess coverage.
+
+**Acceptance targets:** hook p95 <=65 ms at 10k files, warm doctor p95 <=500 ms, incremental p95
+<=10 ms, PR-relevant feedback <10 s, and full non-mutation suite <30 s on the recorded runner. JSON,
+hash, verdict, cold/warm, edit/delete, and invalidation parity are exact.
+
+The hook and incremental targets are more than 10x below their recorded Phase Y baselines on the
+same runner (683.761 ms and 106.93 ms). The 500 ms resident-doctor target is an absolute UX ceiling,
+not yet a 10x claim: before implementation, record a one-shot warm-doctor baseline with identical
+tree/cache state, then publish cold, one-shot-warm, and resident-warm results. Claim 10x doctor only
+if that like-for-like ratio reaches it. Do not ship a resident path unless the absolute targets hold
+with zero stale-snapshot or differential-verdict failures. Revert to one-shot rather than relax
+correctness or budgets.
+
+### Z08 — Repair live-agent, causal, and mutation evidence
+
+- **Status:** `todo`
+- **Depends on:** `Z06`, `Z07`
+
+**Outcome:** the live-agent workflow executes a non-skipped case when enabled; adoption time runs
+through strict Ark, typecheck, and tests; all cells remain in denominators; false blocks, bypasses,
+manual decisions, and final CI state are measured rather than initialized.
+
+**Acceptance:** before execution, commit an immutable experiment manifest that pins the candidate
+source SHA and tarball SHA-256, repository SHAs/lockfiles, Node/package-manager/TypeScript/OS
+toolchain, agent/model/config, task prompts, grader version, caps, exclusions, and seeds. Treatment
+and control use the same manifest and differ only by the preregistered ArkGate intervention. Include
+at least 24 held-out task pairs across at least six repositories and three fixed agent seeds per arm.
+The primary estimand is restricted mean time to the first candidate that passes the common
+architecture grader, typecheck, and tests. ArkGate/control must be <=0.80 with the upper bound of a
+paired 95% bootstrap confidence interval below 1.0; merge-gate completion may not regress by more
+than five percentage points.
+Reports also publish turns/tokens, escapes, false blocks, and bypasses. Unsuccessful cells are right-
+censored at the preregistered cap and remain in the primary and percentile summaries; when fewer
+than half succeed, median first-valid is “not reached,” never success-only. Mutation ranges covering
+the corrected completeness, resolution, managed-upgrade, and snapshot invalidation paths contain
+zero `NoCoverage` survivors. If the primary hypothesis loses, publish the null/negative result and
+remove or reframe the causal-productivity claim before `Z09`; never switch endpoints post hoc.
+
+### Z09 — Prove retained field adoption and independent close
+
+- **Status:** `todo`
+- **Depends on:** `Z08`
+
+**Outcome:** reproducible external and longitudinal evidence replaces self-declared release proof.
+Reviewer and exact-candidate identity are verified from signed repository/review evidence rather
+than an `independent: true` field.
+
+**Acceptance:** the preregistered balanced external matrix covers at least 12 pinned repositories,
+four hosts, and three package managers; >=5/6 (83.33%) of its entire cell denominator reaches
+protected green without weakening the contract, and every Adapt is explained. The preregistered
+cohort has at least eight consented adopter projects; >=3/4 of the full cohort retain required Ark
+enforcement at D30 and >=5/8 at D90, with missing follow-up counted not retained. A reviewer who did
+not implement `Z08`/`Z09` reproduces the initial packed candidate and signs an immutable longitudinal
+manifest containing, per project, initial digest, repository SHA, required-status evidence, every
+upgrade digest/date, and final state. An upgrade does not reset the clock; retention counts only the
+initial candidate or a recorded forward corrective descendant that passed the same relevant gates.
+Missing follow-up, disabled enforcement, downgrade, or unrecorded upgrade counts not retained. Close
+`RB-11`, mark the epic shipped, and authorize only the 10x, causal-productivity, retained-adoption,
+and independent-close claims whose preregistered thresholds passed; ordinary completed corrective
+patches did not wait for this milestone.
+
+### Retained runtime correctness candidate (outside Phase Z)
+
+| ID | Status | Size | Promotion gate | Outcome |
+|---|---|---:|---|---|
+| `K01` | `parked` | L | explicit runtime-hardening cycle authorized under ADR 0004 | Intra-process runtime commit/rollback and hook-failure semantics are atomic and fault-tested |
+
+`K01` retains three confirmed gaps: dependency-graph mutation can precede a rejecting hard policy;
+recording history can append before a fallible buffer enqueue; subscriber-handler errors throw only
+when `rethrowHandlerErrors` is enabled, while projections are installed as `onPublish` and their
+errors are always reduced to `hook.error`. It is not Phase Z work, a gate-package release blocker,
+or authorization to expand the experimental runtime. If promoted, begin with failing rollback,
+append/enqueue, handler, and projection/hook-policy fault tests and update
+`docs/production-hardening.md` with the chosen commit semantics.
 
 ### 3.6.0 field validation (field-adopter worktree, 2026-07-17)
 
@@ -701,8 +986,8 @@ design — pinned as a documented-trade-off test).
 
 ### X04 — Reshape co-pilot (physicalCohesion + proposed pilot + skill deepening)
 
-- **Status:** `done` (R1–R3; the supervised field pilot on a real adopter tree remains a
-  post-release activity by design)
+- **Status:** `done` (R1–R3; Phase Y superseded the proposed real-adopter pilot after the flagship
+  mirror proved golden-consistent; the complete-graph synthetic pilot remains execution proof)
 - **Depends on:** `X02`, plan doc + ADR — both met:
   [plan](docs/plans/reshape-copilot/README.md), [ADR 0010](docs/adr/0010-reshape-copilot-boundary.md)
   (**Accepted**, thresholds calibrated on the live corpus before any code)
@@ -836,9 +1121,12 @@ remain internal release guardrails, not npm requirements.
   approve a new evidence-backed exception explicitly. Never raise the ceiling only to match the
   latest measurement plus a token margin.
 
-**Next-round verification:** `npm pack --json --dry-run`, `npm run check:package-files`, and
-`npm run check:release-artifacts` must agree on the candidate contents and recorded budget before
-the first implementation item starts.
+**Per-cycle verification:** normally, `npm pack --json --dry-run`, `npm run check:package-files`, and
+`npm run check:release-artifacts` must agree on the clean candidate contents before the first
+implementation item of each new roadmap cycle starts. Phase Z explicitly exempts `Z01` because that
+item fixes an unsafe release-artifact cleanup path: expose and fix the destructive fixture first,
+then run release verification in a validated tool-owned temporary directory and freeze the cycle
+ceilings before `Z02`. Never reuse a prior cycle's headroom as proof for a new one.
 
 ---
 
@@ -2118,16 +2406,30 @@ If any condition fails, the product stays beta. Do not convert the result into a
 | Dimension | Exit target |
 |---|---:|
 | Known semantic bypasses | 0 |
+| False-green incomplete analyses | 0 |
+| Differential adapter verdict/evidence agreement | 100% of parity-capable corpus cells; incomplete compatibility modes never green |
 | Labeled false-positive rate | <0.5% |
 | Critical mutation score | ≥90% |
+| Mutants in declared critical ranges with `NoCoverage` | 0 |
 | Host guarantee accuracy | 100% of matrix cells |
 | Single-host setup | ≤5 files and <25 KB |
 | Unconsented package/source rewrites | 0 |
 | Governed coverage after approved adoption | median ≥90% |
-| 10k changed-file latency | p95 <100 ms |
+| Installed protected-green adoption | ≥5/6 of the full preregistered matrix (minimum 12 cells); every Adapt remains in the denominator |
+| Hook latency at 10k files | p95 ≤65 ms |
+| Warm doctor latency at 10k files | p95 ≤500 ms |
+| Incremental analysis latency | p95 ≤10 ms |
 | 50k cold scan | p95 ≤30 s on `ubuntu-latest`; 5 s deferred to a dedicated engine-optimization milestone |
 | External matrix | ≥12 pinned repos, 4 hosts, 3 package managers |
+| Causal first-valid effect | ≥24 held-out pairs × 3 seeds/arm; restricted-mean Ark/control ≤0.80 and paired 95% CI upper bound <1.0; completion regression ≤5 pp |
+| Retained adoption | ≥8 consented projects; ≥3/4 active at D30 and ≥5/8 at D90 over the full cohort; missing follow-up counts not retained |
 | Open P0/P1 at beta exit | 0 |
+
+**Phase Z evidence rule:** the V03/V05/B01 records below remain historical attempt evidence. The
+post-3.7.0 audit proved that `firstGreen`, false-block/bypass counts, and reviewer independence did
+not establish the outcomes their acceptance text required. They cannot support a current release
+claim until `Z08` repairs the causal measurement and `Z09` closes `RB-11` with retained and
+independent evidence. This does not delay the corrective-release lanes above.
 
 **Attempt evidence (2026-07-13):** `scripts/beta-exit-audit.mjs` and
 `eval/beta-exit/audit-schema.v1.json` record a reproducible binary decision. The 12-cell balanced
@@ -2239,8 +2541,11 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: no promoted implementation item (`Y08` done; Y05 and Y01–Y04 are done)
-Next action: collect the named field evidence before promoting Y06, Y07, Y09, or Y10; parked work must not start. The supervised reshape field pilot is superseded — the flagship mirror is golden-consistent; it waits for a corpus target whose mirroring is not golden-explained
+Item: `Z01` (`todo`) — make release cleanup tool-owned and path-safe; no item is `doing` yet
+Next action: move only Z01 to `doing`, expose the destructive-target fixtures before invoking release-artifacts, and close RB-07; then record Phase Z cycle budgets before Z02
+Release lanes: Z01+Z02 may ship a stable corrective patch; Z04 may ship parity; Z06 closes the installed journey; Z07–Z09 gate only 10x/causal/retention/independent-close claims
+Parked unchanged: Y06, Y07, Y09, and Y10 retain their named field gates and must not start as collateral Z work
+Runtime parked: K01 retains confirmed experimental intra-process commit gaps outside Phase Z and does not block gate-package corrective releases
 Released baseline: npm arkgate@3.7.0 (Phase Y close from PR #78)
 Released baseline: npm arkgate@3.6.0 (Phase X close from PR #76, squash 5d368f5)
 Released baseline: npm arkgate@3.5.0 + MCP registry 3.5.0 isLatest (X01 from PR #71; X02+X03 + release train from PR #72)

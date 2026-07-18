@@ -182,6 +182,10 @@ The MCP server exposes a resource and tools agents can use proactively (not an e
 - **`validate_code`** (tool) — validates a snippet against the architecture on demand (the write-path gate). May return additive **`autoPatch`** (W1) for mechanical-safe import-type rewrites.
 - **`ark_prepare_write`** (tool) — **W2:** place + constrain + validate + optional autoPatch + judgmentBrief + contentHash in one call (composes `ark_place` + write gate).
 - **`ark_prepare_change`** (tool) — **T02–T05:** read-only atomic create/update/delete preflight with cross-file edge/cycle findings and candidate fingerprints. Optional `changeMap` accepts strict schema `1.0` intent and returns its hash plus satisfied/missing/contradictory/unplanned structural convergence; behavioral completion is not evaluated. Omission is supported. MCP registration remains advisory unless the host makes invocation non-bypassable.
+- **3.7.0 corrective boundary:** the compiler-free candidate graph can miss aliases/workspace
+  edges that final TypeScript-backed CI resolves. Keep the strict CI backstop mandatory while
+  [Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
+  restores differential parity.
 - Blocking CLI/MCP/hook diagnostics include the same deterministic `nextAction`. `AGENTS.md`, skill
   catalogs, session prose, and live LLM calls are not inputs to the enforcement verdict.
 - **`ark_place`** (tool) — given a target file path, returns its layer, forbidden globals, and which layers it may / must not import. Call it *before* writing a new file so generated code lands in a governed location.
@@ -438,6 +442,7 @@ export default [
   ark.configs.recommended,
   // no-domain-infra-imports  → config-driven layer edges (type-only + value)
   // no-forbidden-globals     → layer.forbiddenGlobals from ark.config.json
+  // ark/no-denied-capabilities → layer.capabilities.deny / layer.pure
   // no-raw-event-publish + require-publish-source → runtime event hygiene
 ];
 ```
@@ -460,6 +465,38 @@ Whatever the agent side does, run the merge profile in CI:
 ```yaml
 - run: npx ark-check --root . --config ark.config.json --strict-merge
 ```
+
+Or use the repository's composite Action at a pinned release or commit:
+
+```yaml
+- uses: pedroknigge/arkgate@v3.7.0
+  with:
+    root: .
+    config: ark.config.json
+    strict-config: 'true'
+    baseline: ''
+    version: ''
+    github-token: ${{ github.token }}
+```
+
+| Action input | Default | Meaning |
+|--------------|---------|---------|
+| `root` | `.` | Project root to check. |
+| `config` | `ark.config.json` | Config path relative to `root`. |
+| `strict-config` | `true` | On the current Action revision, run the fail-closed `--strict` profile; an explicit older `version` uses its compatibility `--strict-config` path. |
+| `baseline` | empty | Optional frozen-violation baseline; empty disables baseline mode. |
+| `version` | empty | Optional exact npm version override; empty runs the code from the pinned Action revision. |
+| `github-token` | empty | Token for a pull-request failure comment; empty skips the comment. |
+
+For an additional local human-commit check, copy the shipped hook template:
+
+```bash
+cp node_modules/arkgate/templates/hooks/pre-commit-ark .git/hooks/pre-commit
+chmod +x .git/hooks/pre-commit
+```
+
+The template runs the project's architecture check before a commit. It is optional and local;
+it does not replace the CI job or repository policy that makes the CI status required for merges.
 
 `--strict-merge` requires strict config plus the shared gate files (`AGENTS.md`, MCP config,
 and CI workflow) and fails on safety diagnostics. `--strict` is a compatibility alias. Neither

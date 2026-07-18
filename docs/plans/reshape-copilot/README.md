@@ -1,5 +1,16 @@
 # Reshape co-pilot (Phase X, X04)
 
+> **Plan (retained shipped rationale).** Library hub: [AGENTS.md](../../../AGENTS.md)<br>
+> Related: [ROADMAP.md](../../../ROADMAP.md) · [ADR 0010](../../adr/0010-reshape-copilot-boundary.md) · [3.6.0 release evidence](../../releases/3.6.0.md)
+
+**Status:** Shipped in `arkgate@3.6.0` (2026-07-17)<br>
+**Slug:** `reshape-copilot`<br>
+**Kind:** epic / advisory co-pilot<br>
+**Owners:** product (Pedro) + library maintainers<br>
+**Last updated:** 2026-07-17
+
+---
+
 ArkGate can prove a tree's *edges* are clean while its *physical shape* rots: hundreds of files
 mirroring one domain concept across parallel directories, invisible to every current sensor.
 X04 gives the doctor eyes for physical cohesion and gives agents a governed way to execute
@@ -70,8 +81,13 @@ Acceptance:
 ### R3 — skill deepening + field pilot
 
 `/ark-loop` gains the execute-one-pilot loop (read card → move → gate → re-doctor → stop);
-`/ark-architect` and `/ark-fix` gain the judgment framing for merge cards. Then one real pilot
-on the field-adopter worktree (maintainer-supervised, no push/merge) becomes the acceptance evidence.
+`/ark-architect` and `/ark-fix` gain the judgment framing for merge cards.
+
+**Closure:** the flagship field-adopter pilot was correctly rejected because its mirror is the
+declared golden role layout; Phase Y superseded repeatedly attempting it. Execution was proven on
+the synthetic complete-import-graph pilot, including a naive move blocked by preflight, rollback,
+the judgment-corrected move, and re-doctor convergence. A future non-golden real corpus may add
+field evidence, but it is not unfinished X04/R3 implementation work.
 
 ## Corpus obligations (before R1 lands)
 

@@ -1,7 +1,8 @@
 # Reference: commands and artifacts
 
 Product: **ArkGate** (`arkgate`). Prefer `arkgate` / `arkgate-check` / `arkgate-mcp`; aliases
-`ark` / `ark-check` / `ark-mcp` work for one major. TypeScript 5–7: [typescript-support.md](../typescript-support.md).
+`ark` / `ark-check` / `ark-mcp` work for one major. TypeScript 5/6 are supported; the TS7-only
+packed-consumer claim is suspended in 3.7.0: [typescript-support.md](../typescript-support.md).
 
 ## Recommendation
 

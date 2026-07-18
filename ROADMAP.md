@@ -419,7 +419,7 @@ may raise those ceilings merely to fit its own implementation.
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
 | 64 | `Z01` | `done` | S | — | Release tooling deletes only validated, tool-owned targets and files |
-| 65 | `Z02` | `todo` | L | `Z01` | Packed TS5/6/7 analysis is available or explicitly non-green; incomplete analysis never satisfies the goal |
+| 65 | `Z02` | `doing` | L | `Z01` | Packed TS5/6/7 analysis is available or explicitly non-green; incomplete analysis never satisfies the goal |
 | 66 | `Z03` | `todo` | M | `Z02` | The resolved-facts/public-API boundary and generated CLI parity seam are decided before implementation |
 | 67 | `Z04` | `todo` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
 | 68 | `Z05` | `todo` | L | `Z02`, `Z04` | Every starter and supported package manager completes the installed tarball journey in a clean consumer |
@@ -479,7 +479,7 @@ the same-SHA performance rerun above was also green. `RB-07` is closed.
 
 ### Z02 — Make analysis completeness and TS compatibility truthful
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Depends on:** `Z01`
 
 **Outcome:** TypeScript host loading has an API-compatible fallback that package-manager deduplication
@@ -2563,8 +2563,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: `Z02` (`todo`) — make packed TS5/6/7 analysis available or explicitly non-green; no item is `doing` yet
-Next action: move only Z02 to `doing`, add the failing packed/deduped-host and completeness fixtures, then close RB-08 on the installed matrix
+Item: `Z02` (`doing`) — make packed TS5/6/7 analysis available or explicitly non-green
+Next action: add the failing packed/deduped-host and completeness fixtures, then close RB-08 on the installed matrix
 Release lanes: Z01+Z02 may ship a stable corrective patch; Z04 may ship parity; Z06 closes the installed journey; Z07–Z09 gate only 10x/causal/retention/independent-close claims
 Parked unchanged: Y06, Y07, Y09, and Y10 retain their named field gates and must not start as collateral Z work
 Runtime parked: K01 retains confirmed experimental intra-process commit gaps outside Phase Z and does not block gate-package corrective releases

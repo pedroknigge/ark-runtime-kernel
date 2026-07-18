@@ -4,7 +4,7 @@
 > [docs/package-surface.md](../package-surface.md) · Decisions: [docs/adr/](../adr/README.md)
 > **Code and manifests are the source of truth.** Documentation does not override implementation.
 
-**Date:** 2026-07-17<br>
+**Date:** 2026-07-18<br>
 **Scope:** project<br>
 **Intent:** audit → selective documentation update<br>
 **Variant:** ArkGate bridge (`ark.config.json`, local CLIs, `ark://manifest`)<br>
@@ -22,9 +22,9 @@ Internal helpers and individual test files are evidence, not separate product su
 | Verdict | Count |
 |---------|------:|
 | OK | 23 |
-| Partial | 0 |
+| Partial | 1 |
 | Missing | 0 |
-| Contradicted | 5 |
+| Contradicted | 4 |
 | Unverifiable | 0 |
 
 **Surface coverage:** 14/14 bounded rows have a canonical authority in
@@ -32,9 +32,11 @@ Internal helpers and individual test files are evidence, not separate product su
 
 **Top residual risks:**
 
-1. Five product claims are contradicted by installed-artifact or differential-path evidence. They
-   are correctness blockers or product-claim gates owned by
+1. Four product claims remain contradicted by differential-path, clean-room, upgrade, or field
+   evidence. They are correctness blockers or product-claim gates owned by
    [Phase Z](../plans/enforcement-truth-at-speed/README.md), not documentation wording to smooth over.
+   Z02 has a source candidate and local package-manager evidence, but remains Partial until its
+   36-cell packed CI matrix passes.
 2. `@arkgate/runtime` is not currently present in the npm registry. Its first publication remains
    a separate maintainer action; the root publish workflow does not publish it automatically, and
    parked candidate `K01` retains three confirmed intra-process commit gaps. The docs now state
@@ -42,9 +44,9 @@ Internal helpers and individual test files are evidence, not separate product su
 3. The ignored `.ark/reports/latest.json` is an older local sensor snapshot and is not current
    release evidence; the live architecture check is the handoff gate.
 
-**Recommended next Intent:** move only `Z01` from `todo` to `doing`, expose its destructive-target
-fixture before invoking release-artifact verification, and retain the remaining Phase Z sequence
-plus all parked Y/runtime gates.
+**Recommended next Intent:** land the Z02 corrective candidate with its packed compatibility CI,
+then move only Z03 into implementation. Retain the Z03→Z09 sequence plus all parked Y/runtime
+gates.
 
 ## Code inventory (high level)
 
@@ -81,7 +83,7 @@ There are no product UI routes or database schemas in this library repository.
 | C-014 | Root package metadata is available at `arkgate/package.json` | [Package surface](../package-surface.md) | root manifest export | OK | keep |
 | C-015 | Published payload is bounded by the root manifest and verified separately | [Contributing](../../CONTRIBUTING.md) | root `files` · package verifier | OK | keep |
 | C-016 | This repository's Ark contract has four declared layers and generated parity seams | [Hub placement](../../AGENTS.md#where-new-code-belongs) | `ark.config.json` · canonical/generated files | OK | run Ark after source edits |
-| C-017 | A packed ArkGate install beside project TS7 retains a usable JS-API TypeScript fallback | [TypeScript support](../typescript-support.md) | root dependency/peer deduplication · `bin/lib/typescript-host.mjs` · packed TS7 reproduction | Contradicted | `Z02`: non-deduplicable compatible host + packed compatibility matrix + explicit incomplete state |
+| C-017 | The current source candidate keeps project TS5/6/7 compilers project-owned while a packed TS7 install retains a usable JS-API analysis host and fails closed when analysis is incomplete | [TypeScript support](../typescript-support.md) | exact `typescript-ark-host` alias · `bin/lib/typescript-host.mjs` · schema 1.2 completeness · packed Node/package-manager/TS matrix | Partial | Local npm/pnpm/Yarn evidence is green; Yarn reports strict PnP for TS5/6 and node-modules for native TS7. Close only after all 36 CI cells pass, then publish in the next corrective release |
 | C-018 | All retained plan seeds are indexed with current shipped status | [Hub plans](../../AGENTS.md#product-plans-library-epic-queue-seeds) | `docs/plans/` · ROADMAP completed phases | OK | keep roadmap authoritative |
 | C-019 | Accepted ADRs are navigable without duplicating their rationale | [ADR index](../adr/README.md) | ADR frontmatter/status | OK | supersede, never delete |
 | C-020 | Current release identity is aligned at 3.7.0 | [Release notes](../releases/3.7.0.md) | package/lock/version/server metadata | OK | release gate owns future sync |
@@ -108,14 +110,24 @@ installed-artifact and execution-path audit tested whether the named claims were
   failures left the median, false-block/bypass values were constants, and reviewer independence
   was self-declared.
 
-The corrective implementation authority is [ROADMAP Phase Z](../../ROADMAP.md#phase-z--enforcement-truth-at-speed).
-Warnings in current consumer authorities remain until the corresponding packed/differential cells
-pass; prose is not accepted as resolution.
+Z02 addresses the first contradiction in the current source candidate: exact
+`typescript-ark-host` at exact `npm:typescript@6.0.3` cannot deduplicate to project TS7, schema
+1.2 names `complete | partial | unavailable`, and incomplete analysis cannot satisfy plan or
+strict merge.
+Clean npm/pnpm/Yarn installs retain the requested project `tsc` and report host 6.0.3. Yarn's
+report names strict PnP for TS5/6 and node-modules for native TS7 rather than hiding that resolver
+boundary. The 3.7.0 distribution distinction remains until the corrective release is published,
+and the claim remains Partial until the full 36-cell packed CI matrix passes.
 
-## Resolved during this audit
+The remaining corrective implementation authority is
+[ROADMAP Phase Z](../../ROADMAP.md#phase-z--enforcement-truth-at-speed). Z03/Z04 still own
+cross-adapter parity; prose is not accepted as resolution.
+
+## Resolved or narrowed during this audit
 
 | Initial verdict | Drift | Resolution |
 |-----------------|-------|------------|
+| Contradicted | A packed TS7 consumer could lose the intended JS-API fallback and report an unavailable plan as met | Current source uses a distinct exact TS6 host and required fail-closed completeness; local package-manager evidence is green, while the 36-cell packed CI closure remains pending |
 | Contradicted | Capability collector/vocabulary were described as root npm exports | Public docs now point to `analyzeProject(...).ir.capabilityUses`; internal helpers are labeled internal |
 | Contradicted | Shipped runtime skill and example preferred deprecated root shims | Canonical companion imports and explicit compatibility prerequisites are documented |
 | Contradicted | MCP docs said omitted `--manifest` always meant the default 11-layer profile | Docs now state project-config-first, default-profile fallback behavior |
@@ -134,7 +146,11 @@ pass; prose is not accepted as resolution.
   path, including referenced Markdown anchors.
 - npm-tarball Markdown links: **PASS** — all relative targets from 34 packed Markdown files are
   present in the `arkgate@3.7.0` dry-run inventory.
-- Surface parity: **PASS** — 92/92 `src/gate.ts` exports, 9/9 MCP tools, 7/7 public
+- Z02 current-source compatibility: **OBSERVED LOCALLY, CI PENDING** — clean npm/pnpm/Yarn
+  consumers retained their selected project `tsc` and ArkGate's fallback reported exact 6.0.3.
+  Closure requires the packed candidate across Node 18/20/22/24 and project TS
+  5.9.3/6.0.3/7.0.2 (36 cells).
+- Surface parity: **PASS** — 93/93 `src/gate.ts` exports, 9/9 MCP tools, 7/7 public
   schema/metadata export aliases, and 6/6 Action inputs are named in their canonical docs.
 - Registry check: **OBSERVED** — `arkgate@latest` is `3.7.0`; querying
   `@arkgate/runtime` returned npm `E404`, so current guidance uses source-checkout evaluation until

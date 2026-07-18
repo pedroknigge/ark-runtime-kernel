@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -75,17 +75,26 @@ function writePackageManagerSignal(root: string, packageManager: PackageManager)
 }
 
 function run(file: string, args: string[], root: string, host: Host) {
-  return spawnSync(process.execPath, [file, ...args], {
-    cwd: root,
-    encoding: 'utf8',
-    env: { ...process.env, ARK_ACTIVE_HOST: host, CODEX_HOME: path.join(root, '.codex-home') },
+  return new Promise<{ status: number | null; stdout: string; stderr: string }>((resolve, reject) => {
+    const child = spawn(process.execPath, [file, ...args], {
+      cwd: root,
+      env: { ...process.env, ARK_ACTIVE_HOST: host, CODEX_HOME: path.join(root, '.codex-home') },
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.setEncoding('utf8');
+    child.stderr.setEncoding('utf8');
+    child.stdout.on('data', (chunk: string) => (stdout += chunk));
+    child.stderr.on('data', (chunk: string) => (stderr += chunk));
+    child.on('error', reject);
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
   });
 }
 
-function start(root: string, host: Host, apply = false) {
+async function start(root: string, host: Host, apply = false) {
   const args = ['start', '--root', root, '--no-strict', '--tools', host, '--install', '--json'];
   if (apply) args.push('--apply');
-  const result = run(ARK, args, root, host);
+  const result = await run(ARK, args, root, host);
   expect(result.status, `${result.stdout}\n${result.stderr}`).toBe(0);
   return JSON.parse(result.stdout) as StartResult;
 }
@@ -120,41 +129,42 @@ describe('O04 clean-room onboarding matrix', () => {
 
   it.each(fixtureCells)(
     '$shape/$size/$host/$packageManager completes the clean-room journey',
-    ({ shape, size, host, packageManager }) => {
+    async ({ shape, size, host, packageManager }) => {
       const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-o04-'));
       try {
         fs.cpSync(path.join(FIXTURES, shape, size), root, { recursive: true });
         writePackageManagerSignal(root, packageManager);
 
         const before = snapshot(root);
-        const preview = start(root, host);
+        const preview = await start(root, host);
         expect(snapshot(root)).toEqual(before);
         expect(preview.projectedCoverage.percent).toBeGreaterThanOrEqual(90);
         expect(preview.projectedCoverage.classifiedFiles).toBe(preview.projectedCoverage.totalFiles);
         assertPackageManagerCommand(preview.commands, packageManager);
 
-        const applied = start(root, host, true);
+        const applied = await start(root, host, true);
         const after = snapshot(root);
         expect(changedPaths(before, after)).toEqual(applied.changes.map((change) => change.path).sort());
         expect(applied.projectedCoverage).toEqual(preview.projectedCoverage);
         assertNoUnrelatedHostFiles(root, host);
 
-        const strict = run(ARK_CHECK, ['--root', root, '--strict-merge'], root, host);
+        const strict = await run(ARK_CHECK, ['--root', root, '--strict-merge'], root, host);
         expect(strict.status, `${strict.stdout}\n${strict.stderr}`).toBe(0);
-        const doctor = run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host);
+        const doctor = await run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host);
         expect(doctor.status, doctor.stderr).toBe(0);
         const governed = JSON.parse(doctor.stdout).doctor.governed;
         expect(governed).toEqual(preview.projectedCoverage);
 
-        const rerun = start(root, host);
+        const rerun = await start(root, host);
         expect(rerun.changes).toEqual([]);
 
         if (shape === 'library' && size === 'small' && packageManager === 'npm') {
           const installArgs = ['--root', root, '--install-agent-gates', '--tools', host];
           if (host === 'claude' || host === 'grok') installArgs.push('--require-write-hook', host);
-          const installed = run(ARK_CHECK, installArgs, root, host);
+          const installed = await run(ARK_CHECK, installArgs, root, host);
           expect(installed.status, `${installed.stdout}\n${installed.stderr}`).toBe(0);
-          const writePath = JSON.parse(run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host).stdout).doctor.writePath;
+          const installedDoctor = await run(ARK_CHECK, ['--root', root, '--doctor', '--json', '--no-cache'], root, host);
+          const writePath = JSON.parse(installedDoctor.stdout).doctor.writePath;
           expect(writePath.capabilities).toMatchObject(CANONICAL_CAPABILITIES[host]);
         }
       } finally {

@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 describe('V01 scale benchmark contract', () => {
-  it('records real cold, warm-cache, incremental, and RSS evidence without a network install', () => {
+  it('records cold, uncached one-shot warm, incremental, and RSS evidence without a network install', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-v01-bench-'));
     const reportPath = path.join(root, 'performance.v1.json');
     try {
@@ -21,7 +21,12 @@ describe('V01 scale benchmark contract', () => {
       const row = report.results[0];
       expect(report.schemaVersion).toBe(1);
       expect(row.cold.p95Ms).toBeGreaterThan(0);
-      expect(row.warm.cacheHits).toBeGreaterThan(0);
+      // Z04 retires the legacy semantic cache so it cannot become a second
+      // authority. Z07 owns the identity-keyed replacement.
+      expect(row.warm.cacheHits).toBe(0);
+      expect(
+        fs.existsSync(path.join(root, 'n20', 'node_modules', '.cache', 'ark-check.json'))
+      ).toBe(false);
       expect(row.incremental.policyHashPreserved).toBe(true);
       expect(row.incremental.contentHashPreserved).toBe(true);
       expect(row.peakRssBytes).toBeGreaterThan(0);

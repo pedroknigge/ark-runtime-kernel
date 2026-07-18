@@ -84,7 +84,12 @@ can enable a **machine-readable repair payload** (still exit `2` — **never** s
 
 ```json
 {
-  "mode": "repair",
+  "schemaVersion": "1.3",
+  "mode": "lexical-compatibility",
+  "valid": false,
+  "completeness": "partial",
+  "completenessReasons": [{ "code": "LEXICAL_EVIDENCE_INCOMPLETE", "message": "…" }],
+  "repair": true,
   "decision": "deny",
   "filePath": "src/domain/use.ts",
   "layer": "DomainModel",
@@ -92,7 +97,9 @@ can enable a **machine-readable repair payload** (still exit `2` — **never** s
     "source": "import type { Row } from '../infra/types-only';\n…",
     "remediationKind": "import-type-from-pure-type-module",
     "confidence": 0.85,
-    "valid": true
+    "valid": false,
+    "lexicalValid": true,
+    "completeness": "partial"
   }
 }
 ```
@@ -428,11 +435,11 @@ If your runtime can run a shell command before file writes and pass the tool pay
 - Grok payloads also get `{ "decision": "deny", "reason": "…" }` on stdout when blocked
 - plumbing problems (no stdin, non-source files, files outside `--root`) never block
 
-## ESLint (editor feedback) — same contract as CI
+## ESLint (editor feedback) — bounded parity envelope
 
-For in-editor red squiggles that match **`arkgate-check`**, add the ESLint plugin.
+For fast in-editor red squiggles, add the ESLint plugin.
 Layer imports and purity globals are driven by **`ark.config.json`** (walk-up from the
-linted file): same layer globs, specificity, `exclude`, and `rules[]` edges as the CI gate.
+linted file).
 
 ```js
 // eslint.config.js  (flat config)
@@ -447,12 +454,25 @@ export default [
 ];
 ```
 
-**Parity notes (2.5+):**
+**Exact layer-edge parity envelope:** the linted production source is on disk, inside
+`include`, outside configured/generated exclusions, parse-clean, and uses a static
+`import`/`export` with a relative literal whose target is also on disk. Inside that envelope,
+ESLint uses the same layer glob specificity, rule decision, rule id, severity, and evidence as
+the resolved CLI. It reloads `ark.config.json` when its content changes and never invents a
+not-yet-created target.
 
-- Relative imports are resolved to on-disk TS/JS targets; package bare imports are left to CI/TS.
+Outside that envelope—path aliases, packages/workspaces, symlinks, CommonJS,
+`import = require`, dynamic imports, virtual creates/deletes, unresolved targets, or complete
+cross-file candidates—ESLint emits no layer-parity verdict. Use `ark preflight`,
+`ark_prepare_change`, the complete ApplyPatch hook, or final strict CI; those paths consume the
+canonical resolved facts.
+
+Additional rule notes:
+
+- Relative imports are resolved only to existing on-disk TS/JS targets; package bare imports are left to CI/TS.
 - Type-only and value forbidden edges both error (same pass/fail as `arkgate-check`).
 - `no-forbidden-globals` applies from the file layer’s `forbiddenGlobals`; the `globals` option is only a standalone fallback when no project config applies, never an override that weakens the project contract. Layers without either surface are not inventively restricted. `process` also owns exact value imports of `process` / `node:process`; type-only forms, subpaths, and `child_process` stay excluded. If the same layer also denies the `process` capability, this rule is the single `FORBIDDEN_GLOBAL` voice.
-- Without `ark.config.json`, `no-domain-infra-imports` falls back to a domain→infra path heuristic.
+- Without `ark.config.json`, `no-domain-infra-imports` emits no contract verdict.
 
 Rule ids are `ark/<kebab-name>`. Individual rules are also on `ark.rules` if you wire them by hand.
 Prefer keeping editor + CI on the same `ark.config.json`. Use the rule-local `globals` list only
@@ -520,14 +540,20 @@ reported as lost static assurance; it does not imply that a runtime schema was b
 
 ### Scanner soundness envelope
 
-ArkGate uses the TypeScript compiler API for the governed source files. The repository scanner
-and `createAICodeGate({ typescript })` recognize these dependency forms:
+ArkGate uses the TypeScript compiler API for the governed source files. The resolved candidate
+scanner used by CLI/preflight/MCP/complete-patch hooks recognizes these dependency forms:
 
 - `import ... from 'literal'`, side-effect imports, and `export ... from 'literal'`;
 - TypeScript `import x = require('literal')` external-module references;
 - direct `import('literal')` and direct `require('literal')` calls; and
 - relative, tsconfig path-alias, package, and installed workspace-package targets that resolve
   to source inside the project root. Third-party or escaped targets are deliberately not governed.
+
+`createAICodeGate({ typescript })` recognizes the same syntax lexically, but it does not discover a
+project resolver by itself. Its result is explicitly `mode: "lexical-compatibility"`,
+`completeness: "partial"`, and `valid:false`; `lexicalValid` records whether those bounded checks
+passed. A caller-supplied target resolver can improve feedback but does not turn the snippet into a
+parity-capable complete-candidate verdict.
 
 Direct `import(expr)` emits `DYNAMIC_IMPORT_NOT_ALLOWLISTED`; direct `require(expr)` emits
 `DYNAMIC_REQUIRE_NOT_ALLOWLISTED`. They are warnings in the default reporting profile and fail

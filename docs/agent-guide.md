@@ -375,16 +375,16 @@ Prefer preparing the write before the host commits it to disk:
 | MCP **`ark_prepare_write`** | Place + constrain + validate + optional `autoPatch` + `judgmentBrief` + contentHash + optional `goldenPattern` in one call |
 | MCP **`ark_prepare_change`** | Validate one complete create/update/delete batch in memory; optional `changeMap` also returns structural convergence; never writes |
 | CLI **`ark preflight --changes <file> --json`** | Same atomic verdict and map convergence for hosts/scripts that do not call MCP |
-| Write-gate **`autoPatch`** | Mechanical-safe **import type** rewrites only; post-patch revalidation green or discarded |
+| Write-gate **`autoPatch`** | Mechanical-safe **import type** rewrites only; post-patch lexical validation must pass or the patch is discarded. It remains `partial`/non-green until complete-candidate preflight. |
 | PreToolUse **`--hook-repair`** | On deny: `ARK_REPAIR_JSON` / `ARK_AUTOPATCH_JSON` on stderr (still exit 2 — never silent write) |
 | Doctor **`writePath`** | Reports installed mode plus `enforcementLadder` (`supported` / `installed` / `active` / `bypassable`, evidence, operation coverage, required-status honesty) |
 | Doctor **`goldenPattern`** | Optional Q03 advisory summary (`present` / `invalid`); never clears design-weak |
 
-**Known 3.7.0 limitation:** atomic preflight's compiler-free graph can miss aliases/workspace
-edges that full TypeScript-backed CI resolves. A valid preflight is early feedback, not permission
-to skip the normal strict gate, until
-[Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
-closes adapter parity.
+**Published 3.7.0 limitation:** its compiler-free atomic graph can miss aliases/workspace edges.
+The current source candidate closes that divergence through versioned resolved-candidate facts;
+API, bundle, CLI, MCP, complete-patch hook, and final strict check share the same candidate evidence.
+Lexical/single-snippet feedback remains explicitly partial and non-green. The normal strict gate is
+still the required final merge boundary.
 
 Port-proof inject binding is **judgment** for auto-apply (signature/arity change), not write-path autoPatch.
 Full reference: [ai-gates.md](ai-gates.md). Loop-cost harness: `npm run eval:loop-cost`.
@@ -539,7 +539,8 @@ contract, Ark records `interceptor.error` and keeps delivering the original even
 
 ## Code Generation Validation
 
-Use `createAICodeGate()` before merging agent-generated source snippets:
+Use `createAICodeGate()` for early lexical feedback on agent-generated source snippets, then run
+complete-candidate preflight before merging:
 
 ```ts
 import * as ts from 'typescript';
@@ -557,11 +558,13 @@ const result = gate.validate(generatedSource, {
   agentId: 'agent-1',
   layer: 'DomainModel',
 });
-if (!result.valid) {
+if (!result.lexicalValid) {
   for (const v of result.violations) {
     console.log(v.code, v.message, v.suggestion);
   }
 }
+// result.valid remains false: call ark_prepare_change / preflightResolvedChange,
+// then run the final strict repository check.
 ```
 
 Passing the `typescript` module enables built-in AST/symbol checks for dependencies, forbidden
@@ -687,12 +690,10 @@ for every file; otherwise each source file uses the nearest `tsconfig.json` abov
 modules the way your build does, but is intentionally not yet a full type-graph analyzer
 (cross-layer type-only references beyond the import specifier are out of scope).
 
-Repeat runs are cached in `node_modules/.cache/ark-check.json` — unchanged files skip the
-parse, while import edges always re-resolve against the live filesystem so the cache can
-never hide a new violation. Cache schema v9 also preserves each file's parse-diagnostic count
-and binds it to the TypeScript parser version, so a warm doctor run cannot silently turn
-unreadable governed syntax into a clean claim after a parser change.
-`--no-cache` disables it.
+The correctness path resolves and parses one complete candidate on every invocation. Legacy
+`node_modules/.cache/ark-check.json` files are ignored so a pre-Z04 snapshot cannot become a
+second semantic authority. `--no-cache` remains accepted as a compatibility no-op. Phase Z07
+introduces the identity-keyed warm snapshot only after exact cold/warm verdict parity is proven.
 
 `ark-check --doctor --json` reports that syntax honesty under `doctor.parseHealth`: exact
 scanned/affected/diagnostic totals plus a deterministic top-12 file list and honest overflow.
@@ -719,8 +720,9 @@ export default [
 ];
 ```
 
-Rules: `ark/no-domain-infra-imports` (layer edges from `ark.config.json`, same semantics as
-`arkgate-check`), `ark/no-forbidden-globals` (per-layer `forbiddenGlobals`),
+Rules: `ark/no-domain-infra-imports` (exact parity for on-disk, in-scope static relative
+imports/exports; resolved CLI/preflight is authoritative outside that envelope),
+`ark/no-forbidden-globals` (per-layer `forbiddenGlobals`),
 `ark/no-denied-capabilities` (per-layer capability deny sets), `ark/no-raw-event-publish`, and
 `ark/require-publish-source`. See [ai-gates.md](ai-gates.md).
 
@@ -836,10 +838,13 @@ The server exposes these nine tools:
 | `ark_recommend` | No args: return the deterministic application-shape plan used by `ark-check --recommend --json`. |
 | `ark_suggest_include` | No args: propose TypeScript/JavaScript include roots from workspaces and nested packages. |
 
-Current full-check diagnostic envelopes use schema `1.2` and require
-`completeness: "complete" | "partial" | "unavailable"`. MCP `ark_check` mirrors CLI `ok`; an
-incomplete result is returned as an error rather than a green subset. Consumer-owned 1.0/1.1
-`AdapterResult` values remain accepted by the public TypeScript union for source compatibility.
+Current diagnostic envelopes use schema `1.3` and require `mode`,
+`completeness: "complete" | "partial" | "unavailable"`, and structured
+`completenessReasons`. Resolved results expose `policyHash`, `resolverIdentity`, `factsHash`, and
+`candidateTreeHash`; MCP `ark_check` mirrors CLI `ok`. Single-file `validate_code`,
+`ark_prepare_write`, and `createAICodeGate().validate()` are named lexical compatibility surfaces:
+they may expose `lexicalValid`, but remain partial and `valid:false` until complete-candidate
+preflight. Consumer-owned 1.0/1.1/1.2 `AdapterResult` values remain accepted by the public union.
 
 For hook-based enforcement, `ark-mcp --hook` runs one-shot: it reads a PreToolUse payload
 from stdin, validates the post-edit file content, and exits `2` with violations on stderr
@@ -882,8 +887,8 @@ registration by itself remains advisory on every host because the agent must cal
 
 1. **Read** manifest via `ark.manifest().toJSON()`
 2. **Generate** code using registered intents, profiles, metadata, projections, and workflow definitions
-3. **Validate snippets** with `createAICodeGate().validate(source, { layer })`
-4. **Validate repository** with `ark-check --root . --config ark.config.json`
+3. **Inspect snippets** with `createAICodeGate().validate(source, { layer })` (lexical, partial)
+4. **Validate the complete candidate** with `ark_prepare_change` or `ark-check --root . --config ark.config.json`
 5. **Lint** with `arkgate/eslint` recommended rules
 6. **Wire** relationships via `registry.define(..., { dependsOn, produces })`
 7. **Register** event contracts before publishing in strict mode

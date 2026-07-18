@@ -10,6 +10,16 @@ import {
   loadContract as loadContractFromKernel,
   preflightChange as preflightChangeFromKernel,
 } from '../../../src/index';
+import {
+  RESOLVED_CANDIDATE_FACTS_SCHEMA as resolvedFactsSchemaFromKernel,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA_VERSION as resolvedFactsVersionFromKernel,
+  analyzeResolvedProject as analyzeResolvedProjectFromKernel,
+  createResolvedCandidateFacts as createResolvedFactsFromKernel,
+  loadResolvedCandidateFacts as loadResolvedFactsFromKernel,
+  preflightResolvedChange as preflightResolvedChangeFromKernel,
+  resolvedFactsEvidenceRequirementsHash as resolvedRequirementsHashFromKernel,
+  type ResolvedCandidateFactsInput,
+} from '../../../src/gate';
 import { loadArchitectureChangeMap as loadChangeMapFromKernel } from '../../../src/domain/changeMap';
 import { forbiddenGlobalForModuleSpecifier as forbiddenGlobalFromDomain } from '../../../src/domain/capabilities';
 import {
@@ -24,6 +34,12 @@ import {
   loadArchitectureChangeMap as loadChangeMapFromBundle,
   preflightChange as preflightChangeFromBundle,
   forbiddenGlobalForModuleSpecifier as forbiddenGlobalFromBundle,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA as resolvedFactsSchemaFromBundle,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA_VERSION as resolvedFactsVersionFromBundle,
+  analyzeResolvedProject as analyzeResolvedProjectFromBundle,
+  createResolvedCandidateFacts as createResolvedFactsFromBundle,
+  loadResolvedCandidateFacts as loadResolvedFactsFromBundle,
+  preflightResolvedChange as preflightResolvedChangeFromBundle,
 } from '../../../bin/lib/analysis-engine.mjs';
 
 const config = {
@@ -44,6 +60,86 @@ const files = [
 ];
 
 describe('generated CLI analysis engine', () => {
+  it('matches the public facts contract and resolved verdict API', () => {
+    const input: ResolvedCandidateFactsInput = {
+      schemaVersion: resolvedFactsVersionFromKernel,
+      completeness: 'complete',
+      completenessReasons: [],
+      resolverIdentity: 'z04-test-resolver@1',
+      compilerIdentity: 'typescript@test',
+      compilerOptionsHash: 'fnv1a-options',
+      tsconfigHash: 'fnv1a-tsconfig',
+      evidenceRequirementsHash: resolvedRequirementsHashFromKernel(
+        loadContractFromKernel(config).config
+      ),
+      files: [
+        {
+          path: 'src/domain/order.ts',
+          contentHash: 'fnv1a-domain',
+          parseStatus: 'parsed',
+          parseDiagnosticCount: 0,
+          exportsOnlyTypes: false,
+          typeOnlyExportNames: [],
+          hasTopLevelSideEffects: false,
+        },
+        {
+          path: 'src/kernel/service.ts',
+          contentHash: 'fnv1a-kernel',
+          parseStatus: 'parsed',
+          parseDiagnosticCount: 0,
+          exportsOnlyTypes: false,
+          typeOnlyExportNames: [],
+          hasTopLevelSideEffects: false,
+        },
+      ],
+      dependencies: [
+        {
+          from: 'src/domain/order.ts',
+          specifier: '@alias/kernel',
+          kind: 'import',
+          typeOnly: false,
+          line: 1,
+          resolution: 'resolved-project',
+          target: 'src/kernel/service.ts',
+        },
+      ],
+      capabilityUses: [],
+      ambientUses: [],
+      publishCalls: [],
+      intentReferences: [],
+      safetyUses: [],
+    };
+    const kernelFacts = createResolvedFactsFromKernel(input);
+    const bundleFacts = createResolvedFactsFromBundle(input);
+    const kernelContract = loadContractFromKernel(config);
+    const bundleContract = loadContractFromBundle(config);
+
+    expect(resolvedFactsVersionFromBundle).toBe(resolvedFactsVersionFromKernel);
+    expect(resolvedFactsSchemaFromBundle).toEqual(resolvedFactsSchemaFromKernel);
+    expect(bundleFacts).toEqual(kernelFacts);
+    expect(loadResolvedFactsFromBundle(bundleFacts)).toEqual(
+      loadResolvedFactsFromKernel(kernelFacts)
+    );
+    expect(
+      analyzeResolvedProjectFromBundle({ contract: bundleContract, facts: bundleFacts })
+    ).toEqual(analyzeResolvedProjectFromKernel({ contract: kernelContract, facts: kernelFacts }));
+    expect(
+      preflightResolvedChangeFromBundle({
+        contract: bundleContract,
+        baseFacts: bundleFacts,
+        candidateFacts: bundleFacts,
+        changes: [],
+      })
+    ).toEqual(
+      preflightResolvedChangeFromKernel({
+        contract: kernelContract,
+        baseFacts: kernelFacts,
+        candidateFacts: kernelFacts,
+        changes: [],
+      })
+    );
+  });
+
   it('matches the canonical exact process module-dual vocabulary (Y08)', () => {
     for (const specifier of ['process', 'node:process', 'child_process', 'node:process/subpath']) {
       expect(forbiddenGlobalFromBundle(specifier, ['process'])).toBe(

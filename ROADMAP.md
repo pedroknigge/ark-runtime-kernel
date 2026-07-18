@@ -421,7 +421,7 @@ may raise those ceilings merely to fit its own implementation.
 | 64 | `Z01` | `done` | S | — | Release tooling deletes only validated, tool-owned targets and files |
 | 65 | `Z02` | `done` | L | `Z01` | Packed TS5/6/7 analysis is available or explicitly non-green; incomplete analysis never satisfies the goal |
 | 66 | `Z03` | `done` | M | `Z02` | The resolved-facts/public-API boundary and generated CLI parity seam are decided before implementation |
-| 67 | `Z04` | `todo` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
+| 67 | `Z04` | `doing` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
 | 68 | `Z05` | `todo` | L | `Z02`, `Z04` | Every starter and supported package manager completes the installed tarball journey in a clean consumer |
 | 69 | `Z06` | `todo` | L | `Z05` | Upgrade touches only identity-proven managed assets and doctor reports actual enforcement state |
 | 70 | `Z07` | `todo` | L | `Z04`, `Z05` | A measured warm incremental control plane delivers order-of-magnitude feedback without semantic drift |
@@ -543,7 +543,7 @@ started before the decision closed.
 
 ### Z04 — Build one candidate facts → IR → verdict pipeline
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Depends on:** `Z03`
 
 **Outcome:** under the selected boundary, the TypeScript/Tooling edge resolves the complete virtual

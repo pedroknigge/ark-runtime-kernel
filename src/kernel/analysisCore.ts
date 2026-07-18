@@ -31,6 +31,12 @@ import type {
   PolicyDeltaAnalysis,
 } from './analysisTypes';
 
+const LEXICAL_EVIDENCE_INCOMPLETE = {
+  code: 'LEXICAL_EVIDENCE_INCOMPLETE',
+  message:
+    'Lexical compatibility mode cannot prove parse status, TypeScript/package/symlink resolution, or symbol-aware source-policy and safety evidence. Use the resolved candidate facts APIs for an authoritative verdict.',
+} as const;
+
 export function loadContract(input: unknown, source?: string): AnalysisContract {
   const loaded =
     typeof input === 'string'
@@ -138,17 +144,25 @@ export function analyzeProject(input: AnalyzeProjectInput): AnalysisResult {
     });
   }
 
+  const completeness = files.length === 0 ? 'complete' : 'partial';
+  const completenessReasons =
+    completeness === 'complete' ? [] : [{ ...LEXICAL_EVIDENCE_INCOMPLETE }];
+  const ir = {
+    schemaVersion: ANALYSIS_IR_SCHEMA_VERSION,
+    policyHash: input.contract.policyHash,
+    compilerOptionsHash: deterministicHash(stableSerialize(input.compilerOptions ?? {})),
+    files,
+    layers: input.contract.config.layers.map((layer) => layer.name),
+    edges,
+    capabilityUses,
+    violations,
+  };
   return {
-    ir: {
-      schemaVersion: ANALYSIS_IR_SCHEMA_VERSION,
-      policyHash: input.contract.policyHash,
-      compilerOptionsHash: deterministicHash(stableSerialize(input.compilerOptions ?? {})),
-      files,
-      layers: input.contract.config.layers.map((layer) => layer.name),
-      edges,
-      capabilityUses,
-      violations,
-    },
+    mode: 'lexical-compatibility',
+    completeness,
+    completenessReasons,
+    valid: completeness === 'complete' && violations.length === 0,
+    ir,
   };
 }
 

@@ -525,7 +525,8 @@ describe('auto-patch branches ≥95%', () => {
       ts,
       validate: () => ({ valid: true, violations: [] }),
     });
-    expect(ok.valid).toBe(true);
+    expect(ok.valid).toBe(false);
+    expect(ok.lexicalValid).toBe(true);
     expect(ok.autoPatch == null).toBe(true);
 
     // non-array violations
@@ -587,7 +588,8 @@ describe('auto-patch branches ≥95%', () => {
         };
       },
     });
-    expect(converted.autoPatch?.valid).toBe(true);
+    expect(converted.autoPatch?.valid).toBe(false);
+    expect(converted.autoPatch?.lexicalValid).toBe(true);
     expect(calls).toBeGreaterThan(1);
 
     // post-patch still invalid discards patch
@@ -701,7 +703,8 @@ describe('prepare-write branches ≥95%', () => {
       ts,
       validate: () => ({ valid: true, violations: [] }),
     });
-    expect(minimal.valid).toBe(true);
+    expect(minimal.valid).toBe(false);
+    expect(minimal.lexicalValid).toBe(true);
     expect(minimal.filePath).toBeNull();
     expect(minimal.layer).toBeNull();
     expect(minimal.forbiddenGlobals).toEqual([]);
@@ -727,7 +730,8 @@ describe('prepare-write branches ≥95%', () => {
       ts,
       validate: () => ({ valid: true, violations: [] }),
     });
-    expect(full.valid).toBe(true);
+    expect(full.valid).toBe(false);
+    expect(full.lexicalValid).toBe(true);
     expect(full.proposed).toBe(true);
     expect(full.description).toBe('d');
     expect(full.placementNote).toBe('n');

@@ -519,10 +519,19 @@ process.stdout.write(JSON.stringify({
     path.join(root, 'esm-smoke.mjs'),
     `import * as gate from 'arkgate';
 import * as eslint from 'arkgate/eslint';
-const result = gate.createAdapterResult({ valid: true, completeness: 'complete' });
+const result = gate.createAdapterResult({
+  valid: true,
+  completeness: 'complete',
+  mode: 'resolved-candidate-facts',
+  policyHash: 'smoke-policy',
+  resolverIdentity: 'smoke-resolver@1',
+  factsHash: 'smoke-facts',
+  candidateTreeHash: 'smoke-tree',
+});
 if (typeof gate.createAICodeGate !== 'function') throw new Error('missing ESM gate export');
 if (!eslint.default && !eslint.rules) throw new Error('missing ESM eslint export');
 if (result.completeness !== 'complete') throw new Error('missing ESM completeness');
+if (result.mode !== 'resolved-candidate-facts') throw new Error('missing ESM analysis mode');
 process.stdout.write(JSON.stringify({ schemaVersion: result.schemaVersion }));
 `
   );
@@ -532,15 +541,21 @@ process.stdout.write(JSON.stringify({ schemaVersion: result.schemaVersion }));
 const gate = require('arkgate');
 const eslint = require('arkgate/eslint');
 const schemaPath = require.resolve('arkgate/schema/ark.analysis-result.schema.json');
+const factsSchemaPath = require.resolve('arkgate/schema/ark.resolved-candidate-facts.schema.json');
 const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+const factsSchema = JSON.parse(fs.readFileSync(factsSchemaPath, 'utf8'));
 if (typeof gate.createAICodeGate !== 'function') throw new Error('missing CJS gate export');
 if (!eslint.default && !eslint.rules) throw new Error('missing CJS eslint export');
 if (!schema.required.includes('completeness')) throw new Error('schema omits completeness');
+if (!schema.required.includes('mode')) throw new Error('schema omits analysis mode');
+if (!schema.required.includes('completenessReasons')) throw new Error('schema omits completeness reasons');
 if (!schema.properties.completeness.enum.includes('complete')) throw new Error('schema enum drift');
+if (schema.properties.schemaVersion.const !== '1.3') throw new Error('schema version drift');
+if (factsSchema.properties.schemaVersion.const !== '1.0') throw new Error('facts schema drift');
 if (schema.allOf?.[0]?.then?.properties?.valid?.const !== false) {
   throw new Error('schema permits an incomplete green verdict');
 }
-process.stdout.write(JSON.stringify({ schemaPath, schemaVersion: schema.properties.schemaVersion.const }));
+process.stdout.write(JSON.stringify({ schemaPath, factsSchemaPath, schemaVersion: schema.properties.schemaVersion.const }));
 `
   );
   writeText(
@@ -549,12 +564,25 @@ process.stdout.write(JSON.stringify({ schemaPath, schemaVersion: schema.properti
 import {
   createAdapterResult,
   createAICodeGate,
+  analyzeResolvedProject,
+  preflightResolvedChange,
   type AdapterResult,
   type AnalysisCompleteness,
+  type AnalysisMode,
+  type ResolvedCandidateFacts,
 } from 'arkgate';
 
 const completeness: AnalysisCompleteness = 'complete';
-const result: AdapterResult = createAdapterResult({ valid: true, completeness });
+const mode: AnalysisMode = 'resolved-candidate-facts';
+const result: AdapterResult = createAdapterResult({
+  valid: true,
+  completeness,
+  mode,
+  policyHash: 'smoke-policy',
+  resolverIdentity: 'smoke-resolver@1',
+  factsHash: 'smoke-facts',
+  candidateTreeHash: 'smoke-tree',
+});
 const legacyResult: AdapterResult = {
   schemaVersion: '1.0',
   valid: false,
@@ -574,7 +602,11 @@ const partialGreen: AdapterResult = {
 };
 void eslintPlugin;
 void createAICodeGate;
+void analyzeResolvedProject;
+void preflightResolvedChange;
+void (undefined as unknown as ResolvedCandidateFacts);
 void result;
+void mode;
 void legacyResult;
 void v11Result;
 void partialGreen;
@@ -967,8 +999,13 @@ function runCell(options, candidate, workRoot, typescriptVersion) {
     );
     assertCondition(validation?.isError === true, 'MCP validate_code accepted forbidden fetch');
     assertCondition(
-      validation?.structuredContent?.completeness === 'complete',
-      'MCP validation did not report complete analysis'
+      validation?.structuredContent?.mode === 'lexical-compatibility' &&
+        validation?.structuredContent?.valid === false &&
+        validation?.structuredContent?.completeness === 'partial' &&
+        validation?.structuredContent?.completenessReasons?.some(
+          (reason) => reason.code === 'LEXICAL_EVIDENCE_INCOMPLETE'
+        ),
+      'MCP validation did not report explicit partial lexical evidence'
     );
     assertCondition(
       validation?.structuredContent?.diagnostics?.some(

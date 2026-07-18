@@ -19,6 +19,8 @@ export {
   createAdapterResult,
   toAdapterDiagnostic,
   type AnalysisCompleteness,
+  type AnalysisMode,
+  type AdapterCompletenessReason,
   type AdapterDiagnostic,
   type AdapterResult,
   type AdapterSeverity,
@@ -260,8 +262,10 @@ export {
 export {
   loadContract,
   analyzeProject,
+  analyzeResolvedProject,
   analyzeChange,
   preflightChange,
+  preflightResolvedChange,
   analyzePolicyDelta,
   analyzeArchitectureConvergence,
   explainViolation,
@@ -283,6 +287,8 @@ export {
   type ArchitectureConvergenceResult,
   type ArchitectureDependency,
   type AnalyzeProjectInput,
+  type AnalyzeResolvedProjectInput,
+  type PreflightResolvedChangeInput,
   type AnalyzeChangeInput,
   type AnalysisResult,
   type PreparedChangeFile,
@@ -297,6 +303,11 @@ export {
   type ForbiddenCapabilityUse,
   type SemanticDependency,
   type SemanticDependencyKind,
+  type ResolvedAnalysisFile,
+  type ResolvedAnalysisIr,
+  type ResolvedAnalysisResult,
+  type ResolvedChangePreflightResult,
+  type ResolvedSafetyReport,
 } from './kernel/analysis';
 
 export {
@@ -311,7 +322,12 @@ export {
 
 export {
   ANALYSIS_IR_SCHEMA_VERSION,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA_VERSION,
+  createResolvedCandidateFacts,
   deterministicHash,
+  loadResolvedCandidateFacts,
+  resolvedFactsEvidenceRequirementsHash,
   stableSerialize,
   type AnalysisFileInput,
   type AnalysisFileChange,
@@ -322,6 +338,21 @@ export {
   type AnalysisEvidence,
   type AnalysisViolation,
   type AnalysisIr,
+  type ResolvedAmbientFact,
+  type ResolvedCandidateFacts,
+  type ResolvedCandidateFactsInput,
+  type ResolvedCapability,
+  type ResolvedCapabilityFact,
+  type ResolvedDependencyFact,
+  type ResolvedDependencyKind,
+  type ResolvedDependencyState,
+  type ResolvedFactsCompleteness,
+  type ResolvedFactsReason,
+  type ResolvedFileFact,
+  type ResolvedIntentReferenceFact,
+  type ResolvedPublishFact,
+  type ResolvedSafetyFact,
+  type ResolvedSafetyKind,
 } from './domain/analysis';
 
 // =============================================================================

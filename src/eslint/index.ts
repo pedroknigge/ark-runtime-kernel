@@ -14,6 +14,7 @@ import {
   patternSpecificity,
   layerForRelativePath,
   isEdgeDenied,
+  isScanExcludedRelative,
 } from '../domain/layerMatch';
 import {
   capabilityForModuleSpecifier,
@@ -92,7 +93,10 @@ type AstNode = {
   key?: AstNode;
   arguments?: AstNode[];
   properties?: AstNode[];
+  body?: AstNode[];
+  declaration?: AstNode;
   importKind?: string;
+  exportKind?: string;
   specifiers?: AstNode[];
   parent?: AstNode;
   init?: AstNode;
@@ -146,14 +150,24 @@ export function findConfigPath(startFile: string): string | null {
   }
 }
 
-const _configCache = new Map<string, ArkConfig | null>();
+const _configCache = new Map<string, { source: string; config: ArkConfig }>();
 
 export function loadArkConfig(configPath: string): ArkConfig | null {
-  if (_configCache.has(configPath)) return _configCache.get(configPath) ?? null;
   if (!fs.existsSync(configPath)) return null;
-  const config = parseArkConfigJson(fs.readFileSync(configPath, 'utf8'), configPath).config;
-  _configCache.set(configPath, config);
+  const source = fs.readFileSync(configPath, 'utf8');
+  const cached = _configCache.get(configPath);
+  if (cached?.source === source) return cached.config;
+  const config = parseArkConfigJson(source, configPath).config;
+  _configCache.set(configPath, { source, config });
   return config;
+}
+
+function sourceIsInAnalysisScope(config: ArkConfig, relativePath: string): boolean {
+  const included = (config.include ?? []).some((entry) => {
+    const root = String(entry).replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/$/, '');
+    return root === '.' || relativePath === root || relativePath.startsWith(`${root}/`);
+  });
+  return included && !isScanExcludedRelative(relativePath, config);
 }
 
 /** Resolve relative import specifier to an absolute path candidate (TS-oriented). */
@@ -179,8 +193,7 @@ export function resolveRelativeImport(fromFile: string, specifier: string): stri
       /* continue */
     }
   }
-  // Prefer .ts for layer matching when the target is not on disk yet (editor typing).
-  return `${base}.ts`;
+  return null;
 }
 
 // ── AST helpers ────────────────────────────────────────────────────────────
@@ -263,6 +276,58 @@ function isPublishCall(node: AstNode): boolean {
   return calleePropertyName(node) === 'publish';
 }
 
+function declarationIsTypeOnly(node: AstNode): boolean {
+  if (node.importKind === 'type' || node.exportKind === 'type') return true;
+  const specifiers = (node.specifiers ?? []) as Array<{
+    type?: string;
+    importKind?: string;
+    exportKind?: string;
+  }>;
+  if (specifiers.length === 0) return false;
+  if (specifiers.every((specifier) => specifier.type === 'ImportSpecifier')) {
+    return specifiers.every((specifier) => specifier.importKind === 'type');
+  }
+  return specifiers.every((specifier) => specifier.exportKind === 'type');
+}
+
+function containingProgram(node: AstNode): AstNode | undefined {
+  let current: AstNode | undefined = node;
+  while (current?.parent) current = current.parent;
+  return current?.type === 'Program' ? current : undefined;
+}
+
+/** Conservative ESTree counterpart of sourceFileExportsOnlyTypes for the ESLint envelope. */
+function sourceProgramExportsOnlyTypes(node: AstNode): boolean {
+  const statements = containingProgram(node)?.body;
+  if (!statements) return false;
+  let sawTypeExport = false;
+  for (const statement of statements) {
+    if (statement.type === 'ImportDeclaration') {
+      if (!declarationIsTypeOnly(statement)) return false;
+      continue;
+    }
+    if (statement.type === 'TSInterfaceDeclaration' || statement.type === 'TSTypeAliasDeclaration') {
+      continue;
+    }
+    if (statement.type === 'ExportNamedDeclaration') {
+      if (statement.declaration) {
+        if (
+          statement.declaration.type !== 'TSInterfaceDeclaration' &&
+          statement.declaration.type !== 'TSTypeAliasDeclaration'
+        ) {
+          return false;
+        }
+      } else if (!declarationIsTypeOnly(statement)) {
+        return false;
+      }
+      sawTypeExport = true;
+      continue;
+    }
+    return false;
+  }
+  return sawTypeExport;
+}
+
 // ── Rules ──────────────────────────────────────────────────────────────────
 
 /**
@@ -298,6 +363,7 @@ export const noDomainInfraImports: ArkRule = {
       if (config && root && filename) {
         const absFile = path.isAbsolute(filename) ? filename : path.resolve(filename);
         const relFile = path.relative(root, absFile).split(path.sep).join('/');
+        if (!sourceIsInAnalysisScope(config, relFile)) return;
         const fromLayer = layerForRelativePath(relFile, config.layers);
         if (!fromLayer) return;
 
@@ -317,6 +383,7 @@ export const noDomainInfraImports: ArkRule = {
             layers: config.layers,
           })
         ) {
+          const edgeKind = node.type?.startsWith('Export') ? 'export' : 'import';
           reportAdapterDiagnostic(
             context,
             node,
@@ -327,8 +394,12 @@ export const noDomainInfraImports: ArkRule = {
               fromLayer,
               toLayer,
               target: relTarget,
-              ...(node.importKind === 'type' ? { typeOnly: true } : {}),
-              message: `${fromLayer} must not import ${toLayer}.`,
+              edgeKind,
+              ...(declarationIsTypeOnly(node) ? { typeOnly: true } : {}),
+              ...(sourceProgramExportsOnlyTypes(node)
+                ? { sourcePureTypeModule: true }
+                : {}),
+              message: `${fromLayer} must not ${edgeKind} ${toLayer}.`,
             },
             { fromLayer, toLayer, specifier: source }
           );
@@ -458,6 +529,7 @@ export const noForbiddenGlobals: ArkRule = {
     if (config && root && filename) {
       const absFile = path.isAbsolute(filename) ? filename : path.resolve(filename);
       const relFile = path.relative(root, absFile).split(path.sep).join('/');
+      if (!sourceIsInAnalysisScope(config, relFile)) return {} as RuleListener;
       const layer = config.layers?.find(
         (l) => l.name === layerForRelativePath(relFile, config.layers)
       );
@@ -522,6 +594,7 @@ export const noForbiddenGlobals: ArkRule = {
           file: reportFile,
           fromLayer: layerName,
           target: specifier,
+          edgeKind: importKind,
           message: `${layerName} must not use module "${specifier}" because it is the import form of forbidden global "${forbiddenGlobal}".`,
         },
         { layer: layerName, name: forbiddenGlobal, specifier, importKind }
@@ -676,6 +749,7 @@ export const noDeniedCapabilities: ArkRule = {
     if (!config || !root || !filename) return {} as RuleListener;
     const absFile = path.isAbsolute(filename) ? filename : path.resolve(filename);
     const relFile = path.relative(root, absFile).split(path.sep).join('/');
+    if (!sourceIsInAnalysisScope(config, relFile)) return {} as RuleListener;
     const layer = config.layers?.find(
       (l) => l.name === layerForRelativePath(relFile, config.layers)
     );
@@ -683,7 +757,12 @@ export const noDeniedCapabilities: ArkRule = {
     const deny = new Set(effectiveCapabilityDeny(layer));
     if (deny.size === 0) return {} as RuleListener;
 
-    const check = (node: AstNode, specifier: unknown, typeOnly: boolean) => {
+    const check = (
+      node: AstNode,
+      specifier: unknown,
+      typeOnly: boolean,
+      edgeKind: string
+    ) => {
       if (typeOnly || typeof specifier !== 'string') return;
       if (forbiddenGlobalForModuleSpecifier(specifier, layer.forbiddenGlobals ?? [])) return;
       const capability = capabilityForModuleSpecifier(specifier);
@@ -698,6 +777,7 @@ export const noDeniedCapabilities: ArkRule = {
           fromLayer: layer.name,
           target: specifier,
           capability,
+          edgeKind,
           message: `${layer.name} denies the ${capability} capability; found import of "${specifier}".`,
         },
         { layer: layer.name, capability, specifier }
@@ -723,12 +803,15 @@ export const noDeniedCapabilities: ArkRule = {
         check(
           node,
           importNode.source?.value,
-          importNode.importKind === 'type' || allNamedTypeOnly
+          importNode.importKind === 'type' || allNamedTypeOnly,
+          'import'
         );
       },
       ImportExpression(node) {
         const importNode = node as AstNode & { source?: { type?: string; value?: unknown } };
-        if (importNode.source?.type === 'Literal') check(node, importNode.source.value, false);
+        if (importNode.source?.type === 'Literal') {
+          check(node, importNode.source.value, false, 'dynamic-import');
+        }
       },
       TSImportEqualsDeclaration(node) {
         const importNode = node as AstNode & {
@@ -739,7 +822,8 @@ export const noDeniedCapabilities: ArkRule = {
         check(
           node,
           importNode.moduleReference?.expression?.value,
-          importNode.importKind === 'type' || importNode.isTypeOnly === true
+          importNode.importKind === 'type' || importNode.isTypeOnly === true,
+          'require'
         );
       },
       ExportNamedDeclaration(node) {
@@ -752,11 +836,16 @@ export const noDeniedCapabilities: ArkRule = {
         const specifiers = (exportNode.specifiers ?? []) as Array<{ exportKind?: string }>;
         const allTypeOnly =
           specifiers.length > 0 && specifiers.every((s) => s.exportKind === 'type');
-        check(node, exportNode.source.value, exportNode.exportKind === 'type' || allTypeOnly);
+        check(
+          node,
+          exportNode.source.value,
+          exportNode.exportKind === 'type' || allTypeOnly,
+          'export'
+        );
       },
       ExportAllDeclaration(node) {
         const exportNode = node as AstNode & { source?: { value?: unknown }; exportKind?: string };
-        check(node, exportNode.source?.value, exportNode.exportKind === 'type');
+        check(node, exportNode.source?.value, exportNode.exportKind === 'type', 'export');
       },
       CallExpression(node) {
         const call = node as AstNode & {
@@ -769,7 +858,7 @@ export const noDeniedCapabilities: ArkRule = {
           call.arguments?.[0]?.type === 'Literal' &&
           !isLocallyBound(context, node, 'require')
         ) {
-          check(node, call.arguments[0].value, false);
+          check(node, call.arguments[0].value, false, 'require');
         }
       },
     };

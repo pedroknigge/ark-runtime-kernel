@@ -269,9 +269,9 @@ function usage() {
     '--tsconfig to force one config for every file. If no tsconfig is found, path',
     'aliases are unavailable but relative/package imports still resolve.',
     '',
-    'Parsed files are cached in node_modules/.cache/ark-check.json (keyed by mtime+size',
-    'and the config/manifest contents); import edges are always re-resolved against the',
-    'live filesystem, so the cache can never hide a new violation. --no-cache disables it.',
+    'The correctness path resolves and parses one complete candidate on every invocation.',
+    'Legacy node_modules/.cache/ark-check.json files are ignored. --no-cache remains an',
+    'accepted compatibility no-op; the identity-keyed warm snapshot is introduced in Z07.',
     '',
     'Config shape:',
     '{',
@@ -1111,7 +1111,10 @@ async function main() {
     );
   }
 
-  const { violations, warnings, safety, parseHealth, completeness } = runArchitectureScan({
+  const {
+    violations, warnings, safety, parseHealth, completeness, completenessReasons,
+    mode, policyHash, resolverIdentity, factsHash, candidateTreeHash,
+  } = runArchitectureScan({
     root,
     config,
     manifest,
@@ -1230,6 +1233,7 @@ async function main() {
       files,
       coverage: cov,
       completeness,
+      completenessReasons,
     });
     if (args.strictMerge) process.exitCode = ok && plan.goal.met ? 0 : 1;
     return;
@@ -1372,6 +1376,12 @@ async function main() {
     const adapterResult = createAdapterResult({
       valid: observedOk,
       completeness,
+      completenessReasons,
+      mode,
+      policyHash,
+      resolverIdentity,
+      factsHash,
+      candidateTreeHash,
       violations: activeViolations.map(enrichViolationWithFixClass),
       warnings,
     });

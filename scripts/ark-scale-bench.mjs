@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** V01 reproducible cold, warm-cache, and incremental analysis benchmark. */
+/** V01 reproducible cold, one-shot-warm, and incremental analysis benchmark. */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -256,7 +256,7 @@ function main() {
     const cachePath = path.join(root, 'node_modules', '.cache', 'ark-check.json');
     fs.rmSync(cachePath, { force: true });
     const cold = summary(Array.from({ length: args.runs }, () => runCheck(root, true)));
-    runCheck(root); // primes the real ark-check cache outside the measured warm samples
+    runCheck(root); // primes filesystem/process state outside the measured one-shot warm samples
     const warm = summary(Array.from({ length: args.runs }, () => runCheck(root)));
     warm.cacheHits = cacheHitCount(root);
     runIncremental(root); // primes the incremental worker path outside measured samples

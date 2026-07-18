@@ -2635,7 +2635,7 @@ describe('ark-check --install-agent-gates instruction-tier tools', () => {
   });
 });
 
-describe('ark-check scan cache', () => {
+describe('ark-check one-shot resolved analysis', () => {
   function violatingRoot() {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-cache-'));
     fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
@@ -2651,24 +2651,24 @@ describe('ark-check scan cache', () => {
 
   const cachePath = (root: string) => path.join(root, 'node_modules', '.cache', 'ark-check.json');
 
-  it('writes a cache and reports identical violations on a cached second run', () => {
+  it('does not write the retired cache and reports identical violations on a second run', () => {
     const root = violatingRoot();
     const first = runArkCheck(root);
-    expect(fs.existsSync(cachePath(root))).toBe(true);
+    expect(fs.existsSync(cachePath(root))).toBe(false);
     const second = runArkCheck(root);
     expect(second).toEqual(first);
     expect(second.violations[0].ruleId).toBe('LAYER_IMPORT_VIOLATION');
   });
 
-  it('invalidates a cached file when its content changes', () => {
+  it('observes file content changes without a semantic cache', () => {
     const root = violatingRoot();
     expect(runArkCheck(root).ok).toBe(false);
-    // Remove the violating import (different size, so the cache key must change).
+    // Remove the violating import; the next one-shot candidate must observe it.
     fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const order = 1;\n');
     expect(runArkCheck(root).ok).toBe(true);
   });
 
-  it('re-resolves import edges on cache hits: a new target file surfaces a violation without touching the importer', () => {
+  it('resolves a newly created target without touching the importer', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-check-cache-edge-'));
     fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
     fs.writeFileSync(
@@ -2677,11 +2677,11 @@ describe('ark-check scan cache', () => {
     );
     fs.writeFileSync(path.join(root, 'ark.config.json'), TWO_LAYER_CONFIG);
 
-    // Target doesn't exist yet — unresolved edge, no violation, cache written.
+    // Target doesn't exist yet — unresolved edge, no violation.
     expect(runArkCheck(root).ok).toBe(true);
 
-    // Create the forbidden target; the importer is untouched (cache hit) but the edge
-    // must re-resolve and now report the violation.
+    // Create the forbidden target; the importer is untouched but the next candidate
+    // must resolve and report the violation.
     fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = {};');
     const result = runArkCheck(root);
@@ -2689,21 +2689,24 @@ describe('ark-check scan cache', () => {
     expect(result.violations[0].ruleId).toBe('LAYER_IMPORT_VIOLATION');
   });
 
-  it('invalidates the whole cache when the config changes', () => {
+  it('observes policy changes on the next one-shot candidate', () => {
     const root = violatingRoot();
     expect(runArkCheck(root).ok).toBe(false);
-    // Allow the edge — same files, new config: every cached content check must be redone.
+    // Allow the edge — same files, new config.
     const relaxed = JSON.parse(TWO_LAYER_CONFIG);
     relaxed.rules = [];
     fs.writeFileSync(path.join(root, 'ark.config.json'), JSON.stringify(relaxed));
     expect(runArkCheck(root).ok).toBe(true);
   });
 
-  it('--no-cache neither reads nor writes the cache file', () => {
+  it('ignores a poisoned legacy cache with and without the compatible --no-cache flag', () => {
     const root = violatingRoot();
-    const result = runArkCheck(root, ['--no-cache']);
-    expect(result.ok).toBe(false);
-    expect(fs.existsSync(cachePath(root))).toBe(false);
+    fs.mkdirSync(path.dirname(cachePath(root)), { recursive: true });
+    const poisoned = '{"key":"legacy-poison","files":{}}';
+    fs.writeFileSync(cachePath(root), poisoned);
+    expect(runArkCheck(root).ok).toBe(false);
+    expect(runArkCheck(root, ['--no-cache']).ok).toBe(false);
+    expect(fs.readFileSync(cachePath(root), 'utf8')).toBe(poisoned);
   });
 });
 

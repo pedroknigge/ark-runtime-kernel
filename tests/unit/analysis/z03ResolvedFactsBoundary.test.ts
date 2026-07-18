@@ -43,6 +43,11 @@ describe('Z03 resolved-facts boundary', () => {
     }));
 
     const lexical = analyzeProject({ contract: loadContract(config), files });
+    expect(lexical).toMatchObject({
+      mode: 'lexical-compatibility',
+      completeness: 'partial',
+      valid: false,
+    });
     expect(lexical.ir.edges).toEqual([]);
     expect(lexical.ir.violations).toEqual([]);
 

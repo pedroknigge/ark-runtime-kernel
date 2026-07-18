@@ -488,6 +488,7 @@ describe('safety-diagnostics + architecture-scan (shipped)', () => {
         "import { db } from '../infra/db';\nexport const n = Date.now();\nexport function f(){ return fetch('/'); }\n"
       );
       const config = {
+        include: ['src'],
         layers: [
           {
             name: 'DomainModel',
@@ -537,7 +538,9 @@ describe('safety-diagnostics + architecture-scan (shipped)', () => {
         args: { config: path.join(root, 'ark.config.json'), noCache: true },
       });
       expect(Array.isArray(scan2.violations)).toBe(true);
-      expect(scan2.violations.length).toBeGreaterThan(0);
+      expect(scan2.violations.map((violation: { ruleId: string }) => violation.ruleId)).toEqual(
+        expect.arrayContaining(['FORBIDDEN_GLOBAL', 'LAYER_IMPORT_VIOLATION'])
+      );
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }

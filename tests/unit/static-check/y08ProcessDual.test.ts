@@ -55,9 +55,31 @@ function check(root: string) {
 }
 
 describe('Y08 process forbidden-global module dual', () => {
-  it('blocks node:process once and filters a warm pre-Y08 capability finding', () => {
+  it('blocks node:process once and ignores a poisoned pre-Y08 cache finding', () => {
     const root = project(
       "import process from 'node:process';\nexport const cwd = process.cwd();\n"
+    );
+
+    const cachePath = path.join(root, 'node_modules/.cache/ark-check.json');
+    fs.mkdirSync(path.dirname(cachePath), { recursive: true });
+    fs.writeFileSync(
+      cachePath,
+      JSON.stringify({
+        key: 'pre-y08-poisoned',
+        files: {
+          'src/domain/process.ts': {
+            contentViolations: [
+              {
+                ruleId: 'CAPABILITY_VIOLATION',
+                file: 'src/domain/process.ts',
+                line: 99,
+                target: 'node:process',
+                message: 'pre-Y08 cached wall finding',
+              },
+            ],
+          },
+        },
+      })
     );
 
     const cold = check(root);
@@ -70,31 +92,6 @@ describe('Y08 process forbidden-global module dual', () => {
         edgeKind: 'import',
       }),
     ]);
-
-    const cachePath = path.join(root, 'node_modules/.cache/ark-check.json');
-    const cache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-    const entry = cache.files['src/domain/process.ts'];
-    expect(entry.edges).toContainEqual(
-      expect.objectContaining({
-        specifier: 'node:process',
-        kind: 'import',
-        typeOnly: false,
-      })
-    );
-    // Emulate the overlapping content violation retained by a warm cache
-    // written before Y08. The downstream edge-derived owner must suppress it.
-    entry.contentViolations = [
-      {
-        ruleId: 'CAPABILITY_VIOLATION',
-        file: 'src/domain/process.ts',
-        line: 99,
-        fromLayer: 'DomainModel',
-        target: 'node:process',
-        capability: 'process',
-        message: 'pre-Y08 cached wall finding',
-      },
-    ];
-    fs.writeFileSync(cachePath, JSON.stringify(cache));
 
     const warm = check(root);
     expect(warm.status).toBe(1);

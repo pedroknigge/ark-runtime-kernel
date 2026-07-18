@@ -73,7 +73,10 @@ describe('Integration: multiple core features', () => {
     const badCode = `bus.publish('Domain.Order.Unknown', {});`;
     expect(gate.validate(badCode).valid).toBe(false);
     const goodCode = `bus.publish('Domain.Order.Placed', { id: '1', amt: 1 });`;
-    expect(gate.validate(goodCode).valid).toBe(true);
+    const goodSnippet = gate.validate(goodCode);
+    expect(goodSnippet.valid).toBe(false);
+    expect(goodSnippet.lexicalValid).toBe(true);
+    expect(goodSnippet.completeness).toBe('partial');
 
     expect(bus.getTrace().some((t) => t.type === 'event.published')).toBe(true);
 

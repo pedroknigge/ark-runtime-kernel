@@ -19,7 +19,7 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "README.md"],
+  "files": ["dist", "!dist/**/*.d.cts", "README.md"],
   "peerDependencies": {
     "@nestjs/common": ">=9"
   },

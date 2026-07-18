@@ -60,6 +60,7 @@ function main() {
 
   // Scan listed dirs for denylist basenames (shallow)
   for (const entry of files) {
+    if (entry.startsWith('!')) continue; // npm files[] exclusion pattern, not an on-disk path
     const abs = path.join(REPO, entry);
     if (!fs.existsSync(abs)) {
       warnings.push(`listed path missing on disk: ${entry}`);

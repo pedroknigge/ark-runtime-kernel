@@ -154,14 +154,23 @@ describe('auto-patch (W1 mechanical-safe import type)', () => {
     ).toBeNull();
   });
 
-  it('preserves explicit completeness for already-valid and non-patchable results', () => {
+  it('keeps single-file results partial even when lexical checks pass', () => {
     const clean = validateWithAutoPatch({
       source: 'export const clean = true;\n',
       root,
       ts,
       validate: () => ({ valid: true, completeness: 'complete', violations: [] }),
     });
-    expect(clean).toMatchObject({ valid: true, completeness: 'complete', autoPatch: null });
+    expect(clean).toMatchObject({
+      mode: 'lexical-compatibility',
+      valid: false,
+      lexicalValid: true,
+      completeness: 'partial',
+      autoPatch: null,
+    });
+    expect(clean.completenessReasons).toEqual([
+      expect.objectContaining({ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }),
+    ]);
 
     const partial = validateWithAutoPatch({
       source: 'export const broken = ;\n',
@@ -174,6 +183,42 @@ describe('auto-patch (W1 mechanical-safe import type)', () => {
       }),
     });
     expect(partial).toMatchObject({ valid: false, completeness: 'partial', autoPatch: null });
+  });
+
+  it('preserves unavailable and caller-provided initial completeness evidence', () => {
+    const unavailable = validateWithAutoPatch({
+      source: 'export const unavailable = true;\n',
+      root,
+      ts,
+      validate: () => ({ valid: true, completeness: 'unavailable', violations: [] }),
+    });
+    expect(unavailable).toMatchObject({
+      lexicalValid: true,
+      completeness: 'unavailable',
+      completenessReasons: [
+        {
+          code: 'ANALYSIS_UNAVAILABLE',
+          message: 'Single-file analysis is unavailable.',
+        },
+      ],
+    });
+
+    const explicitReason = {
+      code: 'CUSTOM_PARTIAL_EVIDENCE',
+      message: 'The caller retained a narrower lexical boundary.',
+    };
+    const partial = validateWithAutoPatch({
+      source: 'export const partial = true;\n',
+      root,
+      ts,
+      validate: () => ({
+        valid: true,
+        completeness: 'partial',
+        completenessReasons: [explicitReason],
+        violations: [],
+      }),
+    });
+    expect(partial.completenessReasons).toEqual([explicitReason]);
   });
 
   it('validateWithAutoPatch discards when revalidation fails', () => {
@@ -196,11 +241,11 @@ describe('auto-patch (W1 mechanical-safe import type)', () => {
       },
     });
     expect(out.autoPatch).toBeNull();
-    expect(out.completeness).toBe('complete');
+    expect(out.completeness).toBe('partial');
     expect(calls).toBeGreaterThanOrEqual(2);
   });
 
-  it('validateWithAutoPatch returns autoPatch when revalidation is green', () => {
+  it('returns a lexically validated autoPatch without claiming complete validity', () => {
     const source = `import { Id } from '../data/types-only';\nexport function asId(x: Id): Id { return x; }\n`;
     const from = path.join(root, 'src/ui/uses-id.ts');
     const out = validateWithAutoPatch({
@@ -220,10 +265,56 @@ describe('auto-patch (W1 mechanical-safe import type)', () => {
       },
     });
     expect(out.valid).toBe(false);
-    expect(out.completeness).toBe('complete');
+    expect(out.completeness).toBe('partial');
     expect(out.autoPatch).not.toBeNull();
-    expect(out.autoPatch!.valid).toBe(true);
+    expect(out.autoPatch!.valid).toBe(false);
+    expect(out.autoPatch!.lexicalValid).toBe(true);
+    expect(out.autoPatch!.completeness).toBe('partial');
     expect(out.autoPatch!.remediationKind).toBe('import-type-from-pure-type-module');
     expect(out.autoPatch!.source).toContain('import type');
+  });
+
+  it('preserves unavailable and caller-provided post-patch completeness evidence', () => {
+    const source = `import { Id } from '../data/types-only';\nexport type Alias = Id;\n`;
+    const from = path.join(root, 'src/ui/uses-unavailable.ts');
+    const validateAfterPatch = (completenessReasons?: Array<{ code: string; message: string }>) =>
+      validateWithAutoPatch({
+        source,
+        filePath: from,
+        root,
+        ts,
+        validate: (candidate: string) =>
+          /import\s+type\b/.test(candidate)
+            ? {
+                valid: true,
+                completeness: 'unavailable',
+                completenessReasons,
+                violations: [],
+              }
+            : {
+                valid: false,
+                completeness: 'partial',
+                violations: [{ ruleId: 'LAYER_IMPORT_VIOLATION', message: 'layer' }],
+              },
+      });
+
+    const unavailable = validateAfterPatch();
+    expect(unavailable.autoPatch).toMatchObject({
+      lexicalValid: true,
+      completeness: 'unavailable',
+      completenessReasons: [
+        {
+          code: 'ANALYSIS_UNAVAILABLE',
+          message: 'Single-file analysis is unavailable.',
+        },
+      ],
+    });
+
+    const explicitReason = {
+      code: 'CUSTOM_UNAVAILABLE_EVIDENCE',
+      message: 'The resolver evidence source was unavailable.',
+    };
+    const explicit = validateAfterPatch([explicitReason]);
+    expect(explicit.autoPatch?.completenessReasons).toEqual([explicitReason]);
   });
 });

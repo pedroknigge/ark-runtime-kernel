@@ -112,7 +112,7 @@ describe('Z02 analysis completeness', () => {
     const full = runCheck(path.join(toolRoot, 'bin/ark-check.mjs'), projectRoot, []);
     expect(full.status).toBe(2);
     expect(JSON.parse(full.stdout)).toMatchObject({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
       completeness: 'unavailable',
       valid: false,
       ok: false,
@@ -150,7 +150,7 @@ describe('Z02 analysis completeness', () => {
     const result = runCheck(CHECK, root, []);
     expect(result.status).toBe(0);
     expect(JSON.parse(result.stdout)).toMatchObject({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
       completeness: 'complete',
       valid: true,
       ok: true,

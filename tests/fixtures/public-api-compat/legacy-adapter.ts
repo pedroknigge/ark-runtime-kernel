@@ -27,10 +27,43 @@ const completeResult: AdapterResult = {
   diagnostics: [],
 };
 
-// @ts-expect-error An incomplete 1.2 analysis can never carry a green verdict.
-const partialGreenResult: AdapterResult = {
+const resolvedResult: AdapterResult = {
+  schemaVersion: '1.3',
+  mode: 'resolved-candidate-facts',
+  completeness: 'complete',
+  completenessReasons: [],
+  valid: true,
+  diagnostics: [],
+  policyHash: 'fnv1a-policy',
+  resolverIdentity: 'resolver@1',
+  factsHash: 'fnv1a-facts',
+  candidateTreeHash: 'fnv1a-tree',
+};
+
+// @ts-expect-error The 1.2 completeness invariant remains source-compatible too.
+const v12PartialGreenResult: AdapterResult = {
   schemaVersion: '1.2',
   completeness: 'partial',
+  valid: true,
+  diagnostics: [],
+};
+
+// @ts-expect-error An incomplete 1.3 analysis can never carry a green verdict.
+const partialGreenResult: AdapterResult = {
+  schemaVersion: '1.3',
+  mode: 'lexical-compatibility',
+  completeness: 'partial',
+  completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE', message: 'Incomplete.' }],
+  valid: true,
+  diagnostics: [],
+};
+
+// @ts-expect-error Resolved complete results require inspectable input identities.
+const resolvedWithoutEvidence: AdapterResult = {
+  schemaVersion: '1.3',
+  mode: 'resolved-candidate-facts',
+  completeness: 'complete',
+  completenessReasons: [],
   valid: true,
   diagnostics: [],
 };
@@ -38,4 +71,7 @@ const partialGreenResult: AdapterResult = {
 void legacyResult;
 void v11Result;
 void completeResult;
+void resolvedResult;
+void v12PartialGreenResult;
 void partialGreenResult;
+void resolvedWithoutEvidence;

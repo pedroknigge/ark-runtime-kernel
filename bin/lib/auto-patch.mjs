@@ -201,9 +201,28 @@ export function applyImportTypeAutoPatch(ts, source, opts = {}) {
 export function validateWithAutoPatch(opts) {
   const { source, filePath, root, ts, validate, resolveTargetAbs } = opts;
   const result = validate(source);
+  const completeness = result.completeness === 'unavailable' ? 'unavailable' : 'partial';
+  const completenessReasons =
+    Array.isArray(result.completenessReasons) && result.completenessReasons.length > 0
+      ? result.completenessReasons
+      : [
+          {
+            code:
+              completeness === 'unavailable'
+                ? 'ANALYSIS_UNAVAILABLE'
+                : 'LEXICAL_EVIDENCE_INCOMPLETE',
+            message:
+              completeness === 'unavailable'
+                ? 'Single-file analysis is unavailable.'
+                : 'Single-file validation cannot prove complete candidate resolver evidence.',
+          },
+        ];
   const base = {
-    valid: Boolean(result.valid),
-    ...(result.completeness ? { completeness: result.completeness } : {}),
+    mode: 'lexical-compatibility',
+    valid: false,
+    lexicalValid: Boolean(result.lexicalValid ?? result.valid),
+    completeness,
+    completenessReasons,
     violations: Array.isArray(result.violations) ? result.violations : [],
   };
 
@@ -230,10 +249,13 @@ export function validateWithAutoPatch(opts) {
     };
   });
 
-  if (base.valid) {
+  if (base.lexicalValid) {
     return {
-      valid: true,
-      ...(base.completeness ? { completeness: base.completeness } : {}),
+      mode: base.mode,
+      valid: false,
+      lexicalValid: true,
+      completeness: base.completeness,
+      completenessReasons: base.completenessReasons,
       violations: [],
       autoPatch: null,
     };
@@ -249,33 +271,62 @@ export function validateWithAutoPatch(opts) {
 
   if (!attempt) {
     return {
+      mode: base.mode,
       valid: false,
-      ...(base.completeness ? { completeness: base.completeness } : {}),
+      lexicalValid: false,
+      completeness: base.completeness,
+      completenessReasons: base.completenessReasons,
       violations,
       autoPatch: null,
     };
   }
 
   const after = validate(attempt.source);
-  if (!after.valid) {
+  if (!(after.lexicalValid ?? after.valid)) {
     // Discard — never return an unvalidated patch
     return {
+      mode: base.mode,
       valid: false,
-      ...(base.completeness ? { completeness: base.completeness } : {}),
+      lexicalValid: false,
+      completeness: base.completeness,
+      completenessReasons: base.completenessReasons,
       violations,
       autoPatch: null,
     };
   }
 
+  const afterCompleteness = after.completeness === 'unavailable' ? 'unavailable' : 'partial';
+  const afterCompletenessReasons =
+    Array.isArray(after.completenessReasons) && after.completenessReasons.length > 0
+      ? after.completenessReasons
+      : [
+          {
+            code:
+              afterCompleteness === 'unavailable'
+                ? 'ANALYSIS_UNAVAILABLE'
+                : 'LEXICAL_EVIDENCE_INCOMPLETE',
+            message:
+              afterCompleteness === 'unavailable'
+                ? 'Single-file analysis is unavailable.'
+                : 'Single-file validation cannot prove complete candidate resolver evidence.',
+          },
+        ];
   return {
+    mode: base.mode,
     valid: false,
-    ...(base.completeness ? { completeness: base.completeness } : {}),
+    lexicalValid: false,
+    completeness: base.completeness,
+    completenessReasons: base.completenessReasons,
     violations,
     autoPatch: {
+      mode: 'lexical-compatibility',
       source: attempt.source,
       remediationKind: attempt.remediationKind,
       confidence: attempt.confidence,
-      valid: true,
+      valid: false,
+      lexicalValid: true,
+      completeness: afterCompleteness,
+      completenessReasons: afterCompletenessReasons,
     },
   };
 }

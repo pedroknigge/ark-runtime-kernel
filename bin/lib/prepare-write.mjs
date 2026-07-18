@@ -117,8 +117,13 @@ export function composePrepareWrite(opts) {
     ...(placement?.description ? { description: placement.description } : {}),
     // Q03: pass through golden pattern from ark_place (advisory; absent is normal).
     ...(placement?.goldenPattern ? { goldenPattern: placement.goldenPattern } : {}),
+    mode: gate.mode,
     valid: gate.valid,
+    lexicalValid: gate.lexicalValid,
     ...(gate.completeness ? { completeness: gate.completeness } : {}),
+    ...(Array.isArray(gate.completenessReasons)
+      ? { completenessReasons: gate.completenessReasons }
+      : {}),
     violations: gate.violations,
     ...(gate.autoPatch ? { autoPatch: gate.autoPatch } : {}),
     ...(judgment ? { judgmentBrief: judgment } : {}),

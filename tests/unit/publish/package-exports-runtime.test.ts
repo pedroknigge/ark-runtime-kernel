@@ -52,6 +52,6 @@ describe('isolated runtime distribution', () => {
     expect(pkg.name).toBe('@arkgate/runtime');
     expect(pkg.version).toMatch(/^0\./);
     expect(pkg.publishConfig.tag).toBe('experimental');
-    expect(pkg.files).toEqual(['dist', 'README.md']);
+    expect(pkg.files).toEqual(['dist', '!dist/**/*.d.cts', 'README.md']);
   });
 });

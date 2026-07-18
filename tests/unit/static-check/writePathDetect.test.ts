@@ -330,9 +330,11 @@ describe('deny→repair via shipped bin/ark-mcp.mjs', () => {
         .split('\n')
         .find((l) => l.startsWith('ARK_REPAIR_JSON:'));
       const repair = JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length));
-      expect(repair.mode).toBe('repair');
+      expect(repair.mode).toBe('lexical-compatibility');
+      expect(repair.repair).toBe(true);
       expect(repair.decision).toBe('deny');
-      expect(repair.autoPatch?.valid).toBe(true);
+      expect(repair.autoPatch?.valid).toBe(false);
+      expect(repair.autoPatch?.lexicalValid).toBe(true);
       expect(repair.autoPatch?.source).toMatch(/import\s+type/);
       // File on disk must not have been silently rewritten
       expect(fs.existsSync(path.join(apRoot, 'src/domain/use-row.ts'))).toBe(false);
@@ -435,7 +437,8 @@ describe('deny→repair via shipped bin/ark-mcp.mjs', () => {
       const repairLine = deny.stderr.split('\n').find((l) => l.startsWith('ARK_REPAIR_JSON:'));
       expect(repairLine).toBeTruthy();
       const repair = JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length));
-      expect(repair.autoPatch?.valid).toBe(true);
+      expect(repair.autoPatch?.valid).toBe(false);
+      expect(repair.autoPatch?.lexicalValid).toBe(true);
       expect(typeof repair.autoPatch?.source).toBe('string');
       // Host re-injects patched content (gate never wrote the file)
       const allow = spawnSync(

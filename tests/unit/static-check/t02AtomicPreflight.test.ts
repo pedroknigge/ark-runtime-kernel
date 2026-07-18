@@ -91,8 +91,11 @@ describe('T02 atomic change preflight', () => {
     expect(result.status, result.stderr).toBe(0);
     const payload = JSON.parse(result.stdout);
     expect(payload).toMatchObject({
+      mode: 'resolved-candidate-facts',
       valid: true,
       readOnly: true,
+      baseCompleteness: 'complete',
+      candidateCompleteness: 'complete',
       changes: [
         { path: 'src/domain/created.ts', operation: 'create' },
         { path: 'src/domain/obsolete.ts', operation: 'delete' },
@@ -101,6 +104,9 @@ describe('T02 atomic change preflight', () => {
       violations: [],
     });
     expect(payload.policyHash).toMatch(/^fnv1a-/);
+    expect(payload.resolverIdentity).toBe('arkgate-typescript-resolver@1');
+    expect(payload.baseFactsHash).toMatch(/^fnv1a-/);
+    expect(payload.candidateFactsHash).toMatch(/^fnv1a-/);
     expect(payload.baseTreeHash).not.toBe(payload.candidateTreeHash);
     expect(sourceSnapshot(root)).toEqual(before);
   });

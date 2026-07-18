@@ -8,7 +8,7 @@
  * Pure CLI helper (bin/lib/adapter-contract.mjs). Zero Node I/O.
  */
 
-export const ARK_ANALYSIS_RESULT_SCHEMA_VERSION = '1.2';
+export const ARK_ANALYSIS_RESULT_SCHEMA_VERSION = '1.3';
 function text(value) {
     return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -50,6 +50,23 @@ export function toAdapterDiagnostic(violation, fallbackSeverity = 'error') {
         ...(text(violation.fromLayer) ? { fromLayer: text(violation.fromLayer) } : {}),
         ...(text(violation.toLayer) ? { toLayer: text(violation.toLayer) } : {}),
         ...(typeof violation.typeOnly === 'boolean' ? { typeOnly: violation.typeOnly } : {}),
+        ...(typeof violation.targetTypeOnlyExports === 'boolean'
+            ? { targetTypeOnlyExports: violation.targetTypeOnlyExports }
+            : {}),
+        ...(typeof violation.sourcePureTypeModule === 'boolean'
+            ? { sourcePureTypeModule: violation.sourcePureTypeModule }
+            : {}),
+        ...(typeof violation.namedBindingsTypeOnly === 'boolean'
+            ? { namedBindingsTypeOnly: violation.namedBindingsTypeOnly }
+            : {}),
+        ...(typeof violation.portProofEligible === 'boolean'
+            ? { portProofEligible: violation.portProofEligible }
+            : {}),
+        ...(typeof violation.peerIsolation === 'boolean'
+            ? { peerIsolation: violation.peerIsolation }
+            : {}),
+        ...(text(violation.capability) ? { capability: text(violation.capability) } : {}),
+        ...(text(violation.edgeKind) ? { edgeKind: text(violation.edgeKind) } : {}),
     };
     return {
         ruleId,
@@ -66,32 +83,101 @@ export function toAdapterDiagnostic(violation, fallbackSeverity = 'error') {
 }
 export function createAdapterResult(input) {
     const completeness = input.completeness ?? 'complete';
+    const mode = input.mode ?? 'lexical-compatibility';
+    if (completeness === 'complete' && (input.completenessReasons?.length ?? 0) > 0) {
+        throw new Error('completenessReasons must be empty when completeness is complete.');
+    }
+    const completenessReasons = completeness === 'complete'
+        ? []
+        : input.completenessReasons && input.completenessReasons.length > 0
+            ? input.completenessReasons.map((reason) => ({
+                code: text(reason.code) ?? 'ANALYSIS_EVIDENCE_INCOMPLETE',
+                message: text(reason.message) ??
+                    `Analysis ${completeness}: required evidence is incomplete.`,
+                ...(text(reason.file) ? { file: text(reason.file) } : {}),
+            }))
+            : [
+                {
+                    code: completeness === 'unavailable'
+                        ? 'ANALYSIS_UNAVAILABLE'
+                        : 'ANALYSIS_EVIDENCE_INCOMPLETE',
+                    message: `Analysis ${completeness}: required evidence is incomplete.`,
+                },
+            ];
+    const evidence = {
+        ...(text(input.policyHash) ? { policyHash: text(input.policyHash) } : {}),
+        ...(text(input.resolverIdentity) ? { resolverIdentity: text(input.resolverIdentity) } : {}),
+        ...(text(input.factsHash) ? { factsHash: text(input.factsHash) } : {}),
+        ...(text(input.candidateTreeHash) ? { candidateTreeHash: text(input.candidateTreeHash) } : {}),
+    };
+    if (mode === 'resolved-candidate-facts' && completeness !== 'unavailable') {
+        for (const field of ['policyHash', 'resolverIdentity', 'factsHash', 'candidateTreeHash']) {
+            if (!evidence[field]) {
+                throw new Error(`${field} is required for resolved ${completeness} adapter evidence.`);
+            }
+        }
+    }
     const diagnostics = [
         ...(input.violations ?? []).map((item) => toAdapterDiagnostic(item, 'error')),
         ...(input.warnings ?? []).map((item) => toAdapterDiagnostic(item, 'warning')),
     ];
-    if (completeness !== 'complete') {
-        return {
-            schemaVersion: ARK_ANALYSIS_RESULT_SCHEMA_VERSION,
-            valid: false,
-            completeness,
-            diagnostics,
-        };
-    }
-    return {
+    const base = {
         schemaVersion: ARK_ANALYSIS_RESULT_SCHEMA_VERSION,
-        valid: input.valid,
-        completeness,
+        completenessReasons,
         diagnostics,
     };
+    if (mode === 'resolved-candidate-facts') {
+        if (completeness === 'unavailable') {
+            return {
+                ...base,
+                mode,
+                valid: false,
+                completeness,
+                ...evidence,
+            };
+        }
+        const resolvedEvidence = {
+            policyHash: evidence.policyHash,
+            resolverIdentity: evidence.resolverIdentity,
+            factsHash: evidence.factsHash,
+            candidateTreeHash: evidence.candidateTreeHash,
+        };
+        if (completeness === 'complete') {
+            return {
+                ...base,
+                mode,
+                valid: input.valid,
+                completeness,
+                ...resolvedEvidence,
+            };
+        }
+        return {
+            ...base,
+            mode,
+            valid: false,
+            completeness,
+            ...resolvedEvidence,
+        };
+    }
+    if (completeness === 'complete') {
+        return { ...base, mode, valid: input.valid, completeness, ...evidence };
+    }
+    return { ...base, mode, valid: false, completeness, ...evidence };
 }
 export const ARK_ANALYSIS_RESULT_SCHEMA = {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
-    $id: 'https://unpkg.com/arkgate@2/schemas/ark.analysis-result.schema.json',
+    $id: 'https://unpkg.com/arkgate@3/schemas/ark.analysis-result.schema.json',
     title: 'ArkGate analysis result',
     type: 'object',
     additionalProperties: false,
-    required: ['schemaVersion', 'valid', 'completeness', 'diagnostics'],
+    required: [
+        'schemaVersion',
+        'mode',
+        'valid',
+        'completeness',
+        'completenessReasons',
+        'diagnostics',
+    ],
     allOf: [
         {
             if: {
@@ -100,11 +186,49 @@ export const ARK_ANALYSIS_RESULT_SCHEMA = {
             },
             then: { properties: { valid: { const: false } } },
         },
+        {
+            if: {
+                properties: {
+                    mode: { const: 'resolved-candidate-facts' },
+                    completeness: { enum: ['complete', 'partial'] },
+                },
+                required: ['mode', 'completeness'],
+            },
+            then: {
+                required: ['policyHash', 'resolverIdentity', 'factsHash', 'candidateTreeHash'],
+            },
+        },
+        {
+            if: {
+                properties: { completeness: { const: 'complete' } },
+                required: ['completeness'],
+            },
+            then: { properties: { completenessReasons: { maxItems: 0 } } },
+            else: { properties: { completenessReasons: { minItems: 1 } } },
+        },
     ],
     properties: {
         schemaVersion: { const: ARK_ANALYSIS_RESULT_SCHEMA_VERSION },
+        mode: { enum: ['lexical-compatibility', 'resolved-candidate-facts'] },
         valid: { type: 'boolean' },
         completeness: { enum: ['complete', 'partial', 'unavailable'] },
+        completenessReasons: {
+            type: 'array',
+            items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['code', 'message'],
+                properties: {
+                    code: { type: 'string', minLength: 1 },
+                    message: { type: 'string', minLength: 1 },
+                    file: { type: 'string', minLength: 1 },
+                },
+            },
+        },
+        policyHash: { type: 'string', minLength: 1 },
+        resolverIdentity: { type: 'string', minLength: 1 },
+        factsHash: { type: 'string', minLength: 1 },
+        candidateTreeHash: { type: 'string', minLength: 1 },
         diagnostics: {
             type: 'array',
             items: {
@@ -133,6 +257,13 @@ export const ARK_ANALYSIS_RESULT_SCHEMA = {
                             fromLayer: { type: 'string' },
                             toLayer: { type: 'string' },
                             typeOnly: { type: 'boolean' },
+                            targetTypeOnlyExports: { type: 'boolean' },
+                            sourcePureTypeModule: { type: 'boolean' },
+                            namedBindingsTypeOnly: { type: 'boolean' },
+                            portProofEligible: { type: 'boolean' },
+                            peerIsolation: { type: 'boolean' },
+                            capability: { type: 'string', minLength: 1 },
+                            edgeKind: { type: 'string', minLength: 1 },
                         },
                     },
                     nextAction: { type: 'string', minLength: 1 },

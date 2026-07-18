@@ -69,13 +69,19 @@ describe('versioned adapter parity contract', () => {
 
     expect(response.result.structuredContent).toEqual({
       schemaVersion: cli.schemaVersion,
+      mode: cli.mode,
       valid: cli.valid,
       completeness: cli.completeness,
+      completenessReasons: cli.completenessReasons,
       diagnostics: cli.diagnostics,
+      policyHash: cli.policyHash,
+      resolverIdentity: cli.resolverIdentity,
+      factsHash: cli.factsHash,
+      candidateTreeHash: cli.candidateTreeHash,
     });
   });
 
-  it('the write hook emits the same diagnostic identity, location, severity, and evidence', () => {
+  it('declares single-file hook evidence as lexical compatibility, outside full parity', () => {
     const fixture = projectFixture();
     roots.push(fixture.root);
     const cli = cliResult(fixture.root);
@@ -100,10 +106,20 @@ describe('versioned adapter parity contract', () => {
     expect(repairLine).toBeTruthy();
     const repair = JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length));
 
-    expect(repair.schemaVersion).toBe(cli.schemaVersion);
-    expect(repair.valid).toBe(cli.valid);
-    expect(repair.completeness).toBe(cli.completeness);
-    expect(repair.diagnostics).toEqual(cli.diagnostics);
+    expect(cli).toMatchObject({
+      schemaVersion: '1.3',
+      mode: 'resolved-candidate-facts',
+      completeness: 'complete',
+    });
+    expect(repair).toMatchObject({
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
+      valid: false,
+      completeness: 'partial',
+      completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      diagnostics: [{ ruleId: 'FORBIDDEN_GLOBAL' }],
+    });
+    expect(repair).not.toHaveProperty('factsHash');
   });
 
   it('GitHub Actions has a mandatory dedicated adapter-parity job', () => {

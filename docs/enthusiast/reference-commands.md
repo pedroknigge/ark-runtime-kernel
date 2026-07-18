@@ -57,7 +57,8 @@ In 3.1+, strict merge protects policy changes; preflight checks one complete bat
 
 ## Analysis completeness
 
-Current check envelopes use schema `1.2` and require `completeness`:
+Current check envelopes use schema `1.3` and require `mode`, `completeness`, and
+`completenessReasons`:
 
 | Value | Meaning | Agent rule |
 |-------|---------|------------|
@@ -66,6 +67,8 @@ Current check envelopes use schema `1.2` and require `completeness`:
 | `unavailable` | No usable TypeScript analysis host | Plan goal is false; CLI exits `2` |
 
 Doctor keeps the parse detail diagnostic, but never call a `partial` or `unavailable` result green.
+Single-file lexical checks are always `partial`; use atomic preflight or the full check for a
+resolved complete-candidate verdict.
 
 ## Plan classes (`--plan --json`)
 

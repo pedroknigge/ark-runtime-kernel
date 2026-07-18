@@ -430,6 +430,7 @@ command = "echo"
         JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } })
       );
       const archConfig = {
+        include: ['src'],
         layers: [
           {
             name: 'DomainModel',
@@ -466,7 +467,9 @@ command = "echo"
         ts,
         args: { config: path.join(root, 'ark.config.json'), noCache: true },
       });
-      expect(scan.violations.length).toBeGreaterThan(0);
+      expect(scan.violations.map((violation: { ruleId: string }) => violation.ruleId)).toEqual(
+        expect.arrayContaining(['FORBIDDEN_GLOBAL', 'LAYER_IMPORT_VIOLATION'])
+      );
 
       const host = createModuleResolutionHost(ts);
       expect(isFile(files[0])).toBe(true);

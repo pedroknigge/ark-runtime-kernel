@@ -56,7 +56,7 @@ describe('prepare-write (W2)', () => {
     expect(brief!.remediationClass).toBe('judgment');
   });
 
-  it('composePrepareWrite returns placement + valid for clean source', () => {
+  it('composePrepareWrite returns placement + explicit partial lexical evidence', () => {
     const out = composePrepareWrite({
       source: 'export type Id = string;\n',
       placement: {
@@ -72,7 +72,10 @@ describe('prepare-write (W2)', () => {
       validate: () => ({ valid: true, violations: [] }),
     });
     expect(out.ok).toBe(true);
-    expect(out.valid).toBe(true);
+    expect(out.valid).toBe(false);
+    expect(out.lexicalValid).toBe(true);
+    expect(out.mode).toBe('lexical-compatibility');
+    expect(out.completeness).toBe('partial');
     expect(out.layer).toBe('DomainModel');
     expect(out.mustNotImport).toContain('PersistenceAdapters');
     expect(out.contentHash).toMatch(/^sha256:/);
@@ -166,7 +169,8 @@ describe('prepare-write (W2)', () => {
       ts,
       validate: () => ({ valid: true, violations: [] }),
     });
-    expect(ok.valid).toBe(true);
+    expect(ok.valid).toBe(false);
+    expect(ok.lexicalValid).toBe(true);
     expect(ok.mayImportInfrastructure).toBe(true);
     expect(ok.placementMessage).toBe('placed');
     expect(buildJudgmentBrief([])).toBeNull();

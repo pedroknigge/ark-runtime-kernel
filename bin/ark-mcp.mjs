@@ -67,8 +67,17 @@ import { ARK_ANALYSIS_RESULT_SCHEMA, createAdapterResult } from './lib/adapter-c
 import { loadTypeScript } from './lib/typescript-host.mjs';
 import { validateSnippetAnalysis } from './lib/snippet-analysis.mjs';
 import { loadGoldenPattern, attachGoldenToPlacement } from './lib/golden-pattern.mjs';
-import { prepareChangeFromRoot } from './lib/prepare-change.mjs';
+import {
+  isCandidateSourceInScope,
+  prepareChangeFromRoot,
+} from './lib/prepare-change.mjs';
 import { detectWritePathCapabilities } from './lib/write-path-detect.mjs';
+import { isGovernableSourceFile } from './lib/scan-files.mjs';
+import {
+  canonicalizeCandidateChanges,
+  resolvedCompilerInputPaths,
+  resolvedInputIdentities,
+} from './lib/resolved-candidate-facts.mjs';
 
 const arkCheckBin = fileURLToPath(new URL('./ark-check.mjs', import.meta.url));
 
@@ -106,6 +115,7 @@ function parseArgs(argv) {
       args.config = argv[++i];
       args.configExplicit = true;
     } else if (a === '--manifest') args.manifest = argv[++i];
+    else if (a === '--tsconfig') args.tsconfig = argv[++i];
   }
   // Env can enable repair without rewriting host templates (ARK_HOOK_REPAIR=1).
   if (envTruthy('ARK_HOOK_REPAIR')) {
@@ -165,6 +175,30 @@ async function loadArk() {
 }
 
 const SOURCE_FILE = /\.[cm]?[jt]sx?$/;
+
+/** Inputs whose candidate contents are not modeled by the source-only virtual overlay. */
+function isResolvedAnalysisInput(relativePath, args, compilerInputs = new Set()) {
+  const relative = String(relativePath).replace(/\\/g, '/');
+  try {
+    const candidate = resolvedInputIdentities(args.root, [relative]);
+    const known = resolvedInputIdentities(args.root, [
+      args.config, args.manifest, args.tsconfig, ...compilerInputs,
+    ]);
+    if ([...candidate].some((identity) => known.has(identity))) return true;
+  } catch {
+    return true;
+  }
+
+  const basename = path.posix.basename(relative);
+  if (basename === 'package.json') return true;
+  if (/^(?:tsconfig|jsconfig)(?:\.[^/]+)?\.jsonc?$/i.test(basename)) return true;
+  if (
+    ['pnpm-workspace.yaml', 'pnpm-workspace.yml', 'lerna.json', 'nx.json'].includes(basename)
+  ) {
+    return true;
+  }
+  return /(?:^|\/)configs?\/[^/]+\.jsonc?$/i.test(relative);
+}
 
 /**
  * Normalize agent PreToolUse payloads.
@@ -274,12 +308,13 @@ function codexPatchWrites(patch, root) {
       continue;
     }
     seenPaths.add(filePath);
+    const canonicalRelativePath = rel.split(path.sep).join('/');
     if (action === 'Delete') {
       if (body.some((line) => line.trim() !== '') || !fs.existsSync(filePath)) {
         complete = false;
         continue;
       }
-      writes.push({ path: relativePath, delete: true });
+      writes.push({ path: canonicalRelativePath, filePath, delete: true });
       continue;
     }
     let content;
@@ -312,7 +347,9 @@ function codexPatchWrites(patch, root) {
       content = applyCodexUpdatePatch(current, body);
       if (content === null) complete = false;
     }
-    if (typeof content === 'string') writes.push({ path: relativePath, filePath, content });
+    if (typeof content === 'string') {
+      writes.push({ path: canonicalRelativePath, filePath, content });
+    }
   }
   return { writes, complete: complete && sawFileDirective };
 }
@@ -381,17 +418,68 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
     // An incomplete reconstruction must not be mislabeled as atomic or hard enforcement.
     if (!parsedPatch.complete) return;
     const patchWrites = parsedPatch.writes;
-    const governedWrites = patchWrites.filter((change) => {
-      const relative = String(change.path).replace(/\\/g, '/');
-      if (!SOURCE_FILE.test(relative) || relative.endsWith('.d.ts')) return false;
-      return Boolean(inferLayer(path.resolve(args.root, relative), config, args.root));
-    });
+    const sourceWrites = patchWrites.filter((change) =>
+      isGovernableSourceFile(path.basename(String(change.path)))
+    );
+    let compilerInputs = new Set();
+    const nonSourceWrites = patchWrites.filter(
+      (change) => !isGovernableSourceFile(path.basename(String(change.path)))
+    );
+    if (sourceWrites.length > 0 && nonSourceWrites.length > 0) {
+      try {
+        compilerInputs = new Set(
+          resolvedCompilerInputPaths({
+            root: args.root,
+            config,
+            ts,
+            tsconfig: args.tsconfig,
+            changes: sourceWrites.map(({ path: relativePath, content, delete: deleted }) =>
+              deleted
+                ? { path: relativePath, delete: true }
+                : { path: relativePath, content }
+            ),
+          })
+        );
+      } catch {
+        // Without a trustworthy closure, no mixed source/non-source candidate may borrow
+        // the source-only resolved verdict.
+        compilerInputs = new Set(
+          nonSourceWrites.map((change) => String(change.path).replace(/\\/g, '/'))
+        );
+      }
+    }
+    const analysisInputWrites = patchWrites.filter((change) =>
+      isResolvedAnalysisInput(change.path, args, compilerInputs)
+    );
+    let canonicalizationError;
+    let canonicalSourceWrites = [];
+    try {
+      canonicalSourceWrites = canonicalizeCandidateChanges({
+        root: args.root,
+        config,
+        changes: sourceWrites,
+      });
+    } catch (error) {
+      canonicalizationError = error;
+    }
+    const governedWrites = canonicalSourceWrites.filter((change) =>
+      isCandidateSourceInScope(config, change.path)
+    );
     const changes = governedWrites.map(({ path: relativePath, content, delete: deleted }) =>
       deleted ? { path: relativePath, delete: true } : { path: relativePath, content }
     );
-    if (changes.length === 0) return;
     let result;
     try {
+      if (canonicalizationError) throw canonicalizationError;
+      if (sourceWrites.length > 0 && analysisInputWrites.length > 0) {
+        throw new Error(
+          `Complete patch changes resolved-analysis input(s) ${analysisInputWrites
+            .map((change) => change.path)
+            .sort()
+            .join(', ')}; source-only virtual preflight cannot model those contents.`
+        );
+      }
+      if (changes.length === 0) return;
       result = prepareChangeFromRoot({
         root: args.root,
         config,
@@ -399,27 +487,51 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
           ? args.config
           : path.join(args.root, args.config),
         changes,
+        overlayChanges: sourceWrites.map(({ path: relativePath, content, delete: deleted }) =>
+          deleted ? { path: relativePath, delete: true } : { path: relativePath, content }
+        ),
+        ts,
+        tsconfig: args.tsconfig,
+        manifest: args.projectManifest,
       });
-    } catch {
-      return;
-    }
-    if (result.valid) {
-      for (const write of governedWrites) {
-        if (typeof write.content !== 'string') continue;
-        runHookPayload(
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const adapterResult = createAdapterResult({
+        valid: false,
+        completeness: 'unavailable',
+        mode: 'resolved-candidate-facts',
+        violations: [
           {
-            tool_name: 'Write',
-            tool_input: { file_path: write.filePath, content: write.content },
+            ruleId: 'ATOMIC_PREFLIGHT_UNAVAILABLE',
+            file: '<change-set>',
+            message,
+            nextAction: 'Fix the complete patch or analysis environment, then preflight the same patch again.',
           },
-          gate,
-          config,
-          args,
-          ts,
-          { host: 'codex', operation: 'apply_patch', completePatch: true }
+        ],
+      });
+      process.stderr.write(
+        `Ark architecture gate could not preflight this complete ${toolName}: ${message}\n`
+      );
+      if (args.hookRepair) {
+        process.stderr.write(
+          `ARK_REPAIR_JSON:${JSON.stringify({
+            ...adapterResult,
+            repair: true,
+            decision: 'deny',
+            enforcement: hookEnforcement(args.root, 'codex', 'apply_patch', true),
+            autoPatch: null,
+          })}\n`
         );
       }
+      if (grokStyle) {
+        process.stdout.write(
+          `${JSON.stringify({ decision: 'deny', reason: message, analysis: adapterResult })}\n`
+        );
+      }
+      process.exitCode = 2;
       return;
     }
+    if (result.valid) return;
     const message = [
       `Ark architecture gate blocked this complete ${toolName} (${changes.length} governed file(s)):`,
       ...result.diagnostics.map(
@@ -431,10 +543,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
     process.stderr.write(`${message}\n`);
     if (args.hookRepair) {
       process.stderr.write(
-        `ARK_REPAIR_JSON:${JSON.stringify({
-          ...result,
-          mode: 'repair',
-          decision: 'deny',
+          `ARK_REPAIR_JSON:${JSON.stringify({
+            ...result,
+            repair: true,
+            decision: 'deny',
           enforcement: hookEnforcement(args.root, 'codex', 'apply_patch', true),
           autoPatch: null,
         })}\n`
@@ -474,6 +586,7 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
         return {
           valid: Boolean(once.valid),
           completeness: once.completeness,
+          completenessReasons: once.completenessReasons,
           violations: once.violations ?? [],
           autoPatch: null,
         };
@@ -511,6 +624,7 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
   const adapterResult = createAdapterResult({
     valid: false,
     completeness: result.completeness,
+    completenessReasons: result.completenessReasons,
     violations: newViolations.map((violation) => ({ ...violation, file: normalizedRel })),
   });
 
@@ -555,7 +669,7 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
     // Structured envelope for any host that can re-inject. Never writes the file.
     const repairPayload = {
       ...adapterResult,
-      mode: 'repair',
+      repair: true,
       decision: 'deny',
       filePath: normalizedRel,
       enforcement: hookEnforcement(
@@ -569,10 +683,7 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
       ...(autoPatch
         ? {
             autoPatch: {
-              source: autoPatch.source,
-              remediationKind: autoPatch.remediationKind,
-              confidence: autoPatch.confidence,
-              valid: autoPatch.valid,
+              ...autoPatch,
             },
           }
         : { autoPatch: null }),
@@ -599,11 +710,22 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext) {
   process.exitCode = 2;
 }
 
-function runArkCheckJsonFromRoot(root, config, extraArgs, manifest) {
+function runArkCheckJsonFromRoot(root, config, extraArgs, manifest, tsconfig) {
   const manifestArgs = manifest ? ['--manifest', manifest] : [];
+  const tsconfigArgs = tsconfig ? ['--tsconfig', tsconfig] : [];
   const result = spawnSync(
     process.execPath,
-    [arkCheckBin, '--root', root, '--config', config, ...manifestArgs, '--json', ...extraArgs],
+    [
+      arkCheckBin,
+      '--root',
+      root,
+      '--config',
+      config,
+      ...manifestArgs,
+      ...tsconfigArgs,
+      '--json',
+      ...extraArgs,
+    ],
     { encoding: 'utf8', timeout: 120_000, maxBuffer: 20 * 1024 * 1024 }
   );
   if (result.error) {
@@ -706,6 +828,7 @@ async function main() {
 
   const manifestPath = resolveInRoot(args.root, args.manifest);
   const projectManifest = manifestPath ? readJson(manifestPath, { required: true }) : undefined;
+  args.projectManifest = projectManifest;
 
   const intents = Array.isArray(projectManifest?.intents)
     ? projectManifest.intents.map((i) => (typeof i === 'string' ? i : i?.name)).filter(Boolean)
@@ -1124,6 +1247,7 @@ async function main() {
     const adapterResult = createAdapterResult({
       valid: result.valid,
       completeness: result.completeness,
+      completenessReasons: result.completenessReasons,
       violations: result.violations,
     });
     return {
@@ -1153,7 +1277,13 @@ async function main() {
   // no second copy of the check logic to drift. These are occasional agent queries, not
   // a hot path, so the per-call spawn cost is irrelevant.
   function runArkCheckJson(extraArgs) {
-    return runArkCheckJsonFromRoot(args.root, args.config, extraArgs, args.manifest);
+    return runArkCheckJsonFromRoot(
+      args.root,
+      args.config,
+      extraArgs,
+      args.manifest,
+      args.tsconfig
+    );
   }
 
   function runCheckTool(params) {
@@ -1172,9 +1302,15 @@ async function main() {
       content: [{ type: 'text', text: JSON.stringify(data, null, 2) }],
       structuredContent: {
         schemaVersion: data.schemaVersion,
+        mode: data.mode,
         valid: data.valid,
         completeness: data.completeness,
+        completenessReasons: data.completenessReasons,
         diagnostics: data.diagnostics,
+        ...(data.policyHash ? { policyHash: data.policyHash } : {}),
+        ...(data.resolverIdentity ? { resolverIdentity: data.resolverIdentity } : {}),
+        ...(data.factsHash ? { factsHash: data.factsHash } : {}),
+        ...(data.candidateTreeHash ? { candidateTreeHash: data.candidateTreeHash } : {}),
       },
       isError: data.ok === false,
     };
@@ -1389,6 +1525,9 @@ async function main() {
         changes: params?.arguments?.changes,
         changeMap: params?.arguments?.changeMap,
         changeMapSource: 'ark_prepare_change.changeMap',
+        ts,
+        tsconfig: args.tsconfig,
+        manifest: projectManifest,
       });
       return {
         content: [{ type: 'text', text: JSON.stringify(result, null, 2) }],

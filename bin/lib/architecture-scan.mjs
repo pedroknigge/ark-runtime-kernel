@@ -5,7 +5,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  layerForFile,
   looksLikeIntent,
 } from '../ark-shared.mjs';
 import {
@@ -21,35 +20,26 @@ import {
   stringLiteralText,
   typeOnlyExportNames,
 } from './ast-scan.mjs';
-import { provePortProofInject } from './port-proof.mjs';
 import { summarizeParseHealth } from './parse-health.mjs';
-import { completenessFromParseHealth } from './analysis-completeness.mjs';
 import {
   intentLayersFromManifest,
   layerForIntent,
   isBlocked,
-  collectConfigWarnings,
 } from './config-warnings.mjs';
 import {
+  analyzeResolvedProject,
   ambientCoveredByForbiddenGlobals,
   collectCapabilityUses,
   collectForbiddenCapabilityUses,
   effectiveCapabilityDeny,
-  evaluateArchitectureGraph,
   extractSemanticDependencies,
   forbiddenGlobalForModuleSpecifier,
+  loadContract,
 } from './analysis-engine.mjs';
 import { normalize } from './scan-files.mjs';
-import { collectSafetyDiagnostics } from './safety-diagnostics.mjs';
 import { classifyPublishFacts } from './source-policy.mjs';
-import {
-  createCompilerOptionsLookup,
-  createModuleResolutionHost,
-  loadScanCache,
-  resolveImport,
-  saveScanCache,
-  scanCacheKey,
-} from './ts-resolve.mjs';
+import { effectiveAnalysisConfig } from './analysis-policy.mjs';
+import { resolveCandidateFacts } from './resolved-candidate-facts.mjs';
 
 /**
  * Parse one governed source file into content violations + module edges.
@@ -209,169 +199,40 @@ export function scanSourceFile(ts, root, config, rules, manifestIntentLayers, fi
  * @returns {{ violations: object[], warnings: object[] }}
  */
 export function runArchitectureScan({ root, config, manifest, rules, files, ts, args }) {
-  const manifestIntentLayers = intentLayersFromManifest(manifest);
-  const compilerOptionsFor = createCompilerOptionsLookup(ts, root, args.tsconfig);
-  const moduleHost = createModuleResolutionHost(ts);
-
-  const warnings = collectConfigWarnings(root, config, files, rules, manifest);
-  const safety = collectSafetyDiagnostics(ts, root, config, files);
-  warnings.push(...safety.warnings);
-  const cacheKey = args.noCache ? undefined : scanCacheKey(root, args, ts.version);
-  const cachedFiles = cacheKey ? loadScanCache(root, cacheKey) : undefined;
-  const nextCacheFiles = {};
-
-  const scanned = [];
-  for (const file of files) {
-    const sourceLayer = layerForFile(root, file, config.layers);
-    if (!sourceLayer) continue;
-    const relFile = normalize(path.relative(root, file));
-    const stat = fs.statSync(file);
-    const fileKey = `${stat.mtimeMs}:${stat.size}`;
-    const cached = cachedFiles?.[relFile];
-    const entry =
-      cached &&
-      cached.fileKey === fileKey &&
-      Number.isSafeInteger(cached.parseDiagnosticCount) &&
-      cached.parseDiagnosticCount >= 0
-        ? cached
-        : {
-            fileKey,
-            ...scanSourceFile(
-              ts,
-              root,
-              config,
-              rules,
-              manifestIntentLayers,
-              file,
-              sourceLayer
-            ),
-          };
-    nextCacheFiles[relFile] = entry;
-    scanned.push({ file, sourceLayer, relFile, entry });
-  }
-
-  const engineEdges = [];
-  // Y08 derives exact forbidden-global module duals from dependency facts
-  // already stored in every current cache entry. This stays downstream of the
-  // cache: no second AST scan, no cache-shape/version bump, and warm pre-Y08
-  // entries gain the verdict immediately.
-  const forbiddenModuleDualViolations = [];
-  const forbiddenModuleDualKeys = new Set();
-  for (const { file, sourceLayer, relFile, entry } of scanned) {
-    const layerConfig = config.layers.find((layer) => layer.name === sourceLayer);
-    const forbiddenGlobals = Array.isArray(layerConfig?.forbiddenGlobals)
-      ? layerConfig.forbiddenGlobals.filter((item) => typeof item === 'string')
-      : [];
-    for (const edge of entry.edges) {
-      if (!edge.typeOnly) {
-        const forbiddenGlobal = forbiddenGlobalForModuleSpecifier(
-          edge.specifier,
-          forbiddenGlobals
-        );
-        if (forbiddenGlobal) {
-          forbiddenModuleDualKeys.add(`${relFile}\0${edge.specifier}`);
-          forbiddenModuleDualViolations.push({
-            ruleId: 'FORBIDDEN_GLOBAL',
-            file: relFile,
-            line: edge.line,
-            fromLayer: sourceLayer,
-            target: edge.specifier,
-            edgeKind: edge.kind,
-            message: `${sourceLayer} must not use module "${edge.specifier}" because it is the import form of forbidden global "${forbiddenGlobal}".`,
-          });
-        }
-      }
-      const target = resolveImport(
-        ts,
-        edge.specifier,
-        file,
-        compilerOptionsFor(file),
-        moduleHost,
-        root
-      );
-      const targetLayer = target ? layerForFile(root, target, config.layers) : undefined;
-      const relTarget = target ? normalize(path.relative(root, target)) : undefined;
-      const targetCached = relTarget ? nextCacheFiles[relTarget] : undefined;
-      const staticEdge = edge.kind === 'import' || edge.kind === 'export';
-      const targetTypeOnlyExports =
-        staticEdge && Boolean(targetCached?.exportsOnlyTypes) && !edge.typeOnly;
-      const sourcePureTypeModule = Boolean(entry.exportsOnlyTypes);
-      const targetTypeNames = new Set(targetCached?.typeOnlyExportNames || []);
-      const named = edge.namedBindings;
-      const namedBindingsTypeOnly =
-        staticEdge &&
-        Array.isArray(named) &&
-        named.length > 0 &&
-        targetTypeNames.size > 0 &&
-        !targetCached?.hasTopLevelSideEffects &&
-        named.every((name) => targetTypeNames.has(name));
-      const deniedRule = targetLayer
-        ? isBlocked(rules, sourceLayer, targetLayer, {
-            fromPath: relFile,
-            toPath: relTarget,
-            layers: config.layers,
-          })
-        : undefined;
-      let portProofEligible = false;
-      if (
-        deniedRule &&
-        !deniedRule.peerIsolation &&
-        !edge.typeOnly &&
-        edge.kind === 'import' &&
-        !targetTypeOnlyExports &&
-        !namedBindingsTypeOnly
-      ) {
-        try {
-          const source = fs.readFileSync(file, 'utf8');
-          portProofEligible = Boolean(provePortProofInject(ts, source, { filePath: file }).eligible);
-        } catch {
-          portProofEligible = false;
-        }
-      }
-      engineEdges.push({
-        from: relFile,
-        fromLayer: sourceLayer,
-        to: relTarget,
-        toLayer: targetLayer,
-        line: edge.line,
-        kind: edge.kind,
-        typeOnly: edge.typeOnly,
-        targetTypeOnlyExports,
-        sourcePureTypeModule,
-        namedBindingsTypeOnly,
-        portProofEligible,
-      });
-    }
-  }
-
-  if (cacheKey) saveScanCache(root, cacheKey, nextCacheFiles);
-
-  // A cache written before Y08 can retain the overlapping capability-wall
-  // finding for this import. Filter by file+specifier (not line: D7 explicitly
-  // does not depend on cross-engine line anchors), then let FORBIDDEN_GLOBAL be
-  // the one declared-policy voice.
-  const contentViolations = scanned
-    .flatMap(({ entry }) => entry.contentViolations)
-    .filter(
-      (violation) =>
-        !(
-          violation.ruleId === 'CAPABILITY_VIOLATION' &&
-          forbiddenModuleDualKeys.has(`${violation.file}\0${violation.target}`)
-      )
-    );
-  const parseHealth = summarizeParseHealth(scanned);
-
+  const effectiveConfig = effectiveAnalysisConfig(
+    { ...config, rules: rules ?? config.rules },
+    manifest
+  );
+  const facts = resolveCandidateFacts({
+    root,
+    config: effectiveConfig,
+    ts,
+    ...(args?.tsconfig ? { tsconfig: args.tsconfig } : {}),
+  });
+  const loadedContract = loadContract(
+    effectiveConfig,
+    args?.config ? path.resolve(root, args.config) : path.join(root, 'ark.config.json')
+  );
+  const result = analyzeResolvedProject({ contract: loadedContract, facts });
+  const parseHealth = summarizeParseHealth(
+    facts.files.map((file) => ({
+      relFile: file.path,
+      entry: { parseDiagnosticCount: file.parseDiagnosticCount },
+    }))
+  );
   return {
-    ...evaluateArchitectureGraph({
-      config,
-      rules,
-      files: scanned.map(({ relFile }) => relFile),
-      contentViolations: [...contentViolations, ...forbiddenModuleDualViolations],
-      edges: engineEdges,
-      warnings,
-      safety: safety.report,
-    }),
+    violations: result.ir.violations,
+    warnings: result.ir.warnings,
+    safety: result.safety,
     parseHealth,
-    completeness: completenessFromParseHealth(parseHealth),
+    completeness: result.completeness,
+    completenessReasons: result.completenessReasons,
+    valid: result.valid,
+    strictValid: result.strictValid,
+    mode: result.mode,
+    policyHash: result.policyHash,
+    resolverIdentity: result.resolverIdentity,
+    factsHash: result.factsHash,
+    candidateTreeHash: result.candidateTreeHash,
   };
 }

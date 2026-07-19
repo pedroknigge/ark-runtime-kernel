@@ -6,26 +6,18 @@ import {
   withArkConfigMetadata,
 } from './lib/config-contract.mjs';
 import { collectForbiddenCapabilityUses } from './lib/analysis-engine.mjs';
-import { looksLikeArkIntent } from './lib/source-policy.mjs';
+import {
+  DEFAULT_INTENT_PREFIXES as DOMAIN_DEFAULT_INTENT_PREFIXES,
+  looksLikeArkIntent,
+  resolveIntentLayer as resolveConfiguredIntentLayer,
+} from './lib/source-policy.mjs';
 
 /**
  * Default intent-prefix map shared by both CLIs and the ark-mcp write-path gate. The rule
  * matrix comes from the generated Domain config contract above. Prefixes mirror the runtime
  * profile but stay in this standalone CLI module because the CLIs run without a build step.
  */
-export const DEFAULT_INTENT_PREFIXES = [
-  { layer: 'DomainModel', prefixes: ['Domain.'] },
-  { layer: 'ApplicationOrchestration', prefixes: ['Application.'] },
-  { layer: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.', 'Adapter.Repository.'] },
-  { layer: 'IntegrationAdapters', prefixes: ['Adapter.Integration.', 'Adapter.External.'] },
-  { layer: 'WorkflowSagaEngine', prefixes: ['Workflow.'] },
-  { layer: 'BackgroundJobsScheduling', prefixes: ['Job.'] },
-  { layer: 'PresentationAdapters', prefixes: ['Presentation.', 'Adapter.Presentation.', 'Adapter.Api.'] },
-  { layer: 'ReportingReadModels', prefixes: ['Reporting.'] },
-  { layer: 'ExtensibilityMetadata', prefixes: ['Metadata.'] },
-  { layer: 'SecurityAuditObservability', prefixes: ['Security.', 'Audit.', 'Observability.'] },
-  { layer: 'Kernel', prefixes: ['Kernel.'] },
-];
+export const DEFAULT_INTENT_PREFIXES = DOMAIN_DEFAULT_INTENT_PREFIXES;
 
 export const DEFAULT_LAYER_DIRECTORIES = {
   DomainModel: ['domain'],
@@ -447,10 +439,6 @@ export {
   isScanExcludedRelative,
 } from './ark-layer-match.mjs';
 
-function normalizePrefix(prefix) {
-  return prefix.endsWith('.') ? prefix : `${prefix}.`;
-}
-
 /**
  * Resolve an intent name to its layer using the SAME semantics as
  * ArchitectureProfile.resolveLayer in src/kernel/layers/ArchitectureProfile.ts (which the
@@ -460,16 +448,7 @@ function normalizePrefix(prefix) {
  * the write-path gate classify identically. `layers` is an array of { name, prefixes }.
  */
 export function resolveIntentLayer(intent, layers) {
-  const normalized = layers.map((layer) => ({
-    name: layer.name,
-    prefixes: (layer.prefixes ?? []).map(normalizePrefix),
-  }));
-  const sorted = [...normalized].sort((a, b) => {
-    const maxA = Math.max(0, ...a.prefixes.map((p) => p.length));
-    const maxB = Math.max(0, ...b.prefixes.map((p) => p.length));
-    return maxB - maxA;
-  });
-  return sorted.find((layer) => layer.prefixes.some((prefix) => intent.startsWith(prefix)))?.name;
+  return resolveConfiguredIntentLayer(intent, layers);
 }
 
 export function looksLikeIntent(value) {

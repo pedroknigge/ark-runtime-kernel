@@ -55,7 +55,7 @@ export function detectArchitectureCycles(
   }
 
   return components
-    .sort((left, right) => left[0].localeCompare(right[0]))
+    .sort((left, right) => (left[0] < right[0] ? -1 : left[0] > right[0] ? 1 : 0))
     .map((members) => ({
       ruleId: 'CIRCULAR_DEPENDENCY',
       file: members[0],
@@ -80,7 +80,7 @@ export function evaluateArchitectureGraph(
     if (edge.to && edge.to !== edge.from && !edge.typeOnly && graph.has(edge.from)) {
       graph.get(edge.from)?.add(edge.to);
     }
-    if (!edge.to || !edge.toLayer) continue;
+    if (!edge.to || !edge.fromLayer || !edge.toLayer) continue;
     const rule = findDeniedEdgeRule(input.rules, edge.fromLayer, edge.toLayer, {
       fromPath: edge.from,
       toPath: edge.to,

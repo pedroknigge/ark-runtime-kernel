@@ -115,7 +115,7 @@ for current truth.
 | `RB-06` | P1 | `closed` | O03 compact active-host setup passed PR #41 CI and merged as `105cd39` |
 | `RB-07` | P0 operational | `closed` | Z01 restricts cleanup to validated ArkGate-owned outputs and invocation-owned tarballs; PR #80 CI + release smoke are green |
 | `RB-08` | P1 | `closed` | Z02's distinct exact host and schema 1.2 fail-closed verdict passed all 36 packed cells in PR #81 CI; published 3.7.0 predates the correction |
-| `RB-09` | P1 | `open` | Z03–Z04 must decide and restore one candidate graph and verdict across preflight, API, write gate, and final CI |
+| `RB-09` | P1 | `closed` | Z03 selected versioned resolved-candidate facts; Z04 restored one graph/verdict across the parity-capable API, preflight, CLI, MCP, complete-patch write gate, eligible ESLint, and final CI |
 | `RB-10` | P1 journey | `open` | Z05–Z06 must make the installed starter, upgrade, enforcement, and package journey reproducible |
 | `RB-11` | P1 claim | `open` | Z07–Z09 must earn the 10x feedback, causal-evidence, retained-adoption, and independent-close claims |
 
@@ -123,7 +123,7 @@ for current truth.
 V05 passed its then-current binary exit gate in PR #49. The separately authorized stable `3.0.0`
 release completed on 2026-07-13; closing `RB-06` had removed the onboarding release blocker.
 The post-3.7.0 audit below supersedes that evidence as proof of *current* release readiness:
-`RB-09`–`RB-11` remain open, so the stabilization stop condition still applies.
+`RB-10`–`RB-11` remain open, so the stabilization stop condition still applies.
 
 ### Post-3.7.0 audit reset (2026-07-17)
 
@@ -421,7 +421,7 @@ may raise those ceilings merely to fit its own implementation.
 | 64 | `Z01` | `done` | S | — | Release tooling deletes only validated, tool-owned targets and files |
 | 65 | `Z02` | `done` | L | `Z01` | Packed TS5/6/7 analysis is available or explicitly non-green; incomplete analysis never satisfies the goal |
 | 66 | `Z03` | `done` | M | `Z02` | The resolved-facts/public-API boundary and generated CLI parity seam are decided before implementation |
-| 67 | `Z04` | `todo` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
+| 67 | `Z04` | `done` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
 | 68 | `Z05` | `todo` | L | `Z02`, `Z04` | Every starter and supported package manager completes the installed tarball journey in a clean consumer |
 | 69 | `Z06` | `todo` | L | `Z05` | Upgrade touches only identity-proven managed assets and doctor reports actual enforcement state |
 | 70 | `Z07` | `todo` | L | `Z04`, `Z05` | A measured warm incremental control plane delivers order-of-magnitude feedback without semantic drift |
@@ -543,7 +543,7 @@ started before the decision closed.
 
 ### Z04 — Build one candidate facts → IR → verdict pipeline
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Depends on:** `Z03`
 
 **Outcome:** under the selected boundary, the TypeScript/Tooling edge resolves the complete virtual
@@ -565,6 +565,23 @@ Close `RB-09` only when no differential cell disagrees.
 **Kill switch:** if implementation imports TypeScript, filesystem, or process state into
 Domain/Kernel, violates the `Z03` decision, or makes the generated CLI a second semantic authority,
 stop. Return to the decision record rather than hiding the difference in an adapter.
+
+**Completed (2026-07-18):** the versioned `ResolvedCandidateFacts` schema, one Tooling resolver,
+and one generated pure evaluator now drive the resolved API, atomic preflight, CLI, MCP, complete-
+patch hook/AICodeGate, eligible ESLint, and final strict check. Exact policy, resolver-input, facts,
+tree, rule, and evidence identities are compared by the 3-file/19-test differential adapter corpus;
+the retained lexical names report partial/non-green outside their documented envelope. The corpus
+covers aliases, workspace/project packages, symlinks, relative and CommonJS forms, creates/updates/
+deletes, unresolved/parse-invalid evidence, exclusions, and unclassified paths without importing
+TypeScript, filesystem, or process state into DomainModel/Kernel. Candidate `174b3c2` passed PR #83
+CI/Security runs `29666186597`/`29666186609`, all 12 onboarding shards, all 36 packed
+Node/package-manager/TypeScript 5.9.3/6.0.3/7.0.2 cells, package isolation, release-artifact
+verification, strict Ark, 1,430 tests, 90.91% statements/lines, 84.56% branches, 93.17%
+functions, and 93.84% mutation (94.46% over covered code). The unchanged frozen sensor recorded
+50k cold/warm p95 at 18,868.973/14,867.205 ms, 10k incremental p95 at 98.266 ms, and 632,082,432
+bytes peak RSS, with exact cold/warm verdict and incremental identity parity; the tarball remained
+within ceiling at 518,484 packed bytes, 1,795,618 unpacked bytes, and 138 files. Read-only boundary
+and performance reviews found no remaining P0/P1 defect. `RB-09` is closed; Y09/Y10 remain parked.
 
 ### Z05 — Prove the installed starter and package journey
 
@@ -2584,8 +2601,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: `Z04` (`todo`) — build one normalized candidate-facts → IR → verdict pipeline
-Next action: move only Z04 to `doing`, turn the Z03 characterization into failing parity expectations, and implement the ADR 0011 facts schema/resolver/evaluator without importing effects into DomainModel or Kernel
+Item: `Z05` (`todo`) — prove every installed gallery starter and supported package-manager journey from the packed candidate
+Next action: move only Z05 to `doing`, replace split starter lists with one catalog, and make the current-tarball clean-room matrix prove documented install/check/doctor/start/preflight/strict/import behavior plus a deliberate violation without rewriting source
 Release lanes: Z01+Z02 may ship a stable corrective patch; Z04 may ship parity; Z06 closes the installed journey; Z07–Z09 gate only 10x/causal/retention/independent-close claims
 Parked unchanged: Y06, Y07, Y09, and Y10 retain their named field gates and must not start as collateral Z work
 Runtime parked: K01 retains confirmed experimental intra-process commit gaps outside Phase Z and does not block gate-package corrective releases

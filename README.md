@@ -213,10 +213,10 @@ project file is written. With `--change-map map.json` (or MCP `changeMap`), the 
 classifies planned structure as satisfied, missing, contradictory, or unplanned. This is structural
 convergence only: behavioral completion is always reported as not evaluated.
 
-> **Known current limitation:** the compiler-free atomic path can miss `tsconfig` aliases/workspace
-> edges that final TypeScript-backed CI resolves. Treat the normal strict check as final authority
-> until Z04 in [Phase Z](https://github.com/pedroknigge/arkgate/blob/main/docs/plans/enforcement-truth-at-speed/README.md)
-> implements the resolved-facts decision and closes the differential corpus.
+> **Published 3.7.0 limitation:** its compiler-free atomic path can miss `tsconfig`
+> aliases/workspace edges. The current source candidate closes that divergence with versioned
+> resolved-candidate facts and a differential adapter corpus. Strict CI remains the final merge
+> boundary; lexical/single-snippet feedback is explicitly partial and non-green.
 
 Every blocking diagnostic carries stable rule/location/evidence fields plus one deterministic
 `nextAction`; human CLI/hook text prints that same action. A complete Codex `ApplyPatch` payload is
@@ -304,11 +304,12 @@ ark.config.json
   casts, InMemory runtime defaults, and disabled peer isolation. `--strict` is a compatibility
   alias. Neither requires an editor hook; use `--require-write-hook claude|grok` when that local
   guarantee is part of the check.
-- **Analysis completeness (next corrective line):** schema 1.2 requires
-  `complete | partial | unavailable`. Governed parse diagnostics make plan `goal.met: false` and
-  normal JSON `valid:false`/`ok:false`; strict merge exits `1`. The non-strict exit remains
-  advisory for compatibility. A missing host is `unavailable` and exits `2`; doctor keeps the
-  diagnostic detail without turning it into an architecture violation.
+- **Resolved analysis + completeness (next corrective line):** schema 1.3 identifies
+  `resolved-candidate-facts` versus `lexical-compatibility`, requires structured incompleteness
+  reasons, and exposes policy/resolver/facts/tree identities for resolved results. Single-file
+  lexical checks are explicitly `partial`/non-green; governed parse diagnostics also make plan
+  `goal.met: false` and normal JSON `valid:false`/`ok:false`. Strict merge exits `1`; a missing
+  host is `unavailable` and exits `2`.
 - **Release evidence:** independent 3.0 audit baseline plus signed-tag, GitHub Release, and
   provenance-backed npm publication; see the [3.1.0 release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.1.0.md).
 - **TypeScript:** the current source candidate passed all 36 packed compatibility cells for project
@@ -331,7 +332,7 @@ ark.config.json
 | TypeScript 5.9 / 6.0 / 7.0 packed consumers | ✅ (current source; 36/36 packed CI cells; 3.7.0 predates the fix) | varies |
 | Incomplete analysis can satisfy plan/result/strict merge | ❌ (`partial` / `unavailable` fail closed) | varies |
 | Adoption scorecard (hosts / MCP / origin) | ✅ | ❌ |
-| **Editor ESLint same layer contract as CI** | ✅ (`arkgate/eslint`) | varies |
+| **Editor ESLint on-disk relative-import parity; resolved CI backstop** | ✅ (`arkgate/eslint`) | varies |
 
 ---
 
@@ -404,7 +405,7 @@ for real systems. Details: [production-hardening.md](https://github.com/pedrokni
 |----------|------|
 | New builders (plain language) | [docs/enthusiast/](docs/enthusiast/README.md) |
 | **Package surface and configuration** | [package policy](docs/package-surface.md) · [contract](docs/configuration.md) |
-| Wire agents + **ESLint (CI-parity)** | [docs/ai-gates.md](docs/ai-gates.md) · [threat model](docs/threat-model.md) |
+| Wire agents + **ESLint (bounded parity)** | [docs/ai-gates.md](docs/ai-gates.md) · [threat model](docs/threat-model.md) |
 | **TypeScript 5 / 6 / 7 support + analysis completeness** | [docs/typescript-support.md](docs/typescript-support.md) |
 | Migrate from `ark-runtime-kernel` | [docs/migrate-from-ark-runtime-kernel.md](https://github.com/pedroknigge/arkgate/blob/main/docs/migrate-from-ark-runtime-kernel.md) |
 | Messy existing repo | [docs/brownfield-adoption.md](docs/brownfield-adoption.md) |

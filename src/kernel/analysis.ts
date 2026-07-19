@@ -8,6 +8,31 @@
  */
 
 export {
+  RESOLVED_CANDIDATE_FACTS_SCHEMA,
+  RESOLVED_CANDIDATE_FACTS_SCHEMA_VERSION,
+  createResolvedCandidateFacts,
+  deterministicHash,
+  loadResolvedCandidateFacts,
+  resolvedFactsEvidenceRequirementsHash,
+  stableSerialize,
+  type ResolvedAmbientFact,
+  type ResolvedCandidateFacts,
+  type ResolvedCandidateFactsInput,
+  type ResolvedCapability,
+  type ResolvedCapabilityFact,
+  type ResolvedDependencyFact,
+  type ResolvedDependencyKind,
+  type ResolvedDependencyState,
+  type ResolvedFactsCompleteness,
+  type ResolvedFactsReason,
+  type ResolvedFileFact,
+  type ResolvedIntentReferenceFact,
+  type ResolvedPublishFact,
+  type ResolvedSafetyFact,
+  type ResolvedSafetyKind,
+} from '../domain/analysis';
+
+export {
   loadArchitectureChangeMap,
   type ArchitectureChangeMap,
   type ArchitectureChangeMapContract,
@@ -36,10 +61,13 @@ export {
 
 export {
   SOURCE_POLICY_MESSAGES,
+  DEFAULT_INTENT_PREFIXES,
   classifyPublishFacts,
   looksLikeArkIntent,
+  resolveIntentLayer,
   type PublishSyntaxFacts,
   type SourcePolicyFinding,
+  type IntentLayerPrefixes,
 } from '../domain/sourcePolicy';
 
 export {
@@ -64,6 +92,7 @@ export type {
   AnalyzeChangeInput,
   AnalyzePolicyDeltaInput,
   AnalyzeProjectInput,
+  AnalyzeResolvedProjectInput,
   ArchitectureEngineEdge,
   ArchitectureEngineResult,
   ArchitectureEngineViolation,
@@ -71,7 +100,13 @@ export type {
   CollectAnalysisConfigWarningsInput,
   EvaluateArchitectureGraphInput,
   PolicyDeltaAnalysis,
+  PreflightResolvedChangeInput,
   PreparedChangeFile,
+  ResolvedAnalysisFile,
+  ResolvedAnalysisIr,
+  ResolvedAnalysisResult,
+  ResolvedChangePreflightResult,
+  ResolvedSafetyReport,
 } from './analysisTypes';
 
 export {
@@ -84,6 +119,10 @@ export {
 
 export { detectArchitectureCycles, evaluateArchitectureGraph } from './graphEvaluate';
 
+export { analyzeResolvedProject } from './resolvedAnalysis';
+
 export { preflightChange } from './changePreflight';
+
+export { preflightResolvedChange } from './resolvedChangePreflight';
 
 export { collectAnalysisConfigWarnings } from './configWarnings';

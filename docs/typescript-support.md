@@ -72,9 +72,10 @@ ARK_DEBUG_TS=1 npx arkgate-check --plan
 # project TS 7   → [ark-check] TypeScript 6.0.3 via arkgate-fallback (fallback)
 ```
 
-## Analysis completeness (schema 1.2)
+## Analysis identity and completeness (schema 1.3)
 
-Every current CLI/MCP/hook diagnostic envelope carries required `completeness`:
+Every current CLI/MCP/hook diagnostic envelope carries required `mode`, `completeness`, and
+structured `completenessReasons`:
 
 | Value | Meaning | Can plan/check be green? |
 |-------|---------|--------------------------|
@@ -82,12 +83,16 @@ Every current CLI/MCP/hook diagnostic envelope carries required `completeness`:
 | `partial` | A host ran, but governed syntax could not be fully parsed | No in JSON/plan; strict merge fails. The non-strict process exit remains advisory for compatibility |
 | `unavailable` | No API-compatible host could produce architecture evidence | No; CLI exits `2` |
 
-Schema 1.2 makes the field required. The public TypeScript `AdapterResult` union still accepts
-consumer-owned 1.0/1.1 values for source compatibility, but newly produced results are 1.2. In
-1.2, both the exported discriminated union and JSON Schema prohibit `valid: true` when
-`completeness` is `partial` or `unavailable`. For source compatibility, an existing
-`createAdapterResult({ valid, ... })` call that omits the new input is treated as `complete`;
-new analysis adapters must pass their observed completeness explicitly.
+Schema 1.3 also distinguishes `resolved-candidate-facts` from `lexical-compatibility`.
+Resolved complete/partial results carry `policyHash`, `resolverIdentity`, `factsHash`, and
+`candidateTreeHash`, so adapters can prove they evaluated the same input. Single-file lexical
+surfaces cannot prove module resolution and therefore report `partial`, `valid:false`, plus
+`lexicalValid` where useful. Both the exported union and JSON Schema prohibit `valid:true` for
+partial/unavailable analysis. The public TypeScript `AdapterResult` union still accepts
+consumer-owned 1.0/1.1/1.2 values. For source compatibility, the low-level
+`createAdapterResult({ valid, ... })` factory still treats omitted completeness as complete; that
+legacy construction is not evidence of resolved adapter parity, and shipped adapters pass mode,
+completeness, reasons, and identities explicitly.
 
 ## TypeScript 7 notes
 

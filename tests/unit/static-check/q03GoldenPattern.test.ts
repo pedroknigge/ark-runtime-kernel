@@ -161,7 +161,12 @@ describe('attachGoldenToPlacement + composePrepareWrite', () => {
       validate: () => ({ valid: true, violations: [] }),
     });
     expect(out.ok).toBe(true);
-    expect(out.valid).toBe(true);
+    expect(out).toMatchObject({
+      mode: 'lexical-compatibility',
+      valid: false,
+      lexicalValid: true,
+      completeness: 'partial',
+    });
     expect(out.goldenPattern?.present).toBe(true);
     expect(out.goldenPattern?.name).toBe('hex ports');
     expect(out.placementNote).toMatch(/Golden pattern/);

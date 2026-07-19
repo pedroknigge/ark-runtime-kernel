@@ -14,15 +14,24 @@ function finding(ruleId, message, file, nextAction) {
 export function validateSnippetAnalysis({ gate, ts, source, context = {} }) {
   const observed = gate.validate(source, context);
   const base = {
-    valid: Boolean(observed.valid),
+    valid: Boolean(observed.lexicalValid ?? observed.valid),
     violations: Array.isArray(observed.violations) ? observed.violations : [],
   };
   const file = context.filePath;
 
   if (!ts || typeof ts.createSourceFile !== 'function') {
     return {
+      mode: 'lexical-compatibility',
       valid: false,
+      lexicalValid: false,
       completeness: ANALYSIS_COMPLETENESS.unavailable,
+      completenessReasons: [
+        {
+          code: 'ANALYSIS_HOST_UNAVAILABLE',
+          message: 'No API-compatible TypeScript host parsed the proposed source.',
+          ...(file ? { file } : {}),
+        },
+      ],
       violations: [
         ...base.violations,
         finding(
@@ -46,8 +55,17 @@ export function validateSnippetAnalysis({ gate, ts, source, context = {} }) {
     const diagnosticCount = parsed.parseDiagnostics.length;
     if (diagnosticCount > 0) {
       return {
+        mode: 'lexical-compatibility',
         valid: false,
+        lexicalValid: false,
         completeness: ANALYSIS_COMPLETENESS.partial,
+        completenessReasons: [
+          {
+            code: 'ANALYSIS_PARSE_INCOMPLETE',
+            message: `The proposed source has ${diagnosticCount} parse diagnostic(s).`,
+            ...(file ? { file } : {}),
+          },
+        ],
         violations: [
           ...base.violations,
           finding(
@@ -61,12 +79,32 @@ export function validateSnippetAnalysis({ gate, ts, source, context = {} }) {
     }
     return {
       ...base,
-      completeness: ANALYSIS_COMPLETENESS.complete,
+      mode: 'lexical-compatibility',
+      valid: false,
+      lexicalValid: base.valid,
+      completeness: ANALYSIS_COMPLETENESS.partial,
+      completenessReasons: [
+        {
+          code: 'LEXICAL_EVIDENCE_INCOMPLETE',
+          message:
+            'Single-file validation cannot prove project module resolution or complete candidate evidence; use ark_prepare_change for a parity-capable verdict.',
+          ...(file ? { file } : {}),
+        },
+      ],
     };
   } catch {
     return {
+      mode: 'lexical-compatibility',
       valid: false,
+      lexicalValid: false,
       completeness: ANALYSIS_COMPLETENESS.unavailable,
+      completenessReasons: [
+        {
+          code: 'ANALYSIS_HOST_UNAVAILABLE',
+          message: 'The TypeScript host could not parse the proposed source.',
+          ...(file ? { file } : {}),
+        },
+      ],
       violations: [
         ...base.violations,
         finding(

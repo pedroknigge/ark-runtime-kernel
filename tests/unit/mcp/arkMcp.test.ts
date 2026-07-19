@@ -197,7 +197,7 @@ describe('ark-mcp server (write-path gate)', () => {
     expect(JSON.parse(res.result.content[0].text).valid).toBe(false);
   });
 
-  it('passes clean code (isError:false + valid:true)', async () => {
+  it('reports clean single-file code as partial lexical evidence, not a green verdict', async () => {
     const res = await client.request('tools/call', {
       name: 'validate_code',
       arguments: {
@@ -205,8 +205,16 @@ describe('ark-mcp server (write-path gate)', () => {
         filePath: 'src/core/math.ts',
       },
     });
-    expect(res.result.isError).toBe(false);
-    expect(JSON.parse(res.result.content[0].text).valid).toBe(true);
+    expect(res.result.isError).toBe(true);
+    expect(JSON.parse(res.result.content[0].text)).toMatchObject({
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
+      valid: false,
+      completeness: 'partial',
+      completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      diagnostics: [],
+      violations: [],
+    });
   });
 
   it('fails closed when validate_code cannot completely parse the source', async () => {
@@ -220,14 +228,17 @@ describe('ark-mcp server (write-path gate)', () => {
     const payload = JSON.parse(res.result.content[0].text);
     expect(res.result.isError).toBe(true);
     expect(res.result.structuredContent).toMatchObject({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
       valid: false,
       completeness: 'partial',
+      completenessReasons: [{ code: 'ANALYSIS_PARSE_INCOMPLETE' }],
       diagnostics: [{ ruleId: 'ANALYSIS_PARSE_INCOMPLETE' }],
     });
     expect(payload).toMatchObject({
       valid: false,
       completeness: 'partial',
+      completenessReasons: [{ code: 'ANALYSIS_PARSE_INCOMPLETE' }],
       violations: [{ ruleId: 'ANALYSIS_PARSE_INCOMPLETE' }],
     });
   });
@@ -277,12 +288,23 @@ describe('ark-mcp server (write-path gate)', () => {
       expect(payload.mustNotImport).toContain('PersistenceAdapters');
       expect(payload.forbiddenGlobals).toContain('fetch');
       expect(payload.contentHash).toMatch(/^sha256:/);
-      expect(payload.valid).toBe(false);
+      expect(payload).toMatchObject({
+        mode: 'lexical-compatibility',
+        valid: false,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      });
       // Proposed source still invalid → isError (autoPatch is additive, not soft-success)
       expect(res.result.isError).toBe(true);
-      expect(payload.autoPatch?.valid).toBe(true);
+      expect(payload.autoPatch).toMatchObject({
+        mode: 'lexical-compatibility',
+        valid: false,
+        lexicalValid: true,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      });
       expect(payload.autoPatch?.source).toMatch(/import\s+type/);
-      // clean snippet → valid
+      // A clean snippet has no lexical violations, but is still not a full-project verdict.
       const clean = await c.request('tools/call', {
         name: 'ark_prepare_write',
         arguments: {
@@ -291,8 +313,14 @@ describe('ark-mcp server (write-path gate)', () => {
         },
       });
       const cleanPayload = JSON.parse(clean.result.content[0].text);
-      expect(cleanPayload.valid).toBe(true);
-      expect(clean.result.isError).toBe(false);
+      expect(cleanPayload).toMatchObject({
+        mode: 'lexical-compatibility',
+        valid: false,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+        violations: [],
+      });
+      expect(clean.result.isError).toBe(true);
     } finally {
       c.close();
       fs.rmSync(prepRoot, { recursive: true, force: true });
@@ -341,12 +369,18 @@ describe('ark-mcp server (write-path gate)', () => {
       const payload = JSON.parse(res.result.content[0].text);
       expect(payload.valid).toBe(false);
       expect(payload.autoPatch).toBeTruthy();
-      expect(payload.autoPatch.valid).toBe(true);
+      expect(payload.autoPatch).toMatchObject({
+        mode: 'lexical-compatibility',
+        valid: false,
+        lexicalValid: true,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      });
       expect(payload.autoPatch.remediationKind).toMatch(
         /import-type-from-pure-type-module|import-type-of-type-exports/
       );
       expect(payload.autoPatch.source).toMatch(/import\s+type\s*\{/);
-      // Post-patch must re-validate green when resubmitted
+      // Post-patch removes the lexical violation, but single-file evidence remains partial.
       const res2 = await c.request('tools/call', {
         name: 'validate_code',
         arguments: {
@@ -354,8 +388,16 @@ describe('ark-mcp server (write-path gate)', () => {
           filePath: 'src/domain/use.ts',
         },
       });
-      expect(res2.result.isError).toBe(false);
-      expect(JSON.parse(res2.result.content[0].text).valid).toBe(true);
+      expect(res2.result.isError).toBe(true);
+      expect(JSON.parse(res2.result.content[0].text)).toMatchObject({
+        schemaVersion: '1.3',
+        mode: 'lexical-compatibility',
+        valid: false,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+        diagnostics: [],
+        violations: [],
+      });
     } finally {
       c.close();
       fs.rmSync(autoRoot, { recursive: true, force: true });
@@ -554,13 +596,18 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
 
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-'));
     fs.mkdirSync(path.join(root, 'src/domain'), { recursive: true });
+    fs.mkdirSync(path.join(root, 'src/infra'), { recursive: true });
     fs.writeFileSync(path.join(root, 'src/domain/order.ts'), 'export const a = 1;\n');
+    fs.writeFileSync(path.join(root, 'src/infra/db.ts'), 'export const db = {};\n');
     fs.writeFileSync(
       path.join(root, 'ark.config.json'),
       JSON.stringify({
         include: ['src'],
-        layers: [{ name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] }],
-        rules: [],
+        layers: [
+          { name: 'DomainModel', patterns: ['src/domain/**'], intentPrefixes: ['Domain.'] },
+          { name: 'PersistenceAdapters', patterns: ['src/infra/**'] },
+        ],
+        rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
       })
     );
   });
@@ -588,18 +635,183 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
       tool_input: {
         patch: `*** Begin Patch
 *** Add File: src/domain/customer.ts
-+import { PrismaClient } from 'prisma';
-+export const repo = new PrismaClient();
++import { db } from '../infra/db';
++export const repo = db;
 *** Add File: src/domain/order-repo.ts
-+import { PrismaClient } from 'prisma';
-+export const orders = new PrismaClient();
++import { db } from '../infra/db';
++export const orders = db;
 *** End Patch`,
       },
     });
     expect(result.status).toBe(2);
-    expect(result.stderr).toContain('src/domain/customer.ts');
-    expect(result.stderr).toContain('src/domain/order-repo.ts');
-    expect(result.stderr).toContain('FORBIDDEN_IMPORT');
+    expect(result.stderr.match(/\[LAYER_IMPORT_VIOLATION\]/g)).toHaveLength(2);
+  });
+
+  it('canonicalizes equivalent ApplyPatch paths before contract scope matching', () => {
+    const result = runHook(root, {
+      tool_name: 'apply_patch',
+      tool_input: {
+        patch: `*** Begin Patch
+*** Add File: ./src/domain/canonical-path.ts
++import { db } from '../infra/db';
++export const value = db;
+*** End Patch`,
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('[LAYER_IMPORT_VIOLATION]');
+  });
+
+  it('fails closed when one complete patch changes resolver inputs and source', () => {
+    const result = runHook(
+      root,
+      {
+        tool_name: 'apply_patch',
+        tool_input: {
+          patch: `*** Begin Patch
+*** Add File: tsconfig.json
++{"compilerOptions":{"baseUrl":".","paths":{"@infra/*":["src/infra/*"]}}}
+*** Add File: src/domain/alias-input.ts
++import { db } from '@infra/db';
++export const value = db;
+*** End Patch`,
+        },
+      },
+      { ARK_HOOK_REPAIR: '1' }
+    );
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('ATOMIC_PREFLIGHT_UNAVAILABLE');
+    const repairLine = result.stderr
+      .split('\n')
+      .find((line) => line.startsWith('ARK_REPAIR_JSON:'));
+    expect(repairLine).toBeTruthy();
+    const repair = JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length));
+    expect(repair).toMatchObject({
+      mode: 'resolved-candidate-facts',
+      completeness: 'unavailable',
+      valid: false,
+      repair: true,
+      decision: 'deny',
+    });
+  });
+
+  it.each([
+    ['JSON', 'base.json', false],
+    ['JSONC', 'base.jsonc', false],
+    ['symlink-aliased JSON', 'base.json', true],
+  ])(
+    'fails closed for transitive %s tsconfig input with a non-conventional name',
+    (_caseName, configName, throughSymlink) => {
+    const extendedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-tsconfig-closure-'));
+    try {
+      fs.mkdirSync(path.join(extendedRoot, 'src/domain'), { recursive: true });
+      fs.mkdirSync(path.join(extendedRoot, 'tooling/typescript'), { recursive: true });
+      if (throughSymlink) {
+        fs.symlinkSync(
+          path.join(extendedRoot, 'tooling/typescript'),
+          path.join(extendedRoot, 'config-link'),
+          'dir'
+        );
+      }
+      fs.writeFileSync(
+        path.join(extendedRoot, 'ark.config.json'),
+        JSON.stringify({
+          include: ['src'],
+          layers: [
+            { name: 'DomainModel', patterns: ['src/domain/**'] },
+            { name: 'PersistenceAdapters', patterns: ['src/infra/**'] },
+          ],
+          rules: [{ from: 'DomainModel', to: 'PersistenceAdapters', allowed: false }],
+        })
+      );
+      fs.writeFileSync(
+        path.join(extendedRoot, 'tsconfig.json'),
+        JSON.stringify({
+          extends: throughSymlink
+            ? `./config-link/${configName}`
+            : `./tooling/typescript/${configName}`,
+        })
+      );
+      fs.writeFileSync(
+        path.join(extendedRoot, 'tooling/typescript', configName),
+        '{"compilerOptions":{"baseUrl":"."}}\n'
+      );
+
+      const result = runHook(
+        extendedRoot,
+        {
+          tool_name: 'apply_patch',
+          tool_input: {
+            patch: `*** Begin Patch
+*** Update File: tooling/typescript/${configName}
+@@
+-{"compilerOptions":{"baseUrl":"."}}
++{"compilerOptions":{"baseUrl":"../..","paths":{"@infra/*":["src/infra/*"]}}}
+*** Add File: src/domain/closure.ts
++import { db } from '@infra/db';
++export const value = db;
+*** End Patch`,
+          },
+        },
+        { ARK_HOOK_REPAIR: '1' }
+      );
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain(`tooling/typescript/${configName}`);
+      expect(result.stderr).toContain('ATOMIC_PREFLIGHT_UNAVAILABLE');
+    } finally {
+      fs.rmSync(extendedRoot, { recursive: true, force: true });
+    }
+    }
+  );
+
+  it('canonicalizes an empty internal symlink before selecting governed ApplyPatch writes', () => {
+    const symlinkRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-hook-empty-symlink-'));
+    try {
+      fs.mkdirSync(path.join(symlinkRoot, 'src'), { recursive: true });
+      fs.mkdirSync(path.join(symlinkRoot, 'shared'), { recursive: true });
+      fs.symlinkSync(path.join(symlinkRoot, 'shared'), path.join(symlinkRoot, 'src/link'), 'dir');
+      fs.writeFileSync(
+        path.join(symlinkRoot, 'ark.config.json'),
+        JSON.stringify({
+          include: ['shared'],
+          layers: [
+            { name: 'Kernel', patterns: ['shared/**'], forbiddenGlobals: ['fetch'] },
+          ],
+          rules: [],
+        })
+      );
+
+      const result = runHook(
+        symlinkRoot,
+        {
+          tool_name: 'apply_patch',
+          tool_input: {
+            patch: `*** Begin Patch
+*** Add File: src/link/new.ts
++export const load = () => fetch('/data');
+*** End Patch`,
+          },
+        },
+        { ARK_HOOK_REPAIR: '1' }
+      );
+      expect(result.status).toBe(2);
+      expect(result.stderr).toContain('[FORBIDDEN_GLOBAL]');
+      const repairLine = result.stderr
+        .split('\n')
+        .find((line) => line.startsWith('ARK_REPAIR_JSON:'));
+      expect(repairLine).toBeTruthy();
+      expect(JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length))).toMatchObject({
+        valid: false,
+        diagnostics: [
+          expect.objectContaining({
+            ruleId: 'FORBIDDEN_GLOBAL',
+            location: expect.objectContaining({ file: 'shared/new.ts' }),
+          }),
+        ],
+      });
+    } finally {
+      fs.rmSync(symlinkRoot, { recursive: true, force: true });
+    }
   });
 
   it('W4: default --hook is reject-only (no ARK_AUTOPATCH_JSON); still exit 2', () => {
@@ -701,9 +913,21 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
         .find((l) => l.startsWith('ARK_REPAIR_JSON:'));
       expect(repairLine).toBeTruthy();
       const repair = JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length));
-      expect(repair.mode).toBe('repair');
+      expect(repair).toMatchObject({
+        mode: 'lexical-compatibility',
+        repair: true,
+        valid: false,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      });
       expect(repair.decision).toBe('deny');
-      expect(repair.autoPatch?.valid).toBe(true);
+      expect(repair.autoPatch).toMatchObject({
+        mode: 'lexical-compatibility',
+        valid: false,
+        lexicalValid: true,
+        completeness: 'partial',
+        completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      });
       expect(repair.autoPatch?.source).toMatch(/import\s+type/);
       expect(repair.autoPatch?.remediationKind).toMatch(/import-type/);
       const patchLine = result.stderr
@@ -843,9 +1067,11 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
       .find((line) => line.startsWith('ARK_REPAIR_JSON:'));
     expect(repairLine).toBeTruthy();
     expect(JSON.parse(repairLine!.slice('ARK_REPAIR_JSON:'.length))).toMatchObject({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
       valid: false,
       completeness: 'partial',
+      completenessReasons: [{ code: 'ANALYSIS_PARSE_INCOMPLETE' }],
       diagnostics: [{ ruleId: 'ANALYSIS_PARSE_INCOMPLETE' }],
       decision: 'deny',
     });
@@ -1322,7 +1548,7 @@ describe('ark-mcp write gate — contract-first layer resolution (Option A)', ()
       arguments: { source, filePath },
     });
 
-  it('ALLOWS a governed edge the rules permit, despite an infra token (App → repository)', async () => {
+  it('reports a permitted governed edge without lexical diagnostics, but not as full parity', async () => {
     // The specifier contains the "repositories" infra token, but App → Data has no deny rule,
     // so the contract permits it — no mayImportInfrastructure flag needed. (Pre-Option-A the
     // path-heuristic blocked this.)
@@ -1330,8 +1556,16 @@ describe('ark-mcp write gate — contract-first layer resolution (Option A)', ()
       "import { getOrders } from '@/lib/repositories/orders';\nexport const r = getOrders;\n",
       'src/app/orders/route.ts'
     );
-    expect(res.result.isError).toBe(false);
-    expect(JSON.parse(res.result.content[0].text).valid).toBe(true);
+    expect(res.result.isError).toBe(true);
+    expect(JSON.parse(res.result.content[0].text)).toMatchObject({
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
+      valid: false,
+      completeness: 'partial',
+      completenessReasons: [{ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }],
+      diagnostics: [],
+      violations: [],
+    });
   });
 
   it('BLOCKS a denied edge as LAYER_IMPORT_VIOLATION (App → raw DB)', async () => {

@@ -564,13 +564,13 @@ export function createAICodeGate<Context = AICodeGateContext>(
             );
             continue;
           }
-          if (targetLayer !== contextLayer) {
-            // Allowed cross-layer edge — skip infra heuristic.
-            continue;
-          }
+          // Both endpoints are governed and the declared contract allowed the edge.
+          // This includes same-layer edges: legacy path-token heuristics must not add
+          // a second, undeclared blocker after ark.config.json made the decision.
+          continue;
         }
 
-        // Ungoverned / same-layer (no peerIsolation hit): fall back to the infra path-heuristic
+        // Genuinely ungoverned target: fall back to the infra path-heuristic
         // unless this source layer is exempt from it. Type-only edges skip the heuristic (W1).
         if (exemptFromInfraHeuristics || specifier.typeOnly) continue;
         if (!hasInfrastructureToken(specifier.value) && !isKnownInfrastructurePackage(specifier.value)) {
@@ -824,7 +824,11 @@ export function createAICodeGate<Context = AICodeGateContext>(
       }
 
       return {
-        valid: violations.length === 0,
+        mode: 'lexical-compatibility',
+        completeness: 'partial',
+        completenessReasons: ['LEXICAL_EVIDENCE_INCOMPLETE'],
+        valid: false,
+        lexicalValid: violations.length === 0,
         violations,
       };
     },

@@ -87,6 +87,7 @@ export function walk(dir, files = [], options = {}) {
     return files;
   }
   if (!stat.isDirectory()) return files;
+  state.onDirectory?.(dir, resolved);
   if (state.visitedDirectories.has(resolved)) return files;
   state.visitedDirectories.add(resolved);
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -105,11 +106,12 @@ export function walk(dir, files = [], options = {}) {
 }
 
 /** Walk include roots then drop codegen / config.exclude (universal scan filter). */
-export function collectGovernedFiles(root, config) {
+export function collectGovernedFiles(root, config, options = {}) {
   const state = {
     root: fs.realpathSync(root),
     visitedDirectories: new Set(),
     visitedFiles: new Set(),
+    onDirectory: options.onDirectory,
   };
   const raw = (config.include ?? []).flatMap((entry) =>
     walk(path.join(root, entry), [], { state })

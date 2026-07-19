@@ -10,6 +10,14 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   required `complete | partial | unavailable` evidence. Incomplete analysis cannot satisfy a
   remediation goal; governed parse diagnostics fail `--strict-merge`, and a missing analysis host
   exits `2` instead of producing a clean-looking plan.
+- **Resolved candidate facts (Z04):** the stable root API now exposes a versioned, serializable
+  facts contract plus `analyzeResolvedProject` and `preflightResolvedChange`. Tooling resolves one
+  complete virtual create/update/delete candidate; the pure Kernel and generated CLI bundle
+  evaluate the same policy, resolver, facts, and tree identities.
+- **Differential adapter corpus (Z04):** API, generated bundle, atomic preflight, CLI, MCP,
+  complete-patch hook, final strict check, and ESLint within its bounded envelope are compared over
+  relative and configured paths, packages/workspaces, symlinks, supported import forms,
+  unresolved/parse evidence, exclusions, unclassified paths, and create/update/delete batches.
 
 ### Fixed
 
@@ -17,6 +25,11 @@ All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are do
   JS-API host that package-manager deduplication cannot replace with TS7's version-only export.
   The consumer's own TypeScript remains preferred when usable and its selected `tsc` is unchanged.
   Packed Yarn cells record strict PnP for TS5/6 and the normal `node-modules` linker for native TS7.
+- **One architecture verdict:** complete-candidate CLI/MCP/hook paths now consume resolved facts
+  instead of a compiler-free relative-only graph. A contract-allowed same-layer edge is no longer
+  rejected by AICodeGate's former path heuristic. Retained lexical/single-snippet compatibility
+  paths report `partial` and non-green, while legacy pre-Z04 cache snapshots are ignored until the
+  identity-keyed Z07 warm path is proven.
 
 ## 3.7.0 — 2026-07-17
 

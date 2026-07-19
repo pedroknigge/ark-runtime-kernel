@@ -96,9 +96,9 @@ in the write loop.
   neutral schema, and Kernel evaluates it synchronously. The existing lexical mode remains
   explicitly incomplete outside its envelope and excluded from parity; the generated CLI bundle
   consumes the same facts/verdict seam.
-- [ ] **A5 — One fact graph:** aliases, workspaces, project packages, symlinks, relative imports,
+- [x] **A5 — One fact graph:** aliases, workspaces, project packages, symlinks, relative imports,
   deletes, and governed-scope classification feed one serializable candidate fact set.
-- [ ] **A6 — One verdict:** the parity-capable API, preflight, CLI, MCP, complete-patch hook,
+- [x] **A6 — One verdict:** the parity-capable API, preflight, CLI, MCP, complete-patch hook,
   AICodeGate, ESLint where its envelope applies, and final CI agree on rule identity and evidence.
   A retained lexical compatibility API reports incomplete where it lacks facts. A resolved governed
   edge is decided by `ark.config.json`, including same-layer edges.
@@ -170,7 +170,7 @@ flowchart LR
 
 - **Depends on:** ArkGate 3.7.0 as the reproduced baseline; accepted ADRs 0002, 0003, 0005, and
   0008; the existing package/adoption/performance harnesses.
-- **Blocked by:** `Z02` and `Z03` are closed; `Z04` is dependency-ready.
+- **Blocked by:** `Z02`–`Z04` are closed; `Z05` is dependency-ready.
 - **Risk — Kernel impurity:** resolving imports inside Kernel would violate the four-layer contract.
   **Kill switch:** keep TypeScript/filesystem in Tooling and pass only serializable facts.
 - **Risk — cache false green:** stale invalidation is worse than current latency.
@@ -228,9 +228,9 @@ flowchart LR
 ## Promotion
 
 The implementation IDs are tracked in [ROADMAP Phase Z](../../../ROADMAP.md#phase-z--enforcement-truth-at-speed).
-`Z01`–`Z03` are complete; subsequent promotion follows the same discipline:
+`Z01`–`Z04` are complete; subsequent promotion follows the same discipline:
 
-1. Move only the next dependency-ready Z item to `doing` (`Z04` next).
+1. Move only the next dependency-ready Z item to `doing` (`Z05` next).
 2. Expose its failing acceptance cases before changing behavior.
 3. Close the item-specific evidence and common merge gate on the same commit.
 4. Advance one Z item at a time; do not promote the parked Y candidates as collateral work.

@@ -1,6 +1,7 @@
 /**
- * TypeScript module resolution + per-file scan cache for ark-check.
- * Extracted from ark-check entry (R3).
+ * Legacy TypeScript resolver/cache helpers retained for internal compatibility tests.
+ * The Z04 correctness path does not import the cache helpers; Z07 owns the future
+ * identity-keyed warm snapshot.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -99,7 +100,7 @@ export function createCompilerOptionsLookup(ts, root, tsconfigArg) {
 }
 
 /**
- * Per-file scan cache. A cache entry stores the parsed file's content-derived results:
+ * Retired pre-Z04 per-file scan-cache codec. A cache entry stores the parsed file's content-derived results:
  * content violations (forbidden globals, publish checks, intent references) and the list
  * of module-edge specifiers. Edges are NEVER cached as violations — they are re-resolved
  * against the live filesystem every run, because resolution depends on files and tsconfigs

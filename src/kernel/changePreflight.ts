@@ -166,12 +166,21 @@ export function preflightChange(input: AnalyzeChangeInput): ChangePreflightResul
 
   return {
     schemaVersion: '1.0',
-    valid: violations.length === 0 && (convergence?.structurallyConverged ?? true),
+    mode: 'lexical-compatibility',
+    valid:
+      base.completeness === 'complete' &&
+      candidate.valid &&
+      violations.length === 0 &&
+      (convergence?.structurallyConverged ?? true),
     readOnly: true,
     policyHash: input.contract.policyHash,
     compilerOptionsHash: candidate.ir.compilerOptionsHash,
     baseTreeHash: analysisTreeHash(base.ir.files),
     candidateTreeHash: analysisTreeHash(candidate.ir.files),
+    baseCompleteness: base.completeness,
+    candidateCompleteness: candidate.completeness,
+    baseCompletenessReasons: base.completenessReasons,
+    candidateCompletenessReasons: candidate.completenessReasons,
     ...(input.changeMap ? { changeMapHash: input.changeMap.hash } : {}),
     ...(convergence ? { convergence } : {}),
     changes,

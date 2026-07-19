@@ -6,6 +6,46 @@ export const SOURCE_POLICY_MESSAGES = {
   PUBLISH_MISSING_SOURCE: 'Strict Ark publish calls must include metadata.source.',
 } as const;
 
+export const DEFAULT_INTENT_PREFIXES = Object.freeze([
+  { layer: 'DomainModel', prefixes: ['Domain.'] },
+  { layer: 'ApplicationOrchestration', prefixes: ['Application.'] },
+  { layer: 'PersistenceAdapters', prefixes: ['Adapter.Persistence.', 'Adapter.Repository.'] },
+  { layer: 'IntegrationAdapters', prefixes: ['Adapter.Integration.', 'Adapter.External.'] },
+  { layer: 'WorkflowSagaEngine', prefixes: ['Workflow.'] },
+  { layer: 'BackgroundJobsScheduling', prefixes: ['Job.'] },
+  { layer: 'PresentationAdapters', prefixes: ['Presentation.', 'Adapter.Presentation.', 'Adapter.Api.'] },
+  { layer: 'ReportingReadModels', prefixes: ['Reporting.'] },
+  { layer: 'ExtensibilityMetadata', prefixes: ['Metadata.'] },
+  { layer: 'SecurityAuditObservability', prefixes: ['Security.', 'Audit.', 'Observability.'] },
+  { layer: 'Kernel', prefixes: ['Kernel.'] },
+]);
+
+export type IntentLayerPrefixes = {
+  name: string;
+  prefixes?: readonly string[];
+  intentPrefixes?: readonly string[];
+};
+
+/** Longest matching prefix wins; declaration order resolves an identical-prefix tie. */
+export function resolveIntentLayer(
+  intent: string,
+  layers: readonly IntentLayerPrefixes[]
+): string | undefined {
+  const candidates = layers.flatMap((layer, layerIndex) =>
+    (layer.prefixes ?? layer.intentPrefixes ?? []).map((prefix) => ({
+      layer: layer.name,
+      layerIndex,
+      prefix: prefix.endsWith('.') ? prefix : `${prefix}.`,
+    }))
+  );
+  return candidates
+    .filter(({ prefix }) => intent.startsWith(prefix))
+    .sort(
+      (left, right) =>
+        right.prefix.length - left.prefix.length || left.layerIndex - right.layerIndex
+    )[0]?.layer;
+}
+
 export type PublishSyntaxFacts = {
   publishCall: boolean;
   rawIntentName?: string;

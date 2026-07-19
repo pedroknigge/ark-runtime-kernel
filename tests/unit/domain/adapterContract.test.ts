@@ -11,17 +11,23 @@ import {
 import { deterministicNextAction } from '../../../src/domain/remediation';
 import { classifyPublishFacts, looksLikeArkIntent } from '../../../src/domain/sourcePolicy';
 
-describe('cross-adapter result contract v1.2', () => {
-  it('keeps the committed compatibility fixture byte-for-value stable', () => {
-    const fixture = JSON.parse(
+describe('cross-adapter result contract v1.3', () => {
+  it('keeps 1.2 as a legacy value and emits resolved evidence in 1.3', () => {
+    const legacyFixture = JSON.parse(
       fs.readFileSync(
         path.resolve('tests/fixtures/contracts/ark.analysis-result.v1.2.json'),
         'utf8'
       )
     );
+    expect(legacyFixture.schemaVersion).toBe('1.2');
     expect(
       createAdapterResult({
         completeness: 'complete',
+        mode: 'resolved-candidate-facts',
+        policyHash: 'fnv1a-policy',
+        resolverIdentity: 'arkgate-typescript-resolver@1',
+        factsHash: 'fnv1a-facts',
+        candidateTreeHash: 'fnv1a-tree',
         valid: false,
         violations: [
           {
@@ -35,21 +41,31 @@ describe('cross-adapter result contract v1.2', () => {
           },
         ],
       })
-    ).toEqual(fixture);
-    expect(ARK_ANALYSIS_RESULT_SCHEMA_VERSION).toBe('1.2');
-    expect(ARK_ANALYSIS_RESULT_SCHEMA.properties.schemaVersion.const).toBe('1.2');
+    ).toEqual({
+      ...legacyFixture,
+      schemaVersion: '1.3',
+      mode: 'resolved-candidate-facts',
+      completenessReasons: [],
+      policyHash: 'fnv1a-policy',
+      resolverIdentity: 'arkgate-typescript-resolver@1',
+      factsHash: 'fnv1a-facts',
+      candidateTreeHash: 'fnv1a-tree',
+    });
+    expect(ARK_ANALYSIS_RESULT_SCHEMA_VERSION).toBe('1.3');
+    expect(ARK_ANALYSIS_RESULT_SCHEMA.$id).toBe(
+      'https://unpkg.com/arkgate@3/schemas/ark.analysis-result.schema.json'
+    );
+    expect(ARK_ANALYSIS_RESULT_SCHEMA.properties.schemaVersion.const).toBe('1.3');
+    expect(ARK_ANALYSIS_RESULT_SCHEMA.required).toContain('mode');
     expect(ARK_ANALYSIS_RESULT_SCHEMA.required).toContain('completeness');
     expect(ARK_ANALYSIS_RESULT_SCHEMA.properties.completeness).toEqual({
       enum: ['complete', 'partial', 'unavailable'],
     });
-    expect(ARK_ANALYSIS_RESULT_SCHEMA.allOf).toEqual([
-      {
-        if: {
-          properties: { completeness: { enum: ['partial', 'unavailable'] } },
-          required: ['completeness'],
-        },
-        then: { properties: { valid: { const: false } } },
-      },
+    expect(ARK_ANALYSIS_RESULT_SCHEMA.allOf[1].then.required).toEqual([
+      'policyHash',
+      'resolverIdentity',
+      'factsHash',
+      'candidateTreeHash',
     ]);
   });
 
@@ -73,8 +89,10 @@ describe('cross-adapter result contract v1.2', () => {
 
   it('preserves legacy factory calls as complete and fails closed explicit incomplete analysis', () => {
     expect(createAdapterResult({ valid: true })).toEqual({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
       completeness: 'complete',
+      completenessReasons: [],
       valid: true,
       diagnostics: [],
     });
@@ -88,6 +106,7 @@ describe('cross-adapter result contract v1.2', () => {
     });
     expect(createAdapterResult({ valid: true, completeness: 'complete' })).toMatchObject({
       completeness: 'complete',
+      completenessReasons: [],
       valid: true,
     });
   });
@@ -100,8 +119,10 @@ describe('cross-adapter result contract v1.2', () => {
         warnings: [{ code: 'LEGACY_WARNING', severity: 'warning', line: 0, column: -1 }],
       })
     ).toEqual({
-      schemaVersion: '1.2',
+      schemaVersion: '1.3',
+      mode: 'lexical-compatibility',
       completeness: 'complete',
+      completenessReasons: [],
       valid: true,
       diagnostics: [
         {
@@ -123,6 +144,37 @@ describe('cross-adapter result contract v1.2', () => {
     expect(
       ARK_ANALYSIS_RESULT_SCHEMA.properties.diagnostics.items.properties.nextAction
     ).toEqual({ type: 'string', minLength: 1 });
+  });
+
+  it('preserves canonical rule evidence in the shared diagnostic', () => {
+    expect(
+      toAdapterDiagnostic({
+        ruleId: 'CAPABILITY_VIOLATION',
+        target: 'node:fs',
+        fromLayer: 'DomainModel',
+        toLayer: 'Tooling',
+        typeOnly: false,
+        targetTypeOnlyExports: false,
+        sourcePureTypeModule: false,
+        namedBindingsTypeOnly: false,
+        portProofEligible: true,
+        peerIsolation: true,
+        capability: 'filesystem',
+        edgeKind: 'import',
+      }).evidence
+    ).toEqual({
+      target: 'node:fs',
+      fromLayer: 'DomainModel',
+      toLayer: 'Tooling',
+      typeOnly: false,
+      targetTypeOnlyExports: false,
+      sourcePureTypeModule: false,
+      namedBindingsTypeOnly: false,
+      portProofEligible: true,
+      peerIsolation: true,
+      capability: 'filesystem',
+      edgeKind: 'import',
+    });
   });
 
   it('gives type-only boundary findings one deterministic mechanical next action', () => {

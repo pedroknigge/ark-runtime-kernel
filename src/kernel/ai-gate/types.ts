@@ -34,7 +34,15 @@ export interface AICodeGateContext {
 }
 
 export interface AICodeGateResult {
+  /** Single-source snippets do not carry project-wide resolver evidence. */
+  mode: 'lexical-compatibility';
+  /** A snippet result is intentionally never an authoritative complete verdict. */
+  completeness: 'partial';
+  completenessReasons: string[];
+  /** Authoritative verdict. Always false until the complete candidate is resolved. */
   valid: boolean;
+  /** Compatibility signal for the bounded lexical checks performed here. */
+  lexicalValid: boolean;
   violations: AICodeGateViolation[];
 }
 

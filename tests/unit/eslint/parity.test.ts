@@ -122,7 +122,7 @@ describe('ESLint ↔ ark-check parity', () => {
     expect(reports[0].messageId).toBe('forbiddenImport');
     expect((reports[0].data as { fromLayer: string }).fromLayer).toBe('DomainModel');
     expect((reports[0].data as { toLayer: string }).toLayer).toBe('PersistenceAdapters');
-    expect(check.schemaVersion).toBe('1.2');
+    expect(check.schemaVersion).toBe('1.3');
     expect(check.completeness).toBe('complete');
     expect(reports[0].diagnostic).toEqual(
       check.diagnostics.find((item) => item.ruleId === 'LAYER_IMPORT_VIOLATION')
@@ -148,6 +148,60 @@ describe('ESLint ↔ ark-check parity', () => {
       importKind: 'type',
     });
     expect(reports.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('preserves specifier-level import/export type-only evidence inside the parity envelope', () => {
+    const root = fixture();
+    const domainFile = path.join(root, 'src/domain/named-types.ts');
+    fs.writeFileSync(
+      domainFile,
+      [
+        "import { type db as Db } from '../infra/db';",
+        "export { type db as ExportedDb } from '../infra/db';",
+        'export type X = typeof Db;',
+      ].join('\n')
+    );
+
+    const check = runArkCheckJson(root);
+    const cliDiagnostics = check.diagnostics.filter(
+      (item) => item.ruleId === 'LAYER_IMPORT_VIOLATION'
+    );
+    expect(cliDiagnostics).toHaveLength(2);
+    expect(cliDiagnostics.every((item) => item.evidence?.typeOnly === true)).toBe(true);
+
+    const { context, reports } = createContext(domainFile);
+    const listener = noDomainInfraImports.create(context);
+    const importNode: Record<string, any> = {
+      type: 'ImportDeclaration',
+      source: { value: '../infra/db' },
+      specifiers: [{ type: 'ImportSpecifier', importKind: 'type' }],
+      loc: { start: { line: 1 } },
+    };
+    const exportNode: Record<string, any> = {
+      type: 'ExportNamedDeclaration',
+      source: { value: '../infra/db' },
+      specifiers: [{ type: 'ExportSpecifier', exportKind: 'type' }],
+      loc: { start: { line: 2 } },
+    };
+    const typeNode: Record<string, any> = {
+      type: 'ExportNamedDeclaration',
+      declaration: { type: 'TSTypeAliasDeclaration' },
+      loc: { start: { line: 3 } },
+    };
+    const program: Record<string, any> = {
+      type: 'Program',
+      body: [importNode, exportNode, typeNode],
+    };
+    for (const node of program.body) node.parent = program;
+    listener.ImportDeclaration(importNode);
+    listener.ExportNamedDeclaration(exportNode);
+    const byEvidence = (items: unknown[]) =>
+      [...items].sort((left: any, right: any) =>
+        String(left.evidence.edgeKind).localeCompare(String(right.evidence.edgeKind))
+      );
+    expect(byEvidence(reports.map((report) => report.diagnostic))).toEqual(
+      byEvidence(cliDiagnostics)
+    );
   });
 
   it('allowed application→domain import: ESLint and ark-check both pass', () => {
@@ -428,6 +482,40 @@ describe('ESLint ↔ ark-check parity', () => {
       '../infra/db'
     );
     expect(resolved && fs.existsSync(resolved)).toBe(true);
+  });
+
+  it('keeps the editor parity envelope on-disk, in-scope, and content-invalidated', () => {
+    const root = fixture();
+    const configPath = path.join(root, 'ark.config.json');
+    const domainFile = path.join(root, 'src/domain/editor.ts');
+    fs.writeFileSync(
+      domainFile,
+      "import { pending } from '../infra/not-created';\nexport { pending };\n"
+    );
+
+    const unresolved = createContext(domainFile);
+    noDomainInfraImports.create(unresolved.context).ImportDeclaration({
+      type: 'ImportDeclaration',
+      source: { value: '../infra/not-created' },
+    });
+    expect(unresolved.reports).toEqual([]);
+
+    const nextConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    nextConfig.exclude = ['src/domain/editor.ts'];
+    fs.writeFileSync(configPath, JSON.stringify(nextConfig, null, 2));
+    expect(loadArkConfig(configPath)?.exclude).toEqual(['src/domain/editor.ts']);
+
+    fs.writeFileSync(
+      domainFile,
+      "import { db } from '../infra/db';\nexport const pending = db;\n"
+    );
+    const excluded = createContext(domainFile);
+    noDomainInfraImports.create(excluded.context).ImportDeclaration({
+      type: 'ImportDeclaration',
+      source: { value: '../infra/db' },
+    });
+    expect(excluded.reports).toEqual([]);
+    expect(runArkCheckJson(root).violations).toEqual([]);
   });
 
   it('ESLint-10 shaped context (filename only, no getFilename) still loads ark.config.json', () => {

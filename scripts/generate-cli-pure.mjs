@@ -9,6 +9,7 @@
  *                                → schemas/ark.config.schema.json
  *   src/domain/adapterContract.ts → bin/lib/adapter-contract.mjs
  *                                 → schemas/ark.analysis-result.schema.json
+ *   src/domain/analysis.ts        → schemas/ark.resolved-candidate-facts.schema.json
  *
  * Layer match remains scripts/generate-layer-match.mjs (R1).
  *
@@ -54,6 +55,13 @@ const MODULES = [
     derived: 'bin/lib/source-policy.mjs',
     label: 'shared source-policy classification',
   },
+  {
+    canonical: 'src/domain/analysis.ts',
+    schemaDerived: 'schemas/ark.resolved-candidate-facts.schema.json',
+    schemaExport: 'RESOLVED_CANDIDATE_FACTS_SCHEMA',
+    compactSchema: true,
+    label: 'versioned resolved candidate facts contract + schema',
+  },
 ];
 
 function banner(canonicalRel, derivedRel) {
@@ -77,7 +85,7 @@ function stripLeadingBlockComment(js) {
   return trimmed.slice(end + 2).replace(/^\s*\n/, '');
 }
 
-function buildDerivedSource(canonicalRel, canonicalTs) {
+function transpileCanonicalSource(canonicalRel, canonicalTs) {
   const { outputText, diagnostics } = ts.transpileModule(canonicalTs, {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
@@ -95,22 +103,24 @@ function buildDerivedSource(canonicalRel, canonicalTs) {
     throw new Error(`transpile ${canonicalRel} failed:\n${msg}`);
   }
 
-  const pure = stripLeadingBlockComment(outputText).trimEnd() + '\n';
-  const derivedRel = MODULES.find((m) => m.canonical === canonicalRel).derived;
-  return `${banner(canonicalRel, derivedRel)}\n${pure}`;
+  return stripLeadingBlockComment(outputText).trimEnd() + '\n';
+}
+
+function buildDerivedSource(canonicalRel, derivedRel, transpiledSource) {
+  return `${banner(canonicalRel, derivedRel)}\n${transpiledSource}`;
 }
 
 function normalizeNewlines(s) {
   return s.replace(/\r\n/g, '\n');
 }
 
-async function buildSchemaSource(derivedSource, schemaExport) {
+async function buildSchemaSource(derivedSource, schemaExport, compact = false) {
   const url = `data:text/javascript;base64,${Buffer.from(derivedSource).toString('base64')}`;
   const module = await import(url);
   if (!module[schemaExport] || typeof module[schemaExport] !== 'object') {
     throw new Error(`canonical module must export ${schemaExport}`);
   }
-  return `${JSON.stringify(module[schemaExport], null, 2)}\n`;
+  return `${JSON.stringify(module[schemaExport], null, compact ? undefined : 2)}\n`;
 }
 
 async function main() {
@@ -119,36 +129,43 @@ async function main() {
 
   for (const mod of MODULES) {
     const canonicalPath = path.join(root, mod.canonical);
-    const derivedPath = path.join(root, mod.derived);
     if (!fs.existsSync(canonicalPath)) {
       console.error(`Missing canonical source: ${mod.canonical}`);
       process.exit(2);
     }
     const canonicalTs = fs.readFileSync(canonicalPath, 'utf8');
-    const expected = normalizeNewlines(buildDerivedSource(mod.canonical, canonicalTs));
+    const transpiled = normalizeNewlines(transpileCanonicalSource(mod.canonical, canonicalTs));
+    const expected = mod.derived
+      ? normalizeNewlines(buildDerivedSource(mod.canonical, mod.derived, transpiled))
+      : undefined;
     const expectedSchema = mod.schemaDerived
-      ? normalizeNewlines(await buildSchemaSource(expected, mod.schemaExport))
+      ? normalizeNewlines(
+          await buildSchemaSource(transpiled, mod.schemaExport, mod.compactSchema)
+        )
       : undefined;
 
     if (checkOnly) {
-      if (!fs.existsSync(derivedPath)) {
-        console.error(
-          `Derived pure helper missing: ${mod.derived}\n` +
-            'Run: node scripts/generate-cli-pure.mjs'
-        );
-        failed = true;
-        continue;
-      }
-      const actual = normalizeNewlines(fs.readFileSync(derivedPath, 'utf8'));
-      if (actual !== expected) {
-        console.error(
-          `${mod.derived} is out of date with ${mod.canonical}.\n` +
-            'Regenerate: node scripts/generate-cli-pure.mjs\n' +
-            '(or: npm run generate:cli-pure)'
-        );
-        failed = true;
-      } else {
-        console.log(`✔ ${mod.derived} is up to date (${mod.label}).`);
+      if (mod.derived && expected !== undefined) {
+        const derivedPath = path.join(root, mod.derived);
+        if (!fs.existsSync(derivedPath)) {
+          console.error(
+            `Derived pure helper missing: ${mod.derived}\n` +
+              'Run: node scripts/generate-cli-pure.mjs'
+          );
+          failed = true;
+        } else {
+          const actual = normalizeNewlines(fs.readFileSync(derivedPath, 'utf8'));
+          if (actual !== expected) {
+            console.error(
+              `${mod.derived} is out of date with ${mod.canonical}.\n` +
+                'Regenerate: node scripts/generate-cli-pure.mjs\n' +
+                '(or: npm run generate:cli-pure)'
+            );
+            failed = true;
+          } else {
+            console.log(`✔ ${mod.derived} is up to date (${mod.label}).`);
+          }
+        }
       }
       if (mod.schemaDerived && expectedSchema !== undefined) {
         const schemaPath = path.join(root, mod.schemaDerived);
@@ -173,9 +190,12 @@ async function main() {
       continue;
     }
 
-    fs.mkdirSync(path.dirname(derivedPath), { recursive: true });
-    fs.writeFileSync(derivedPath, expected, 'utf8');
-    console.log(`Wrote ${mod.derived} from ${mod.canonical}`);
+    if (mod.derived && expected !== undefined) {
+      const derivedPath = path.join(root, mod.derived);
+      fs.mkdirSync(path.dirname(derivedPath), { recursive: true });
+      fs.writeFileSync(derivedPath, expected, 'utf8');
+      console.log(`Wrote ${mod.derived} from ${mod.canonical}`);
+    }
     if (mod.schemaDerived && expectedSchema !== undefined) {
       const schemaPath = path.join(root, mod.schemaDerived);
       fs.mkdirSync(path.dirname(schemaPath), { recursive: true });

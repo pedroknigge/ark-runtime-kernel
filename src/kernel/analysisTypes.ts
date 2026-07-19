@@ -9,6 +9,11 @@ import type {
   AnalysisFileChange,
   AnalysisFileInput,
   AnalysisIr,
+  ResolvedCandidateFacts,
+  ResolvedCapabilityFact,
+  ResolvedFactsCompleteness,
+  ResolvedFactsReason,
+  ResolvedFileFact,
 } from '../domain/analysis';
 import type { ArkConfig, ArkConfigLoadResult } from '../domain/configTypes';
 import type {
@@ -19,7 +24,9 @@ import type {
 import type { ArchitectureChangeMapContract } from '../domain/changeMap';
 import type { ArchitectureConvergenceResult } from '../domain/changeConvergence';
 
-export type AnalysisContract = ArkConfigLoadResult & { policyHash: string };
+export type AnalysisContract = ArkConfigLoadResult & {
+  policyHash: string;
+};
 
 export type AnalyzeProjectInput = {
   contract: AnalysisContract;
@@ -33,7 +40,93 @@ export type AnalyzeChangeInput = AnalyzeProjectInput & {
 };
 
 export type AnalysisResult = {
+  mode: 'lexical-compatibility';
+  completeness: ResolvedFactsCompleteness;
+  completenessReasons: ResolvedFactsReason[];
+  valid: boolean;
   ir: AnalysisIr;
+};
+
+export type AnalyzeResolvedProjectInput = {
+  contract: AnalysisContract;
+  facts: unknown;
+};
+
+export type PreflightResolvedChangeInput = {
+  contract: AnalysisContract;
+  baseFacts: unknown;
+  candidateFacts: unknown;
+  changes: readonly AnalysisFileChange[];
+  changeMap?: ArchitectureChangeMapContract;
+};
+
+export type ResolvedAnalysisFile = ResolvedFileFact & {
+  layer: string | null;
+};
+
+export type ResolvedAnalysisIr = {
+  schemaVersion: '1.0';
+  policyHash: string;
+  compilerOptionsHash: string;
+  files: ResolvedAnalysisFile[];
+  layers: string[];
+  edges: ArchitectureEngineEdge[];
+  capabilityUses: ResolvedCapabilityFact[];
+  violations: ArchitectureEngineViolation[];
+  warnings: ArchitectureEngineViolation[];
+};
+
+export type ResolvedSafetyReport = {
+  tsSuppressions: { file: string; line: number }[];
+  anyCasts: { file: string; line: number }[];
+  nonLiteralDynamicImports: { file: string; line: number; kind: 'import' | 'require' }[];
+  inMemoryProductionStores: { file: string; line: number; store: string }[];
+  disabledPeerIsolationRules: { from: string; to: string }[];
+  thresholds: { maxTsSuppressions: number; maxAnyCasts: number };
+};
+
+export type ResolvedAnalysisResult = {
+  mode: 'resolved-candidate-facts';
+  completeness: ResolvedFactsCompleteness;
+  completenessReasons: ResolvedFactsReason[];
+  valid: boolean;
+  strictValid: boolean;
+  policyHash: string;
+  factsHash: ResolvedCandidateFacts['factsHash'];
+  resolverIdentity: ResolvedCandidateFacts['resolverIdentity'];
+  candidateTreeHash: ResolvedCandidateFacts['candidateTreeHash'];
+  safety: ResolvedSafetyReport;
+  ir: ResolvedAnalysisIr;
+};
+
+export type ResolvedChangePreflightResult = {
+  schemaVersion: '1.0';
+  mode: 'resolved-candidate-facts';
+  valid: boolean;
+  readOnly: true;
+  policyHash: string;
+  resolverIdentity: string;
+  compilerIdentity: string;
+  compilerOptionsHash: string;
+  tsconfigHash: string;
+  baseCompilerOptionsHash: string;
+  candidateCompilerOptionsHash: string;
+  baseTsconfigHash: string;
+  candidateTsconfigHash: string;
+  evidenceRequirementsHash: string;
+  baseFactsHash: string;
+  candidateFactsHash: string;
+  baseTreeHash: string;
+  candidateTreeHash: string;
+  baseCompleteness: ResolvedFactsCompleteness;
+  candidateCompleteness: ResolvedFactsCompleteness;
+  baseCompletenessReasons: ResolvedFactsReason[];
+  candidateCompletenessReasons: ResolvedFactsReason[];
+  changeMapHash?: string;
+  convergence?: ArchitectureConvergenceResult;
+  changes: PreparedChangeFile[];
+  violations: ArchitectureEngineViolation[];
+  warnings: ArchitectureEngineViolation[];
 };
 
 export type AnalyzePolicyDeltaInput = {
@@ -70,7 +163,7 @@ export type ArchitectureEngineViolation = {
 
 export type ArchitectureEngineEdge = {
   from: string;
-  fromLayer: string;
+  fromLayer: string | null;
   to?: string;
   toLayer?: string;
   line: number;
@@ -107,12 +200,17 @@ export type PreparedChangeFile = {
 
 export type ChangePreflightResult = {
   schemaVersion: '1.0';
+  mode: 'lexical-compatibility';
   valid: boolean;
   readOnly: true;
   policyHash: string;
   compilerOptionsHash: string;
   baseTreeHash: string;
   candidateTreeHash: string;
+  baseCompleteness: ResolvedFactsCompleteness;
+  candidateCompleteness: ResolvedFactsCompleteness;
+  baseCompletenessReasons: ResolvedFactsReason[];
+  candidateCompletenessReasons: ResolvedFactsReason[];
   changeMapHash?: string;
   convergence?: ArchitectureConvergenceResult;
   changes: PreparedChangeFile[];

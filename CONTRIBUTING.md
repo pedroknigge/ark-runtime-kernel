@@ -70,9 +70,9 @@ not ship unless they are explicitly named there.
 
 1. **Every behavior change needs a test.** CLI behavior is tested by executing the real binaries against temp fixtures (see `tests/unit/static-check/arkCheck.test.ts` for the pattern).
 2. **The three gates must agree.** `arkgate-check` / `ark-check`, `arkgate-mcp` / `ark-mcp`, and the ESLint plugin share semantics via `bin/ark-shared.mjs` and the config format — if you change classification or rule semantics in one, change it everywhere and add a test proving they match.
-   Current diagnostic envelopes use schema 1.2 and must report required
-   `completeness: complete | partial | unavailable`; incomplete analysis cannot satisfy a plan or
-   strict merge.
+   Current diagnostic envelopes use schema 1.3 and must report `mode`, required
+   `completeness: complete | partial | unavailable`, and structured `completenessReasons`;
+   incomplete analysis cannot satisfy a plan or strict merge.
 3. **CI must be green**: typecheck, coverage + mutation confidence, build, and
    `check:architecture` all gate merges.
 4. Keep diffs small and boring. No new abstractions without a second concrete use.

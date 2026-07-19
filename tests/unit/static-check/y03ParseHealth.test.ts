@@ -1,6 +1,5 @@
 /** Y03/Z02 — parse diagnostics stay visible and incomplete analysis fails closed. */
 import { afterEach, describe, expect, it } from 'vitest';
-import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -174,19 +173,20 @@ describe('Y03 parse health', () => {
     ).toMatchObject({ available: false, status: 'unavailable', diagnosticCount: 0 });
   });
 
-  it('invalidates v8/parser changes, preserves v9 hits, and performs no second parse', () => {
+  it('ignores legacy scan caches and recomputes resolved candidate facts each run', () => {
     const root = project();
     const invalid = write(root, 'src/domain/bad.ts', 'export const broken = { trailing: true,, };\n');
     const valid = write(root, 'src/infra/repo.ts', 'export const repo = 1;\n');
     const files = [invalid, valid];
-    const configText = fs.readFileSync(path.join(root, 'ark.config.json'), 'utf8');
-    const v8Key = crypto
-      .createHash('sha1')
-      .update(`ark-check-cache-v8\0${configText}\0`)
-      .digest('hex');
     const cachePath = path.join(root, 'node_modules', '.cache', 'ark-check.json');
     fs.mkdirSync(path.dirname(cachePath), { recursive: true });
-    fs.writeFileSync(cachePath, JSON.stringify({ key: v8Key, files: {} }));
+    const poisonedLegacyCache = JSON.stringify({
+      key: 'ark-check-cache-v9-poisoned',
+      files: {
+        'src/domain/bad.ts': { parseDiagnosticCount: 0, contentViolations: [] },
+      },
+    });
+    fs.writeFileSync(cachePath, poisonedLegacyCache);
     const counted = countingTypeScript();
     const args = { config: 'ark.config.json', noCache: false };
 
@@ -207,17 +207,7 @@ describe('Y03 parse health', () => {
     });
     expect(cold.violations).toEqual([]);
 
-    const cache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-    const v9Key = crypto
-      .createHash('sha1')
-      .update(`ark-check-cache-v9\0${counted.ts.version}\0${configText}\0`)
-      .digest('hex');
-    expect(cache.key).toBe(v9Key);
-    expect(cache.key).not.toBe(v8Key);
-    for (const entry of Object.values(cache.files) as Array<Record<string, unknown>>) {
-      expect(entry).toHaveProperty('parseDiagnosticCount');
-      expect(entry).not.toHaveProperty('parseDiagnostics');
-    }
+    expect(fs.readFileSync(cachePath, 'utf8')).toBe(poisonedLegacyCache);
 
     const warm = runArchitectureScan({
       root,
@@ -228,39 +218,9 @@ describe('Y03 parse health', () => {
       ts: counted.ts,
       args,
     });
-    expect(counted.calls()).toBe(2);
+    expect(counted.calls()).toBe(4);
     expect(warm.parseHealth).toEqual(cold.parseHealth);
     expect(warm.violations).toEqual(cold.violations);
-
-    const incompleteCache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-    delete incompleteCache.files['src/domain/bad.ts'].parseDiagnosticCount;
-    fs.writeFileSync(cachePath, JSON.stringify(incompleteCache));
-    const repaired = runArchitectureScan({
-      root,
-      config: CONFIG,
-      manifest: null,
-      rules: CONFIG.rules,
-      files,
-      ts: counted.ts,
-      args,
-    });
-    expect(counted.calls()).toBe(3);
-    expect(repaired.parseHealth).toEqual(cold.parseHealth);
-
-    const unsafeCache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
-    unsafeCache.files['src/infra/repo.ts'].parseDiagnosticCount = Number.MAX_VALUE;
-    fs.writeFileSync(cachePath, JSON.stringify(unsafeCache));
-    const safeAgain = runArchitectureScan({
-      root,
-      config: CONFIG,
-      manifest: null,
-      rules: CONFIG.rules,
-      files,
-      ts: counted.ts,
-      args,
-    });
-    expect(counted.calls()).toBe(4);
-    expect(safeAgain.parseHealth).toEqual(cold.parseHealth);
 
     const otherParser = countingTypeScript(`${ts.version}-other`);
     const reparsedForIdentity = runArchitectureScan({
@@ -274,6 +234,7 @@ describe('Y03 parse health', () => {
     });
     expect(otherParser.calls()).toBe(2);
     expect(reparsedForIdentity.parseHealth).toEqual(cold.parseHealth);
+    expect(fs.readFileSync(cachePath, 'utf8')).toBe(poisonedLegacyCache);
   });
 
   it('keeps the non-strict exit advisory while JSON/plan/strict fail parse-incomplete analysis', () => {

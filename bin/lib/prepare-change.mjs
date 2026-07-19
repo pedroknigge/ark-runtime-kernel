@@ -1,9 +1,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadArchitectureChangeMap, loadContract, preflightChange } from './analysis-engine.mjs';
+import {
+  loadArchitectureChangeMap,
+  loadContract,
+  preflightResolvedChange,
+} from './analysis-engine.mjs';
 import { createAdapterResult } from './adapter-contract.mjs';
-import { collectGovernedFiles, isGovernableSourceFile, normalize } from './scan-files.mjs';
-import { isScanExcludedRelative, layerForRelativePath } from '../ark-shared.mjs';
+import { isGovernableSourceFile } from './scan-files.mjs';
+import {
+  canonicalizeCandidateChanges,
+  resolveCandidateFacts,
+} from './resolved-candidate-facts.mjs';
+import { effectiveAnalysisConfig } from './analysis-policy.mjs';
+import { isScanExcludedRelative } from '../ark-shared.mjs';
 
 function candidatePath(value) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -27,15 +36,20 @@ function isIncluded(relativePath, include) {
   });
 }
 
+export function isCandidateSourceInScope(config, relativePath) {
+  return (
+    isGovernableSourceFile(path.basename(relativePath)) &&
+    isIncluded(relativePath, config.include) &&
+    !isScanExcludedRelative(relativePath, config)
+  );
+}
+
 function assertGovernedSource(config, relativePath) {
   if (!isGovernableSourceFile(path.basename(relativePath))) {
     throw new Error(`Atomic preflight only accepts governed production source files: ${relativePath}`);
   }
-  if (!isIncluded(relativePath, config.include) || isScanExcludedRelative(relativePath, config)) {
+  if (!isCandidateSourceInScope(config, relativePath)) {
     throw new Error(`Change path is outside the configured source scope: ${relativePath}`);
-  }
-  if (!layerForRelativePath(relativePath, config.layers)) {
-    throw new Error(`Change path is not assigned to an architecture layer: ${relativePath}`);
   }
 }
 
@@ -73,22 +87,6 @@ export function normalizeChangeSet(input) {
   });
 }
 
-function baseFilesForChange(root, config, changes) {
-  const byPath = new Map(
-    collectGovernedFiles(root, config).map((absolute) => [
-      normalize(path.relative(root, absolute)),
-      { path: normalize(path.relative(root, absolute)), content: fs.readFileSync(absolute, 'utf8') },
-    ])
-  );
-  for (const change of changes) {
-    if (byPath.has(change.path) || !isGovernableSourceFile(path.basename(change.path))) continue;
-    const absolute = path.join(root, change.path);
-    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) continue;
-    byPath.set(change.path, { path: change.path, content: fs.readFileSync(absolute, 'utf8') });
-  }
-  return [...byPath.values()].sort((left, right) => left.path.localeCompare(right.path));
-}
-
 export function prepareChangeFromRoot({
   root,
   config,
@@ -96,28 +94,61 @@ export function prepareChangeFromRoot({
   changes,
   changeMap,
   changeMapSource,
-  compilerOptions,
+  ts,
+  tsconfig,
+  manifest,
+  overlayChanges,
 }) {
   const normalizedChanges = normalizeChangeSet(changes);
+  const normalizedOverlayChanges =
+    overlayChanges === undefined ? normalizedChanges : normalizeChangeSet(overlayChanges);
+  const effectiveConfig = effectiveAnalysisConfig(config, manifest);
   for (const change of normalizedChanges) {
     assertInsideProject(root, change.path);
-    assertGovernedSource(config, change.path);
   }
-  const contract = loadContract(config, configSource ?? path.join(root, 'ark.config.json'));
+  const contract = loadContract(
+    effectiveConfig,
+    configSource ?? path.join(root, 'ark.config.json')
+  );
   const loadedChangeMap =
     changeMap === undefined
       ? undefined
       : loadArchitectureChangeMap(changeMap, contract.config, changeMapSource);
-  const result = preflightChange({
-    contract,
-    files: baseFilesForChange(root, config, normalizedChanges),
+  const canonicalChanges = canonicalizeCandidateChanges({
+    root,
+    config: contract.config,
     changes: normalizedChanges,
-    ...(loadedChangeMap ? { changeMap: loadedChangeMap } : {}),
-    ...(compilerOptions ? { compilerOptions } : {}),
   });
+  for (const change of canonicalChanges) assertGovernedSource(effectiveConfig, change.path);
+  const baseFacts = resolveCandidateFacts({
+    root,
+    config: contract.config,
+    ts,
+    ...(tsconfig ? { tsconfig } : {}),
+  });
+  const candidateFacts = resolveCandidateFacts({
+    root,
+    config: contract.config,
+    ts,
+    changes: normalizedOverlayChanges,
+    ...(tsconfig ? { tsconfig } : {}),
+  });
+  const result = preflightResolvedChange({
+    contract,
+    baseFacts,
+    candidateFacts,
+    changes: canonicalChanges,
+    ...(loadedChangeMap ? { changeMap: loadedChangeMap } : {}),
+  });
+  const completeness =
+    result.baseCompleteness === 'unavailable' || result.candidateCompleteness === 'unavailable'
+      ? 'unavailable'
+      : result.baseCompleteness === 'partial' || result.candidateCompleteness === 'partial'
+        ? 'partial'
+        : 'complete';
   const { diagnostics } = createAdapterResult({
     valid: result.valid,
-    completeness: 'complete',
+    completeness,
     violations: result.violations,
     warnings: result.warnings,
   });

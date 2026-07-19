@@ -1,9 +1,16 @@
 /** Versioned public result contract shared by every ArkGate enforcement adapter. */
 
-export const ARK_ANALYSIS_RESULT_SCHEMA_VERSION = '1.2' as const;
+export const ARK_ANALYSIS_RESULT_SCHEMA_VERSION = '1.3' as const;
 
 export type AdapterSeverity = 'error' | 'warning';
 export type AnalysisCompleteness = 'complete' | 'partial' | 'unavailable';
+export type AnalysisMode = 'lexical-compatibility' | 'resolved-candidate-facts';
+
+export type AdapterCompletenessReason = {
+  code: string;
+  message: string;
+  file?: string;
+};
 
 export type AdapterViolationInput = {
   ruleId?: unknown;
@@ -17,8 +24,11 @@ export type AdapterViolationInput = {
   toLayer?: unknown;
   typeOnly?: unknown;
   targetTypeOnlyExports?: unknown;
+  sourcePureTypeModule?: unknown;
   namedBindingsTypeOnly?: unknown;
+  portProofEligible?: unknown;
   peerIsolation?: unknown;
+  edgeKind?: unknown;
   severity?: unknown;
   nextAction?: unknown;
   /** U04: the denied capability id on CAPABILITY_VIOLATION. */
@@ -35,6 +45,13 @@ export type AdapterDiagnostic = {
     fromLayer?: string;
     toLayer?: string;
     typeOnly?: boolean;
+    targetTypeOnlyExports?: boolean;
+    sourcePureTypeModule?: boolean;
+    namedBindingsTypeOnly?: boolean;
+    portProofEligible?: boolean;
+    peerIsolation?: boolean;
+    capability?: string;
+    edgeKind?: string;
   };
   /** Added in schema 1.1; optional in TypeScript so 1.0 consumer-owned values remain valid. */
   nextAction?: string;
@@ -45,25 +62,68 @@ type LegacyAdapterResult = {
   valid: boolean;
   diagnostics: AdapterDiagnostic[];
   completeness?: never;
+  mode?: never;
 };
 
-type CompleteAdapterResult = {
+type Version12AdapterResultBase = {
+  schemaVersion: '1.2';
+  diagnostics: AdapterDiagnostic[];
+  mode?: never;
+};
+
+type Version12AdapterResult =
+  | (Version12AdapterResultBase & { completeness: 'complete'; valid: boolean })
+  | (Version12AdapterResultBase & {
+      completeness: 'partial' | 'unavailable';
+      valid: false;
+    });
+
+type CurrentAdapterResultBase = {
   schemaVersion: typeof ARK_ANALYSIS_RESULT_SCHEMA_VERSION;
-  valid: boolean;
-  completeness: 'complete';
+  completenessReasons: AdapterCompletenessReason[];
   diagnostics: AdapterDiagnostic[];
 };
 
-type IncompleteAdapterResult = {
-  schemaVersion: typeof ARK_ANALYSIS_RESULT_SCHEMA_VERSION;
-  valid: false;
-  completeness: 'partial' | 'unavailable';
-  diagnostics: AdapterDiagnostic[];
+type ResolvedAdapterEvidence = {
+  policyHash: string;
+  resolverIdentity: string;
+  factsHash: string;
+  candidateTreeHash: string;
 };
 
-type CurrentAdapterResult = CompleteAdapterResult | IncompleteAdapterResult;
+type CurrentAdapterResult =
+  | (CurrentAdapterResultBase &
+      Partial<ResolvedAdapterEvidence> & {
+      mode: 'lexical-compatibility';
+      valid: boolean;
+      completeness: 'complete';
+    })
+  | (CurrentAdapterResultBase &
+      Partial<ResolvedAdapterEvidence> & {
+      mode: 'lexical-compatibility';
+      valid: false;
+      completeness: 'partial' | 'unavailable';
+    })
+  | (CurrentAdapterResultBase &
+      ResolvedAdapterEvidence & {
+        mode: 'resolved-candidate-facts';
+        valid: boolean;
+        completeness: 'complete';
+      })
+  | (CurrentAdapterResultBase &
+      ResolvedAdapterEvidence & {
+        mode: 'resolved-candidate-facts';
+        valid: false;
+        completeness: 'partial';
+      })
+  | (CurrentAdapterResultBase &
+      Partial<ResolvedAdapterEvidence> & {
+        mode: 'resolved-candidate-facts';
+        valid: false;
+        completeness: 'unavailable';
+    });
 
-export type AdapterResult = LegacyAdapterResult | CurrentAdapterResult;
+export type AdapterResult = LegacyAdapterResult | Version12AdapterResult | CurrentAdapterResult;
 
 function text(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -116,6 +176,23 @@ export function toAdapterDiagnostic(
     ...(text(violation.fromLayer) ? { fromLayer: text(violation.fromLayer) } : {}),
     ...(text(violation.toLayer) ? { toLayer: text(violation.toLayer) } : {}),
     ...(typeof violation.typeOnly === 'boolean' ? { typeOnly: violation.typeOnly } : {}),
+    ...(typeof violation.targetTypeOnlyExports === 'boolean'
+      ? { targetTypeOnlyExports: violation.targetTypeOnlyExports }
+      : {}),
+    ...(typeof violation.sourcePureTypeModule === 'boolean'
+      ? { sourcePureTypeModule: violation.sourcePureTypeModule }
+      : {}),
+    ...(typeof violation.namedBindingsTypeOnly === 'boolean'
+      ? { namedBindingsTypeOnly: violation.namedBindingsTypeOnly }
+      : {}),
+    ...(typeof violation.portProofEligible === 'boolean'
+      ? { portProofEligible: violation.portProofEligible }
+      : {}),
+    ...(typeof violation.peerIsolation === 'boolean'
+      ? { peerIsolation: violation.peerIsolation }
+      : {}),
+    ...(text(violation.capability) ? { capability: text(violation.capability) } : {}),
+    ...(text(violation.edgeKind) ? { edgeKind: text(violation.edgeKind) } : {}),
   };
   return {
     ruleId,
@@ -134,37 +211,115 @@ export function toAdapterDiagnostic(
 export function createAdapterResult(input: {
   valid: boolean;
   completeness?: AnalysisCompleteness;
+  mode?: AnalysisMode;
+  policyHash?: unknown;
+  resolverIdentity?: unknown;
+  factsHash?: unknown;
+  candidateTreeHash?: unknown;
+  completenessReasons?: readonly AdapterCompletenessReason[];
   violations?: readonly AdapterViolationInput[];
   warnings?: readonly AdapterViolationInput[];
 }): CurrentAdapterResult {
   const completeness = input.completeness ?? 'complete';
+  const mode = input.mode ?? 'lexical-compatibility';
+  if (completeness === 'complete' && (input.completenessReasons?.length ?? 0) > 0) {
+    throw new Error('completenessReasons must be empty when completeness is complete.');
+  }
+  const completenessReasons =
+    completeness === 'complete'
+      ? []
+      : input.completenessReasons && input.completenessReasons.length > 0
+        ? input.completenessReasons.map((reason) => ({
+            code: text(reason.code) ?? 'ANALYSIS_EVIDENCE_INCOMPLETE',
+            message:
+              text(reason.message) ??
+              `Analysis ${completeness}: required evidence is incomplete.`,
+            ...(text(reason.file) ? { file: text(reason.file) } : {}),
+          }))
+        : [
+            {
+              code:
+                completeness === 'unavailable'
+                  ? 'ANALYSIS_UNAVAILABLE'
+                  : 'ANALYSIS_EVIDENCE_INCOMPLETE',
+              message: `Analysis ${completeness}: required evidence is incomplete.`,
+            },
+          ];
+  const evidence = {
+    ...(text(input.policyHash) ? { policyHash: text(input.policyHash) } : {}),
+    ...(text(input.resolverIdentity) ? { resolverIdentity: text(input.resolverIdentity) } : {}),
+    ...(text(input.factsHash) ? { factsHash: text(input.factsHash) } : {}),
+    ...(text(input.candidateTreeHash) ? { candidateTreeHash: text(input.candidateTreeHash) } : {}),
+  };
+  if (mode === 'resolved-candidate-facts' && completeness !== 'unavailable') {
+    for (const field of ['policyHash', 'resolverIdentity', 'factsHash', 'candidateTreeHash'] as const) {
+      if (!evidence[field]) {
+        throw new Error(`${field} is required for resolved ${completeness} adapter evidence.`);
+      }
+    }
+  }
   const diagnostics = [
     ...(input.violations ?? []).map((item) => toAdapterDiagnostic(item, 'error')),
     ...(input.warnings ?? []).map((item) => toAdapterDiagnostic(item, 'warning')),
   ];
-  if (completeness !== 'complete') {
-    return {
-      schemaVersion: ARK_ANALYSIS_RESULT_SCHEMA_VERSION,
-      valid: false,
-      completeness,
-      diagnostics,
-    };
-  }
-  return {
+  const base = {
     schemaVersion: ARK_ANALYSIS_RESULT_SCHEMA_VERSION,
-    valid: input.valid,
-    completeness,
+    completenessReasons,
     diagnostics,
   };
+  if (mode === 'resolved-candidate-facts') {
+    if (completeness === 'unavailable') {
+      return {
+        ...base,
+        mode,
+        valid: false,
+        completeness,
+        ...evidence,
+      };
+    }
+    const resolvedEvidence: ResolvedAdapterEvidence = {
+      policyHash: evidence.policyHash!,
+      resolverIdentity: evidence.resolverIdentity!,
+      factsHash: evidence.factsHash!,
+      candidateTreeHash: evidence.candidateTreeHash!,
+    };
+    if (completeness === 'complete') {
+      return {
+        ...base,
+        mode,
+        valid: input.valid,
+        completeness,
+        ...resolvedEvidence,
+      };
+    }
+    return {
+      ...base,
+      mode,
+      valid: false,
+      completeness,
+      ...resolvedEvidence,
+    };
+  }
+  if (completeness === 'complete') {
+    return { ...base, mode, valid: input.valid, completeness, ...evidence };
+  }
+  return { ...base, mode, valid: false, completeness, ...evidence };
 }
 
 export const ARK_ANALYSIS_RESULT_SCHEMA = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
-  $id: 'https://unpkg.com/arkgate@2/schemas/ark.analysis-result.schema.json',
+  $id: 'https://unpkg.com/arkgate@3/schemas/ark.analysis-result.schema.json',
   title: 'ArkGate analysis result',
   type: 'object',
   additionalProperties: false,
-  required: ['schemaVersion', 'valid', 'completeness', 'diagnostics'],
+  required: [
+    'schemaVersion',
+    'mode',
+    'valid',
+    'completeness',
+    'completenessReasons',
+    'diagnostics',
+  ],
   allOf: [
     {
       if: {
@@ -173,11 +328,49 @@ export const ARK_ANALYSIS_RESULT_SCHEMA = {
       },
       then: { properties: { valid: { const: false } } },
     },
+    {
+      if: {
+        properties: {
+          mode: { const: 'resolved-candidate-facts' },
+          completeness: { enum: ['complete', 'partial'] },
+        },
+        required: ['mode', 'completeness'],
+      },
+      then: {
+        required: ['policyHash', 'resolverIdentity', 'factsHash', 'candidateTreeHash'],
+      },
+    },
+    {
+      if: {
+        properties: { completeness: { const: 'complete' } },
+        required: ['completeness'],
+      },
+      then: { properties: { completenessReasons: { maxItems: 0 } } },
+      else: { properties: { completenessReasons: { minItems: 1 } } },
+    },
   ],
   properties: {
     schemaVersion: { const: ARK_ANALYSIS_RESULT_SCHEMA_VERSION },
+    mode: { enum: ['lexical-compatibility', 'resolved-candidate-facts'] },
     valid: { type: 'boolean' },
     completeness: { enum: ['complete', 'partial', 'unavailable'] },
+    completenessReasons: {
+      type: 'array',
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['code', 'message'],
+        properties: {
+          code: { type: 'string', minLength: 1 },
+          message: { type: 'string', minLength: 1 },
+          file: { type: 'string', minLength: 1 },
+        },
+      },
+    },
+    policyHash: { type: 'string', minLength: 1 },
+    resolverIdentity: { type: 'string', minLength: 1 },
+    factsHash: { type: 'string', minLength: 1 },
+    candidateTreeHash: { type: 'string', minLength: 1 },
     diagnostics: {
       type: 'array',
       items: {
@@ -206,6 +399,13 @@ export const ARK_ANALYSIS_RESULT_SCHEMA = {
               fromLayer: { type: 'string' },
               toLayer: { type: 'string' },
               typeOnly: { type: 'boolean' },
+              targetTypeOnlyExports: { type: 'boolean' },
+              sourcePureTypeModule: { type: 'boolean' },
+              namedBindingsTypeOnly: { type: 'boolean' },
+              portProofEligible: { type: 'boolean' },
+              peerIsolation: { type: 'boolean' },
+              capability: { type: 'string', minLength: 1 },
+              edgeKind: { type: 'string', minLength: 1 },
             },
           },
           nextAction: { type: 'string', minLength: 1 },

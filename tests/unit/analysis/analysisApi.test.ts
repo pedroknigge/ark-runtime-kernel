@@ -35,6 +35,14 @@ describe('analysis API contract', () => {
     const second = analyzeProject(input);
 
     expect(first).toEqual(second);
+    expect(first).toMatchObject({
+      mode: 'lexical-compatibility',
+      completeness: 'partial',
+      completenessReasons: [
+        expect.objectContaining({ code: 'LEXICAL_EVIDENCE_INCOMPLETE' }),
+      ],
+      valid: false,
+    });
     expect(first.ir.schemaVersion).toBe(ANALYSIS_IR_SCHEMA_VERSION);
     expect(first.ir.edges).toMatchObject([
       {
@@ -47,6 +55,24 @@ describe('analysis API contract', () => {
     ]);
     expect(first.ir.violations).toHaveLength(1);
     expect(explainViolation(first.ir.violations[0])).toContain('DomainModel->Kernel');
+  });
+
+  it('only declares an empty lexical candidate complete', () => {
+    expect(analyzeProject({ contract, files: [] })).toMatchObject({
+      mode: 'lexical-compatibility',
+      completeness: 'complete',
+      completenessReasons: [],
+      valid: true,
+    });
+    expect(
+      analyzeProject({
+        contract,
+        files: [{ path: 'src/domain/broken.ts', content: 'export const = ;\n' }],
+      })
+    ).toMatchObject({
+      completeness: 'partial',
+      valid: false,
+    });
   });
 
   it('accepts post-edit and deletion content without filesystem access', () => {
@@ -115,9 +141,12 @@ describe('analysis API contract', () => {
 
     expect(result).toMatchObject({
       schemaVersion: '1.0',
-      valid: true,
+      mode: 'lexical-compatibility',
+      valid: false,
       readOnly: true,
       policyHash: contract.policyHash,
+      baseCompleteness: 'partial',
+      candidateCompleteness: 'partial',
       changes: [
         { path: 'src/domain/created.ts', operation: 'create' },
         { path: 'src/domain/obsolete.ts', operation: 'delete' },
@@ -155,8 +184,16 @@ describe('analysis API contract', () => {
         target: 'src/kernel/service.ts',
       }),
     ]);
-    expect(preflightChange({ contract, files, changes: [forbiddenChanges[0]] }).valid).toBe(true);
-    expect(preflightChange({ contract, files, changes: [forbiddenChanges[1]] }).valid).toBe(true);
+    expect(preflightChange({ contract, files, changes: [forbiddenChanges[0]] })).toMatchObject({
+      valid: false,
+      violations: [],
+      candidateCompleteness: 'partial',
+    });
+    expect(preflightChange({ contract, files, changes: [forbiddenChanges[1]] })).toMatchObject({
+      valid: false,
+      violations: [],
+      candidateCompleteness: 'partial',
+    });
 
     const cycleContract = loadContract({
       include: ['src'],
@@ -178,8 +215,12 @@ describe('analysis API contract', () => {
     expect(cycle.violations).toEqual([
       expect.objectContaining({ ruleId: 'CIRCULAR_DEPENDENCY', file: 'src/domain/a.ts' }),
     ]);
-    expect(preflightChange({ contract: cycleContract, files: [], changes: [cycleChanges[0]] }).valid).toBe(true);
-    expect(preflightChange({ contract: cycleContract, files: [], changes: [cycleChanges[1]] }).valid).toBe(true);
+    expect(
+      preflightChange({ contract: cycleContract, files: [], changes: [cycleChanges[0]] })
+    ).toMatchObject({ valid: false, violations: [], baseCompleteness: 'complete' });
+    expect(
+      preflightChange({ contract: cycleContract, files: [], changes: [cycleChanges[1]] })
+    ).toMatchObject({ valid: false, violations: [], baseCompleteness: 'complete' });
   });
 
   it('fails stale or ambiguous change sets before a host can commit them', () => {

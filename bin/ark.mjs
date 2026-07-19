@@ -23,6 +23,7 @@ import { validateHardWriteRequest } from './lib/enforcement-profiles.mjs';
 import { applyStartPreview, planStart, renderStartPreview } from './lib/start-preview.mjs';
 import { detectActiveAgentHost } from './lib/skill-install.mjs';
 import { loadArkConfigContract } from './lib/config-contract.mjs';
+import { loadTypeScript } from './lib/typescript-host.mjs';
 import {
   prepareChangeFromRoot,
   readChangeMapFile,
@@ -112,6 +113,8 @@ function parseArgs(argv) {
     else if (arg === '--config') args.config = requireValue(arg, i++);
     else if (arg === '--changes') args.changes = requireValue(arg, i++);
     else if (arg === '--change-map') args.changeMap = requireValue(arg, i++);
+    else if (arg === '--manifest') args.manifest = requireValue(arg, i++);
+    else if (arg === '--tsconfig') args.tsconfig = requireValue(arg, i++);
     else if (arg === '--archetype') args.archetype = requireValue(arg, i++);
     else if (arg === '--tools') args.tools = requireValue(arg, i++);
     else if (arg === '--require-write-hook') {
@@ -132,7 +135,7 @@ function usage() {
   ark init    [--root <project>] [--preset hexagonal|layered|feature-sliced|monorepo|ui-surface|vertical-slice|ddd-bounded-contexts|clean-architecture|onion-architecture]
               [--archetype <playbook-id>] [--tools <list>] [--require-write-hook <host>] [--yes] [--force] [--no-strict]
   ark upgrade [--root <project>] [--no-install] [--no-strict]
-  ark preflight --changes <change-set.json> [--change-map <map.json>] [--root <project>] [--config ark.config.json] [--json]
+  ark preflight --changes <change-set.json> [--change-map <map.json>] [--root <project>] [--config ark.config.json] [--manifest <manifest.json>] [--tsconfig <tsconfig.json>] [--json]
 
 Commands:
   start     New here? Analyze and preview the complete setup. Read-only unless --apply.
@@ -790,9 +793,12 @@ async function main() {
   }
   if (
     args.command !== 'preflight' &&
-    (args.changes || args.changeMap || args.config !== 'ark.config.json')
+    (args.changes || args.changeMap || args.manifest || args.tsconfig ||
+      args.config !== 'ark.config.json')
   ) {
-    console.error('--changes, --change-map, and --config are supported by ark preflight.');
+    console.error(
+      '--changes, --change-map, --config, --manifest, and --tsconfig are supported by ark preflight.'
+    );
     return 2;
   }
   const enforcement = validateHardWriteRequest({
@@ -848,11 +854,19 @@ async function main() {
         configPath
       ).config;
       const changeMap = args.changeMap ? readChangeMapFile(args.root, args.changeMap) : undefined;
+      const manifestPath = args.manifest
+        ? path.resolve(args.root, args.manifest)
+        : undefined;
+      const manifest = manifestPath ? JSON.parse(fs.readFileSync(manifestPath, 'utf8')) : undefined;
+      const loadedTypeScript = await loadTypeScript(args.root);
       const result = prepareChangeFromRoot({
         root: args.root,
         config,
         configSource: configPath,
         changes: readChangeSetFile(args.root, args.changes),
+        ts: loadedTypeScript.ts ?? undefined,
+        tsconfig: args.tsconfig,
+        manifest,
         ...(changeMap ? { changeMap: changeMap.input, changeMapSource: changeMap.source } : {}),
       });
       if (args.json) console.log(JSON.stringify(result, null, 2));

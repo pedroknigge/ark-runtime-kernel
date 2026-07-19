@@ -51,6 +51,14 @@ export function reportUnavailableAnalysis({
   const adapterResult = createResult({
     valid: false,
     completeness,
+    completenessReasons: [
+      {
+        code: finding.ruleId,
+        message: finding.message,
+        file: finding.file,
+      },
+    ],
+    mode: 'resolved-candidate-facts',
     violations: [finding],
   });
   if (args.json) {

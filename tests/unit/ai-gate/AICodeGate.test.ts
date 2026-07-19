@@ -56,7 +56,11 @@ describe('AI Code Gate (basic)', () => {
       typescript: ts,
       allowNonLiteralDynamicImport: (filePath) => filePath === 'src/plugin.ts',
     }).validate(source, { filePath: 'src/plugin.ts' });
-    expect(allowed.valid).toBe(true);
+    expect(allowed.valid).toBe(false);
+    expect(allowed.lexicalValid).toBe(true);
+    expect(allowed.mode).toBe('lexical-compatibility');
+    expect(allowed.completeness).toBe('partial');
+    expect(allowed.completenessReasons).toEqual(['LEXICAL_EVIDENCE_INCOMPLETE']);
 
     const literalWithAttributes = createAICodeGate({ typescript: ts }).validate(
       "import('./data.json', { with: { type: 'json' } });",
@@ -174,10 +178,36 @@ describe('AI Code Gate (basic)', () => {
     expect(peer.some((v) => Boolean(v.details?.peerIsolation))).toBe(true);
   });
 
-  it('passes clean code', () => {
+  it('lets the declared contract own an allowed governed same-layer edge', () => {
+    const gate = createAICodeGate({
+      architectureProfile: {
+        name: 'same-layer-authority',
+        layers: [{ name: 'DomainModel', prefixes: ['Domain.'] }],
+        rules: [],
+      },
+      resolveImportTarget: (specifierOrFilePath: string) => ({
+        layer: 'DomainModel',
+        relPath: specifierOrFilePath.includes('order')
+          ? 'src/domain/order.ts'
+          : 'src/domain/infrastructure/model.ts',
+      }),
+    });
+
+    const result = gate.validate(
+      "import { model } from './infrastructure/model';\nexport const order = model;\n",
+      { layer: 'DomainModel', filePath: 'src/domain/order.ts' }
+    );
+
+    expect(result.violations).toEqual([]);
+  });
+
+  it('marks clean code lexically valid without claiming a complete verdict', () => {
     const gate = createAICodeGate();
     const good = `const x = OrderPlaced({ id: '1' });`;
-    expect(gate.validate(good).valid).toBe(true);
+    const result = gate.validate(good);
+    expect(result.valid).toBe(false);
+    expect(result.lexicalValid).toBe(true);
+    expect(result.completeness).toBe('partial');
   });
 
   // Import strings built from parts so this Tooling-layer test file doesn't
@@ -276,7 +306,7 @@ describe('AI Code Gate (basic)', () => {
     const gate = createAICodeGate({ intents: [OrderConfirmed] });
 
     const good = `bus.publish('Domain.Order.Confirmed', {});`;
-    expect(gate.validate(good).valid).toBe(true);
+    expect(gate.validate(good).lexicalValid).toBe(true);
   });
 
   it('supports external extensions', () => {
@@ -349,7 +379,8 @@ describe('AI Code Gate (basic)', () => {
       layer: 'ApplicationOrchestration',
     });
 
-    expect(res.valid).toBe(true);
+    expect(res.valid).toBe(false);
+    expect(res.lexicalValid).toBe(true);
   });
 });
 
@@ -372,12 +403,13 @@ describe('AI Code Gate forbiddenGlobals', () => {
 
   it('does not flag other layers, shadow-like decoys, or when typescript is absent', () => {
     expect(
-      gate.validate('export const at = Date.now();', { layer: 'ApplicationOrchestration' }).valid
+      gate.validate('export const at = Date.now();', { layer: 'ApplicationOrchestration' })
+        .lexicalValid
     ).toBe(true);
     expect(
       gate.validate('const decoy = { now: () => 1 };\nexport const ok = decoy.now();', {
         layer: 'DomainModel',
-      }).valid
+      }).lexicalValid
     ).toBe(true);
     const noTs = createAICodeGate({ forbiddenGlobals: { DomainModel: ['fetch'] } });
     expect(gateValid(noTs, 'fetch("/api");')).toBe(true);
@@ -411,7 +443,8 @@ describe('AI Code Gate forbiddenGlobals', () => {
       "import type process from 'node:process';\nexport type Process = typeof process;\n",
       { layer: 'DomainModel', filePath: 'src/domain/process-types.ts' }
     );
-    expect(typeResult.valid).toBe(true);
+    expect(typeResult.valid).toBe(false);
+    expect(typeResult.lexicalValid).toBe(true);
     expect(typeResult.violations).toEqual([]);
 
     const importEqualsValue = processGate.validate(
@@ -430,11 +463,12 @@ describe('AI Code Gate forbiddenGlobals', () => {
       "import type Process = require('node:process');\nexport type ProcessType = typeof Process;\n",
       { layer: 'DomainModel', filePath: 'src/domain/process-equals-types.ts' }
     );
-    expect(importEqualsType.valid).toBe(true);
+    expect(importEqualsType.valid).toBe(false);
+    expect(importEqualsType.lexicalValid).toBe(true);
     expect(importEqualsType.violations).toEqual([]);
   });
 });
 
 function gateValid(g: ReturnType<typeof createAICodeGate>, source: string) {
-  return g.validate(source, { layer: 'DomainModel' }).valid;
+  return g.validate(source, { layer: 'DomainModel' }).lexicalValid;
 }

@@ -423,7 +423,7 @@ may raise those ceilings merely to fit its own implementation.
 | 66 | `Z03` | `done` | M | `Z02` | The resolved-facts/public-API boundary and generated CLI parity seam are decided before implementation |
 | 67 | `Z04` | `done` | L | `Z03` | One normalized candidate-facts graph produces one contract verdict across every supported adapter |
 | 68 | `Z05` | `done` | L | `Z02`, `Z04` | Every starter and supported package manager completes the installed tarball journey in a clean consumer |
-| 69 | `Z06` | `todo` | L | `Z05` | Upgrade touches only identity-proven managed assets and doctor reports actual enforcement state |
+| 69 | `Z06` | `doing` | L | `Z05` | Upgrade touches only identity-proven managed assets and doctor reports actual enforcement state |
 | 70 | `Z07` | `todo` | L | `Z04`, `Z05` | A measured warm incremental control plane delivers order-of-magnitude feedback without semantic drift |
 | 71 | `Z08` | `todo` | L | `Z06`, `Z07` | Live-agent and causal evaluation count every outcome and defend the corrected path with mutation proof |
 | 72 | `Z09` | `todo` | L | `Z08` | Retained field adoption and a verifiably independent review earn the Phase Z product claims |
@@ -612,7 +612,7 @@ remains open for Z06's managed-upgrade and enforcement-state half.
 
 ### Z06 — Make managed upgrade and enforcement state truthful
 
-- **Status:** `todo`
+- **Status:** `doing`
 - **Depends on:** `Z05`
 
 **Outcome:** upgrade refreshes only Ark-managed assets, preserves user-owned edits, and reports
@@ -2613,8 +2613,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: `Z06` (`todo`) — make managed upgrade and observed enforcement state truthful from the packed candidate
-Next action: after Z05 merges, move only Z06 to `doing`; reproduce managed-content drift/conflict and false required-CI evidence before implementing identity-bound preview/apply plus doctor parity
+Item: `Z06` (`doing`) — make managed upgrade and observed enforcement state truthful from the packed candidate
+Next action: commit and open the Z06 PR; mark done and close RB-10 only after the pushed SHA passes CI, Security, and the packed 11-host/132-stage gate
 Release lanes: Z01+Z02 may ship a stable corrective patch; Z04 may ship parity; Z06 closes the installed journey; Z07–Z09 gate only 10x/causal/retention/independent-close claims
 Parked unchanged: Y06, Y07, Y09, and Y10 retain their named field gates and must not start as collateral Z work
 Runtime parked: K01 retains confirmed experimental intra-process commit gaps outside Phase Z and does not block gate-package corrective releases

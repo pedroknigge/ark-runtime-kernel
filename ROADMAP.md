@@ -663,6 +663,16 @@ if that like-for-like ratio reaches it. Do not ship a resident path unless the a
 with zero stale-snapshot or differential-verdict failures. Revert to one-shot rather than relax
 correctness or budgets.
 
+**Pre-implementation baseline (2026-07-19):** source `778a33a` / PR synthetic candidate
+`9cfcb3a` on CI run `29699589991` (Linux x64, Node 20.20.2) measured hook@10k p95
+209.036 ms, doctor cold@10k p95 2,160.473 ms, and like-for-like one-shot-warm doctor@10k p95
+2,174.517 ms after one discarded prime. Cold and warm used identical fresh-process argv, tree,
+and cache-free state; all JSON output hashes matched exactly and the fixture identity remained
+`sha256:94b509a47de8a035f51c842c10047d680a12a22c5a49540b57b50149de92b8ad`
+before and after. `residentWarm` remained explicitly unavailable. The companion canonical-control
+artifact recorded cold@10k 3,578.121 ms, one-shot-warm@10k 2,846.590 ms, and the retained lexical
+incremental control at 78.527 ms; none is relabeled as the future resident/canonical metric.
+
 ### Z08 — Repair live-agent, causal, and mutation evidence
 
 - **Status:** `todo`

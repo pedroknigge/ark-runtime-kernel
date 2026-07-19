@@ -27,9 +27,10 @@
     "doctorOneShotWarm": {
       "size": 10000,
       "metric": "doctor.oneShotWarm",
-      "baselineMs": null,
+      "baselineMs": 2174.517,
+      "cycleObservedMaxP95Ms": 2174.517,
       "maxP95Ms": null,
-      "rationale": "Z07 recording lane: fresh doctor processes after one discarded prime, using the exact cold argv and immutable fixture/cache state. This establishes the like-for-like one-shot warm baseline before a resident implementation; it is not a resident or 10x claim."
+      "rationale": "Z07 source 778a33a / PR synthetic candidate 9cfcb3a, CI run 29699589991, recorded 2,174.517 ms p95 from fresh doctor processes after one discarded prime, using the exact cold argv and immutable fixture/cache state. This is the like-for-like one-shot warm baseline before a resident implementation; it is not a resident or 10x claim."
     },
     "doctorResidentWarm": {
       "size": 10000,

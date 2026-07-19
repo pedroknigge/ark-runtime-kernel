@@ -129,7 +129,6 @@ function relativeEvidencePath(root, file) {
 }
 
 function isArkMcpToken(value) {
-  if (typeof value !== 'string') return false;
   return /^(?:arkgate-mcp|ark-mcp)(?:\.mjs)?$/.test(
     path.basename(value.trim().replace(/\\/g, '/'))
   );

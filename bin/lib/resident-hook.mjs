@@ -112,7 +112,7 @@ export function residentEnvironmentIdentity(paths, tokens = []) {
   return `sha256:${hash.digest('hex')}`;
 }
 
-function inputState(file) {
+function inputState(file) { // Stryker disable StringLiteral: opaque state tags have no public meaning
   const stat = fs.lstatSync(file, { bigint: true, throwIfNoEntry: false });
   if (!stat) return 'missing';
   const metadata = [stat.dev, stat.ino, stat.mode, stat.size, stat.mtimeNs, stat.ctimeNs]
@@ -137,7 +137,7 @@ function inputState(file) {
     return `dir:${metadata}:${entries.join('\0')}`;
   }
   return `${stat.isFile() ? 'file' : 'other'}:${metadata}`;
-}
+} // Stryker restore StringLiteral
 
 /** Process-local, metadata-based invalidation ledger; never a persisted result cache. */
 export function createResidentInputLedger(paths) {

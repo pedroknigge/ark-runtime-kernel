@@ -353,6 +353,9 @@ describe('C01 config contract', () => {
     expect(() => parseArkConfigJson('{ nope', 'broken.json')).toThrow(
       'Invalid ArkGate config (broken.json):\n- $: invalid JSON'
     );
+    expect(() => parseArkConfigJson('{')).toThrow(
+      'Invalid ArkGate config (ark.config.json):\n- $: invalid JSON'
+    );
   });
 
   it('keeps migration metadata and config metadata on their exact public contract', () => {

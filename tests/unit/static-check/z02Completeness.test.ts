@@ -4,6 +4,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import ts from 'typescript';
+import {
+  analysisIncompleteStatement,
+  completenessFromParseHealth,
+  normalizeAnalysisCompleteness,
+} from '../../../bin/lib/analysis-completeness.mjs';
 import { validateSnippetAnalysis } from '../../../bin/lib/snippet-analysis.mjs';
 
 const REPO = path.resolve('.');
@@ -60,6 +65,19 @@ afterEach(() => {
 });
 
 describe('Z02 analysis completeness', () => {
+  it('normalizes every completeness boundary and its stable explanation', () => {
+    expect(normalizeAnalysisCompleteness('complete')).toBe('complete');
+    expect(normalizeAnalysisCompleteness('partial')).toBe('partial');
+    expect(normalizeAnalysisCompleteness('unavailable')).toBe('unavailable');
+    expect(normalizeAnalysisCompleteness('unknown')).toBe('unavailable');
+    expect(completenessFromParseHealth(undefined)).toBe('unavailable');
+    expect(completenessFromParseHealth({ available: false, affectedFiles: 0 })).toBe('unavailable');
+    expect(completenessFromParseHealth({ available: true, affectedFiles: 1 })).toBe('partial');
+    expect(completenessFromParseHealth({ available: true, affectedFiles: 0 })).toBe('complete');
+    expect(analysisIncompleteStatement('partial')).toContain('Analysis incomplete');
+    expect(analysisIncompleteStatement('unavailable')).toContain('Analysis unavailable');
+  });
+
   it('fails closed when snippet parsing is partial or unavailable', () => {
     const gate = { validate: () => ({ valid: true, violations: [] }) };
     expect(

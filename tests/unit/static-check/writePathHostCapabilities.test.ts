@@ -608,6 +608,18 @@ describe('active-host write capability model', () => {
     }
   });
 
+  it('rejects an npx MCP declaration without an ArkGate binary argument', () => {
+    const root = mk();
+    try {
+      write(root, '.mcp.json', '{"mcpServers":{"ark":{"command":"npx"}}}');
+      expect(detectWritePathCapabilities(root, 'claude')).toMatchObject({
+        capabilities: { 'advisory-write': false },
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('keeps observed pre-tool coverage and CI-required evidence fail-closed', () => {
     const root = mk();
     try {

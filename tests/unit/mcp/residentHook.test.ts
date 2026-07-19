@@ -144,6 +144,7 @@ async function startResident(root: string) {
 }
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   for (const child of children.splice(0)) {
     if (child.exitCode === null) {
       child.stdin.end();
@@ -290,16 +291,61 @@ describe('Z07 resident hook transport', () => {
       fs.writeFileSync(first, 'export const value = 1;\n');
       fs.writeFileSync(second, 'export const value = 2;\n');
       fs.symlinkSync(first, link);
+      const statSpy = vi.spyOn(fs, 'statSync');
       const linkLedger = createResidentInputLedger([link]);
+      expect(statSpy).toHaveBeenCalledWith(link, { bigint: true });
       const linkIdentity = residentEnvironmentIdentity([link]);
       const targetStat = fs.statSync(first);
       fs.writeFileSync(first, 'export const value = 3;\n');
       fs.utimesSync(first, targetStat.atime, targetStat.mtime);
       expect(residentEnvironmentIdentity([link])).not.toBe(linkIdentity);
+      expect(linkLedger.matches()).toBe(false);
       fs.unlinkSync(link);
       fs.symlinkSync(second, link);
       expect(linkLedger.matches()).toBe(false);
+      const danglingLedger = createResidentInputLedger([link]);
+      fs.unlinkSync(second);
+      expect(danglingLedger.matches()).toBe(false);
     }
+  });
+
+  it('normalizes candidate order and binds directory entries independently of metadata', () => {
+    const root = writeProject();
+    const first = path.join(root, 'src/domain/current.ts');
+    const second = path.join(root, 'src/services/service.ts');
+    const ledger = createResidentInputLedger([first, second]);
+    expect(ledger.matches([second, first])).toBe(true);
+    expect(ledger.matches([first])).toBe(false);
+
+    const virtualDirectory = path.join(root, 'virtual-directory');
+    const directoryStat = {
+      dev: 1n,
+      ino: 2n,
+      mode: 3n,
+      size: 4n,
+      mtimeNs: 5n,
+      ctimeNs: 6n,
+      isSymbolicLink: () => false,
+      isDirectory: () => true,
+      isFile: () => false,
+    } as unknown as fs.BigIntStats;
+    const entry = (name: string) => ({
+      name,
+      isDirectory: () => false,
+      isFile: () => true,
+    });
+    let entries = [entry('second'), entry('first')];
+    const lstatSpy = vi.spyOn(fs, 'lstatSync').mockReturnValue(directoryStat);
+    const readdirSpy = vi.spyOn(fs, 'readdirSync').mockImplementation(
+      () => entries as unknown as fs.Dirent[]
+    );
+    const directoryLedger = createResidentInputLedger([virtualDirectory]);
+    entries = [entry('first'), entry('second')];
+    expect(directoryLedger.matches()).toBe(true);
+    entries = [entry('first'), entry('changed')];
+    expect(directoryLedger.matches()).toBe(false);
+    lstatSpy.mockRestore();
+    readdirSpy.mockRestore();
   });
 
   it('uses the complete packaged runtime surface in the resident endpoint identity', () => {

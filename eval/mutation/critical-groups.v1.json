@@ -43,6 +43,46 @@
       ]
     },
     {
+      "id": "analysis-completeness",
+      "targets": [
+        {
+          "file": "bin/lib/analysis-completeness.mjs",
+          "startLine": 9,
+          "endLine": 27
+        }
+      ]
+    },
+    {
+      "id": "resolved-candidate-facts",
+      "targets": [
+        {
+          "file": "bin/lib/resolved-candidate-facts.mjs",
+          "startLine": 684,
+          "endLine": 728
+        }
+      ]
+    },
+    {
+      "id": "managed-upgrade",
+      "targets": [
+        {
+          "file": "bin/lib/managed-upgrade.mjs",
+          "startLine": 233,
+          "endLine": 255
+        }
+      ]
+    },
+    {
+      "id": "snapshot-invalidation",
+      "targets": [
+        {
+          "file": "bin/lib/resident-hook.mjs",
+          "startLine": 115,
+          "endLine": 162
+        }
+      ]
+    },
+    {
       "id": "baselines",
       "targets": [
         {

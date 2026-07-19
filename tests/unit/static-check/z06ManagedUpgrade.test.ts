@@ -141,6 +141,20 @@ describe('Z06 managed-content upgrade', () => {
       classifyManagedAsset({ recorded: null, currentContent: null, targetContent: target, kind: 'gate' })
     ).toMatchObject({ state: 'missing', managed: true, requiresConsent: false });
     expect(
+      classifyManagedAsset({ recorded: recordedOld, currentContent: null, targetContent: target, kind: 'gate' })
+    ).toMatchObject({ state: 'missing', managed: true, requiresConsent: true });
+    expect(
+      classifyManagedAsset({ recorded: null, currentContent: custom, targetContent: target, kind: 'gate' })
+    ).toMatchObject({ state: 'customized', managed: false, requiresConsent: false });
+    expect(
+      classifyManagedAsset({
+        recorded: null,
+        currentContent: LEGACY_UPGRADE_SKILL,
+        targetContent: target,
+        kind: 'skill',
+      })
+    ).toMatchObject({ state: 'stale', managed: true, requiresConsent: false });
+    expect(
       classifyManagedAsset({ recorded: recordedOld, currentContent: old, targetContent: target, kind: 'gate' })
     ).toMatchObject({ state: 'stale', managed: true, requiresConsent: false });
     expect(

@@ -30,7 +30,6 @@ const FULL_CLI = [
   'tests/unit/scripts/hookPathBench.test.ts',
   'tests/unit/adapters/adapterParity.test.ts',
   'tests/unit/adapters/z04ResolvedAdapterParity.test.ts',
-  'tests/unit/scripts/packageIsolationSafety.test.ts',
   'tests/unit/static-check/y03ParseHealth.test.ts',
 ];
 

@@ -156,11 +156,13 @@ function verifySourceCache(manifest, sourceCache) {
 export function prepareGrokHome(out, authHome) {
   const identity = sha256(path.resolve(out)).slice(0, 24);
   const grokHome = path.join(os.tmpdir(), `ark-z08-grok-home-${identity}`);
-  fs.mkdirSync(grokHome, { recursive: true, mode: 0o700 });
-  const authTarget = path.join(grokHome, 'auth.json');
+  const configHome = path.join(grokHome, '.grok');
+  fs.mkdirSync(configHome, { recursive: true, mode: 0o700 });
+  fs.chmodSync(configHome, 0o700);
+  const authTarget = path.join(configHome, 'auth.json');
   fs.rmSync(authTarget, { force: true });
   fs.symlinkSync(path.resolve(authHome, 'auth.json'), authTarget);
-  fs.copyFileSync(path.join(ROOT, 'eval/causal/grok-config.v1.toml'), path.join(grokHome, 'config.toml'));
+  fs.copyFileSync(path.join(ROOT, 'eval/causal/grok-config.v1.toml'), path.join(configHome, 'config.toml'));
   return grokHome;
 }
 
@@ -780,7 +782,7 @@ async function main() {
       ...process.env,
       ...manifest.agent.environment,
       HOME: grokHome,
-      GROK_HOME: grokHome,
+      GROK_HOME: path.join(grokHome, '.grok'),
       PATH: process.env.PATH,
     };
     const result = await runAgent({

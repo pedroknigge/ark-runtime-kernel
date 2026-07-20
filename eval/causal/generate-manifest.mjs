@@ -200,7 +200,7 @@ export function generateManifest(argv = process.argv.slice(2)) {
       environment: {
         GROK_DISABLE_AUTOUPDATER: '1',
         HOME: '<isolated-grok-home>',
-        GROK_HOME: '<isolated-grok-home>',
+        GROK_HOME: '<isolated-grok-config-home>',
         LANG: 'C.UTF-8',
         NO_COLOR: '1',
         TZ: 'UTC',

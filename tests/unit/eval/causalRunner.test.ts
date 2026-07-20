@@ -83,7 +83,7 @@ describe('Z08 causal runner evidence', () => {
     const grokHome = prepareGrokHome(out, authHome);
     temporary.push(grokHome);
     expect(path.relative(out, grokHome).startsWith('..')).toBe(true);
-    expect(fs.lstatSync(path.join(grokHome, 'auth.json')).isSymbolicLink()).toBe(true);
+    expect(fs.lstatSync(path.join(grokHome, '.grok', 'auth.json')).isSymbolicLink()).toBe(true);
     expect(fs.existsSync(path.join(out, 'state', 'grok-home', 'auth.json'))).toBe(false);
   });
 

@@ -21,7 +21,7 @@ Internal helpers and individual test files are evidence, not separate product su
 
 | Verdict | Count |
 |---------|------:|
-| OK | 27 |
+| OK | 28 |
 | Partial | 1 |
 | Missing | 0 |
 | Contradicted | 0 |
@@ -42,8 +42,8 @@ Internal helpers and individual test files are evidence, not separate product su
 3. The ignored `.ark/reports/latest.json` is an older local sensor snapshot and is not current
    release evidence; the live architecture check is the handoff gate.
 
-**Recommended next Intent:** implement only Z10's base-relative new-design-smell enforcement, then
-retain Z09 plus all parked Y/runtime gates. Completed correctness fixes may enter the next
+**Recommended next Intent:** land the implemented Z10 candidate through exact-head CI, then execute
+Z09 while retaining all parked Y/runtime gates. Completed correctness fixes may enter the next
 corrective release, but none is published in 3.7.0.
 
 ## Code inventory (high level)
@@ -53,7 +53,7 @@ corrective release, but none is published in 3.7.0.
 | Packages | [`package.json`](../../package.json) · [`packages/runtime/package.json`](../../packages/runtime/package.json) | Stable gate package plus optional experimental runtime companion |
 | Stable package entry | `src/gate.ts` · `tsup.config.ts` | Root `arkgate` API; runtime-only APIs are excluded |
 | CLIs and MCP | `bin/ark.mjs` · `bin/ark-check.mjs` · `bin/ark-mcp.mjs` · `server.json` | Three roles, each with `arkgate*` and `ark*` bin names |
-| Public schemas | `schemas/ark.config.schema.json` · `schemas/ark.analysis-result.schema.json` · `schemas/ark.change-map.schema.json` · `schemas/ark.resolved-candidate-facts.schema.json` | Export aliases are declared in the root manifest |
+| Public schemas | config · analysis-result · change-map · resolved-candidate-facts · enforcement-state · design-delta under `schemas/` | Export aliases are declared in the root manifest |
 | Integrations | `src/eslint/index.ts` · `action.yml` · `templates/` | ESLint, Action, hooks, skills, playbook, packs, and adoption template |
 | Experimental runtime | `src/index.ts` · `src/runtime/` · `src/nestjs/` · `packages/runtime/` | Separate package; deprecated root forwarders live in `compat/` |
 | Ark contract | [`ark.config.json`](../../ark.config.json) · `ark://manifest` | Self-hosted four-layer profile; docs do not substitute for the gate |
@@ -93,6 +93,7 @@ There are no product UI routes or database schemas in this library repository.
 | C-026 | Every gallery starter can be copied, installed, and checked using its documented commands | [Examples](../../examples/README.md) | one frozen catalog · checksum-verified npm/pnpm/Yarn clean-room reports | OK | 18/18 cells and 198/198 stages passed on source `3423758` in CI run `29667803023`; publish in the corrective release |
 | C-027 | `ark upgrade` refreshes existing Ark-managed project skills and gates while preserving user-owned files | Setup CLI help · agent guidance | managed-content identities · preview/apply binding · conflict consent · 11-host packed matrix | OK | keep Z06 adversarial and packed coverage |
 | C-028 | V03/V05/B01 evidence measures time to the real merge gate, observed false blocks/bypasses, and independent review | [Roadmap evidence](../../ROADMAP.md#success-metrics) | Z08 immutable 144-cell causal ledger/report · measured classifications · historical beta declaration check | Partial | Z08 closes causal/full-denominator evidence; `Z09` still owns retained adoption and verified reviewer identity |
+| C-029 | New/worsened supported design smells can be ratcheted without blocking historical residual, and host hardness requires runtime/provider proof | [Package surface](../package-surface.md) · [AI gates](../ai-gates.md) | design-delta schema/types · semantic UI-rule detector · hook/MCP/CLI parity corpus · enforcement-state 1.1 | OK | Land the current source candidate; exact-head CI remains the roadmap closure gate |
 
 ## Post-audit first-principles correction
 
@@ -140,10 +141,10 @@ completion gates, measured false blocks/bypasses rather than initializing them, 
 `NoCoverage` mutants in the critical ranges. Z09 still owns longitudinal retention and verified
 independent identity, so C-028 remains partial rather than OK.
 
-The remaining corrective implementation authority is
-[ROADMAP Phase Z](../../ROADMAP.md#phase-z--enforcement-truth-at-speed). Z10 owns new-code design
-enforcement and truthful host hardness before Z09 closes retained adoption and independent review;
-prose is not accepted as implementation evidence.
+The current source candidate implements Z10's new-code design enforcement and runtime-proven host
+hardness. [ROADMAP Phase Z](../../ROADMAP.md#phase-z--enforcement-truth-at-speed) keeps Z10 `doing`
+until that candidate lands through exact-head CI; Z09 then owns retained adoption and independent
+review. Prose is not accepted as implementation evidence.
 
 ## Resolved or narrowed during this audit
 
@@ -186,6 +187,13 @@ prose is not accepted as implementation evidence.
   paired-bootstrap 95% CI upper 0.895450; completion delta +29.17 points; zero critical
   `NoCoverage`. Compact evidence is committed under `eval/causal/evidence/v1/` and full evidence is
   release `z08-causal-evidence-v1`.
+- Z10 current-source candidate: **PASS locally** — semantic design ratchet and runtime-hardness
+  corpus 3 files / 10 tests; focused Z10 plus complete-write contract run 4 files / 17 tests;
+  impacted seams 12 files / 225 tests; full suite 188 files / 1,575 tests. Full confidence passed at
+  88.03% statements/lines, 84.52% branches, 92.35% functions, and 93.98% mutation. Build,
+  typecheck, generated-artifact drift, strict Ark, and release artifacts pass. The gate package is
+  515,327 packed bytes / 1,795,900 unpacked bytes / 145 files, below the unchanged Phase Z
+  ceilings. Exact-head CI/Security remains pending until the candidate is committed/pushed.
 - Surface parity: **PASS** — 124/124 `src/gate.ts` exports, 9/9 MCP tools, 9/9 public
   schema/metadata export aliases, and 6/6 Action inputs are named in their canonical docs.
 - Registry check: **OBSERVED** — `arkgate@latest` is `3.7.0`; querying

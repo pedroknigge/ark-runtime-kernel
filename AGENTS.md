@@ -121,6 +121,7 @@ or `dist/` except `ark-mcp` loading the built library. Shared CLI logic lives in
 | `src/domain/configContract.ts` | `bin/lib/config-contract.mjs` + `schemas/ark.config.schema.json` | (same `cli-pure` scripts) |
 | `src/domain/changeMap.ts` | bundled in `bin/lib/analysis-engine.mjs`; schema parity test guards `schemas/ark.change-map.schema.json` | `generate:analysis-engine` / `check:analysis-engine` |
 | `src/domain/changeConvergence.ts` | bundled in `bin/lib/analysis-engine.mjs` | `generate:analysis-engine` / `check:analysis-engine` |
+| Tooling `bin/lib/*.source.mjs` + design-delta schema source | compact shipped `design-delta.mjs`, `enforcement-state.mjs`, `hook-templates.mjs`, and design-delta schema | `generate:packaged-tooling` / `check:packaged-tooling` |
 
 Parity/drift tests + CI enforce generated files stay in sync.
 

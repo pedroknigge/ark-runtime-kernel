@@ -54,6 +54,9 @@ function createFixture(): string {
   fs.writeFileSync(path.join(root, 'src', 'domain', 'value.ts'), 'export const value = 1;\n');
   const init = run(ARK_CHECK, ['--root', root, '--init'], root, 'claude');
   expect(init.status, init.stderr).toBe(0);
+  spawnSync('git', ['init', '-q'], { cwd: root });
+  spawnSync('git', ['add', '.'], { cwd: root });
+  spawnSync('git', ['-c', 'user.name=Ark Test', '-c', 'user.email=ark@example.test', 'commit', '-qm', 'base'], { cwd: root });
   return root;
 }
 
@@ -74,7 +77,10 @@ function generatedMergeArgs(root: string): string[] {
     .find((line) => line.startsWith('run:') && /\bark-check\b/.test(line));
   expect(command).toBeDefined();
   const tail = command!.slice(command!.indexOf('ark-check') + 'ark-check'.length).trim();
-  return tail.split(/\s+/).filter(Boolean);
+  const args = tail.split(/\s+/).filter(Boolean);
+  const baseRef = args.indexOf('--base-ref');
+  if (baseRef !== -1) args.splice(baseRef + 1, args.length - baseRef - 1, 'HEAD');
+  return args;
 }
 
 function doctor(root: string, host: Host) {

@@ -806,6 +806,16 @@ prepare-write, CLI/CI delta, and final candidate agree on smell identity and ver
 new UI business logic is blocked, unrelated brownfield work is not, and no unverified host is
 reported hard.
 
+**Implementation candidate (2026-07-20):** schema `1.0` design delta, semantic
+`domain-logic-in-ui`, complete write/MCP/CLI parity, generated hook/CI opt-in, golden-pattern repair,
+and enforcement-state `1.1` are implemented locally. Focused Z10 coverage is 3 files / 10 tests;
+the focused Z10 plus complete-write contract run is 4 files / 17 tests, and the broader impacted
+run is 12 files / 225 tests. Historical, unrelated, presentation-only, and path-only-move fixtures
+stay green; missing bases exit `2`; unverified/MCP-only hosts stay `hard:false`. Full confidence
+passes 188 files / 1,575 tests at 88.03% statements/lines, 84.52% branches, 92.35% functions, and
+93.98% mutation. The frozen package budget passes without a ceiling change. Keep Z10 `doing` and
+`RB-12` open until the exact candidate is committed/pushed and the common CI/Security gate is green.
+
 ### Z09 — Prove retained field adoption and independent close
 
 - **Status:** `todo`
@@ -2748,8 +2758,8 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Item: `Z10` (`doing`) — enforce new/worsened design smells on the real write and merge path
-Next action: implement the Propia-shaped base-relative design delta and runtime-verified hardness semantics without blocking historical residual
+Item: `Z10` (`doing`) — implementation complete locally; exact-head landing evidence remains
+Next action: commit/push the candidate, require green CI/Security on that SHA, then close RB-12 and advance Z09
 Release lanes: Z01+Z02 may ship a stable corrective patch; Z04 may ship parity; Z06 closes the installed journey; Z07 gates 10x, Z08 gates causal evidence, Z10 gates new-code design enforcement, and Z09 gates retention/independent close
 Parked unchanged: Y06, Y07, Y09, and Y10 retain their named field gates and must not start as collateral Z work
 Runtime parked: K01 retains confirmed experimental intra-process commit gaps outside Phase Z and does not block gate-package corrective releases

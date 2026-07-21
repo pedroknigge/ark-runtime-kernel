@@ -196,7 +196,7 @@ flowchart LR
 
 - **Depends on:** ArkGate 3.7.0 as the reproduced baseline; accepted ADRs 0002, 0003, 0005, and
   0008; the existing package/adoption/performance harnesses.
-- **Blocked by:** `Z01`–`Z08` are closed; `Z10` is active, then `Z09`.
+- **Blocked by:** `Z01`–`Z08` are closed; Z10 is implemented locally but awaits exact-head CI, then `Z09`.
 - **Risk — Kernel impurity:** resolving imports inside Kernel would violate the four-layer contract.
   **Kill switch:** keep TypeScript/filesystem in Tooling and pass only serializable facts.
 - **Risk — cache false green:** stale invalidation is worse than current latency.
@@ -269,7 +269,7 @@ flowchart LR
 The implementation IDs are tracked in [ROADMAP Phase Z](../../../ROADMAP.md#phase-z--enforcement-truth-at-speed).
 `Z01`–`Z08` are complete; subsequent promotion follows the same discipline:
 
-1. Move only the next dependency-ready Z item to `doing` (`Z10` now; then `Z09`).
+1. Keep only `Z10` doing until its exact-head CI closes; then move `Z09` to doing.
 2. Expose its failing acceptance cases before changing behavior.
 3. Close the item-specific evidence and common merge gate on the same commit.
 4. Advance one Z item at a time; do not promote the parked Y candidates as collateral work.

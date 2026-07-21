@@ -138,6 +138,32 @@ describe('canonical semantic analysis', () => {
     ).toEqual([]);
   });
 
+  it('keeps shorthand analysis fail-closed when TypeScript symbol lookup throws', () => {
+    const input = source('const ambient = { fetch };');
+    const throwingTs = {
+      ...ts,
+      createProgram(rootNames: readonly string[], options: ts.CompilerOptions, host?: ts.CompilerHost) {
+        const checker = ts.createProgram([...rootNames], options, host).getTypeChecker();
+        const throwingChecker = new Proxy(checker, {
+          get(target, property, receiver) {
+            if (property === 'getShorthandAssignmentValueSymbol') {
+              return () => {
+                throw new Error('synthetic shorthand lookup failure');
+              };
+            }
+            const value = Reflect.get(target, property, receiver);
+            return typeof value === 'function' ? value.bind(target) : value;
+          },
+        });
+        return { getTypeChecker: () => throwingChecker };
+      },
+    };
+
+    expect(
+      collectForbiddenCapabilityUses(throwingTs, input, ['fetch']).map(({ name }) => name)
+    ).toEqual(['fetch']);
+  });
+
   it('returns no capability uses for an empty policy and top-level declarations', () => {
     const input = source(
       [

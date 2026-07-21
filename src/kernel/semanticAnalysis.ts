@@ -36,17 +36,14 @@ function isTypeOnlyReference(ts: any, node: any): boolean {
         named.elements.every((element: any) => element.isTypeOnly)
     );
   }
-  if (ts.isExportDeclaration(node)) {
-    if (node.isTypeOnly) return true;
-    const clause = node.exportClause;
-    return Boolean(
-      clause &&
-        ts.isNamedExports(clause) &&
-        clause.elements.length > 0 &&
-        clause.elements.every((element: any) => element.isTypeOnly)
-    );
-  }
-  return false;
+  if (node.isTypeOnly) return true;
+  const clause = node.exportClause;
+  return Boolean(
+    clause &&
+      ts.isNamedExports(clause) &&
+      clause.elements.length > 0 &&
+      clause.elements.every((element: any) => element.isTypeOnly)
+  );
 }
 
 function singleFileChecker(ts: any, sourceFile: any): any {

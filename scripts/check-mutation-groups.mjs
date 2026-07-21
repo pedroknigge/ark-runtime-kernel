@@ -30,7 +30,13 @@ function inTarget(entry, target) {
 function score(entries) {
   const relevant = entries.filter((entry) => entry.mutant.status !== 'Ignored');
   const killed = relevant.filter((entry) => entry.mutant.status === 'Killed').length;
-  return { killed, total: relevant.length, percent: relevant.length ? (killed / relevant.length) * 100 : 0 };
+  const noCoverage = relevant.filter((entry) => entry.mutant.status === 'NoCoverage').length;
+  return {
+    killed,
+    noCoverage,
+    total: relevant.length,
+    percent: relevant.length ? (killed / relevant.length) * 100 : 0,
+  };
 }
 
 const entries = sourceEntries(report.files);
@@ -41,14 +47,22 @@ const groupResults = contract.groups.map((group) => ({
 const aggregate = score(
   entries.filter((entry) => contract.groups.some((group) => group.targets.some((target) => inTarget(entry, target))))
 );
-const failed = groupResults.filter(({ result }) => result.total === 0 || result.percent < contract.threshold);
+const failed = groupResults.filter(
+  ({ result }) =>
+    result.total === 0 || result.noCoverage > 0 || result.percent < contract.threshold
+);
 
 for (const { id, result } of groupResults) {
-  console.log(`${id}: ${result.percent.toFixed(2)}% (${result.killed}/${result.total})`);
+  console.log(
+    `${id}: ${result.percent.toFixed(2)}% (${result.killed}/${result.total}), ` +
+    `NoCoverage=${result.noCoverage}`
+  );
 }
 console.log(`aggregate: ${aggregate.percent.toFixed(2)}% (${aggregate.killed}/${aggregate.total})`);
 
 if (aggregate.total === 0 || aggregate.percent < contract.threshold || failed.length > 0) {
-  console.error(`Critical mutation groups must each meet ${contract.threshold}%.`);
+  console.error(
+    `Critical mutation groups must each meet ${contract.threshold}% with zero NoCoverage mutants.`
+  );
   process.exit(1);
 }

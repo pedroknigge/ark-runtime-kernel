@@ -231,11 +231,11 @@ function afterFileContent(asset, currentFile, desiredScoped) {
 }
 
 export function classifyManagedAsset({ recorded, currentContent, targetContent: desired, kind }) {
-  const currentIdentity = currentContent == null ? null : managedContentIdentity(currentContent, kind);
   const targetIdentity = managedContentIdentity(desired, kind);
   if (currentContent == null) {
     return { state: 'missing', managed: true, requiresConsent: Boolean(recorded) };
   }
+  const currentIdentity = managedContentIdentity(currentContent, kind);
   if (currentIdentity === targetIdentity) {
     return { state: 'current', managed: true, requiresConsent: false };
   }

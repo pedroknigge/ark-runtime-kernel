@@ -526,6 +526,79 @@ describe('Z04 shipped resolved candidate facts resolver', () => {
     expect(failed.completenessReasons[0].message).not.toContain(root);
   });
 
+  it('falls back across relative candidates while keeping external and dynamic facts distinct', async () => {
+    const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ark-z04-fallback-')));
+    roots.push(root);
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+    const fallbackTargets = [
+      ['fallback-ts', 'fallback-ts.ts'],
+      ['fallback-tsx', 'fallback-tsx.tsx'],
+      ['fallback-mts', 'fallback-mts.mts'],
+      ['fallback-cts', 'fallback-cts.cts'],
+      ['fallback-js', 'fallback-js.js'],
+      ['fallback-jsx', 'fallback-jsx.jsx'],
+      ['fallback-mjs', 'fallback-mjs.mjs'],
+      ['fallback-cjs', 'fallback-cjs.cjs'],
+      ['fallback-index-ts', 'fallback-index-ts/index.ts'],
+      ['fallback-index-tsx', 'fallback-index-tsx/index.tsx'],
+      ['fallback-index-mts', 'fallback-index-mts/index.mts'],
+      ['fallback-index-cts', 'fallback-index-cts/index.cts'],
+    ];
+    for (const [, relativeTarget] of fallbackTargets) {
+      const target = path.join(root, 'src', relativeTarget);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.writeFileSync(target, 'export const target = true;\n');
+    }
+    fs.writeFileSync(path.join(root, 'src/prefer-resolver.ts'), 'export const local = true;\n');
+    fs.writeFileSync(
+      path.join(root, 'src/order.ts'),
+      [
+        ...fallbackTargets.map(([specifier]) => `import './${specifier}';`),
+        "import './prefer-resolver';",
+        "import 'external';",
+        'void import(moduleName);',
+        '',
+      ].join('\n')
+    );
+    const config = {
+      include: ['src'],
+      layers: [{ name: 'DomainModel', patterns: ['src/**'] }],
+      rules: [],
+    };
+    const loaded = await loadTypeScript(root);
+    expect(loaded.ts).toBeTruthy();
+    const fallbackTs = new Proxy(loaded.ts, {
+      get(target, property, receiver) {
+        if (property === 'resolveModuleName') {
+          return (specifier: string) =>
+            specifier === 'external' || specifier === './prefer-resolver'
+              ? { resolvedModule: { resolvedFileName: path.join(os.tmpdir(), 'external.d.ts') } }
+              : { resolvedModule: undefined };
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+
+    const facts = resolveCandidateFacts({ root, config, ts: fallbackTs });
+    expect(facts.dependencies).toEqual(
+      expect.arrayContaining([
+        ...fallbackTargets.map(([specifier, target]) =>
+          expect.objectContaining({
+            specifier: `./${specifier}`,
+            resolution: 'resolved-project',
+            target: `src/${target}`,
+          })
+        ),
+        expect.objectContaining({
+          specifier: './prefer-resolver',
+          resolution: 'resolved-external',
+        }),
+        expect.objectContaining({ specifier: 'external', resolution: 'resolved-external' }),
+        expect.objectContaining({ kind: 'dynamic-import', resolution: 'dynamic' }),
+      ])
+    );
+  });
+
   it('parses each candidate once while preserving port-proof evidence', async () => {
     const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'ark-z04-single-parse-')));
     roots.push(root);

@@ -1,4 +1,7 @@
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 function read(path: string): string {
@@ -21,6 +24,50 @@ describe('confidence gate wiring', () => {
     expect(pkg.scripts['test:confidence']).toBe(
       'npm run test:coverage && npm run test:mutation'
     );
+  });
+
+  it('rejects NoCoverage even when every critical group remains above threshold', () => {
+    const contract = JSON.parse(read('eval/mutation/critical-groups.v1.json')) as {
+      groups: Array<{
+        targets: Array<{ file: string; startLine: number }>;
+      }>;
+    };
+    const files: Record<string, { mutants: Array<object> }> = {};
+    for (const group of contract.groups) {
+      for (const target of group.targets) {
+        const entry = files[target.file] ??= { mutants: [] };
+        entry.mutants.push({
+          status: 'Killed',
+          location: { start: { line: target.startLine } },
+        });
+      }
+    }
+    const target = contract.groups[0].targets[0];
+    const targetMutants = files[target.file].mutants;
+    for (let index = 0; index < 9; index += 1) {
+      targetMutants.push({
+        status: 'Killed',
+        location: { start: { line: target.startLine } },
+      });
+    }
+    targetMutants.push({
+      status: 'NoCoverage',
+      location: { start: { line: target.startLine } },
+    });
+
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-mutation-groups-'));
+    const report = path.join(directory, 'mutation.json');
+    try {
+      fs.writeFileSync(report, JSON.stringify({ files }));
+      const result = spawnSync(process.execPath, ['scripts/check-mutation-groups.mjs', report], {
+        encoding: 'utf8',
+      });
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain('NoCoverage=1');
+      expect(result.stderr).toContain('with zero NoCoverage mutants');
+    } finally {
+      fs.rmSync(directory, { recursive: true, force: true });
+    }
   });
 
   it('uses the same confidence gate in CI and before every npm publish path', () => {

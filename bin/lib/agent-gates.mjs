@@ -23,10 +23,13 @@ export {
 
 export {
   PREFERRED_MCP_BIN,
+  antigravityHooks,
   claudeSettings,
   codexProjectConfig,
   grokHooks,
   grokProjectConfig,
+  mergeOpencodeArkMcp,
+  opencodeProjectConfig,
 } from './hook-templates.mjs';
 
 export { detectWritePathCapabilities } from './write-path-detect.mjs';

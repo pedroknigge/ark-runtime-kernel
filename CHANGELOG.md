@@ -24,13 +24,22 @@ Not a rewrite of the analysis engine. No plan-B silent codemod. No fake hard wri
 - **Release notes:** `docs/releases/3.9.0.md`.
 - **Maintainer workflow:** `.grok/workflows/product-beauty-audit.rhai` — read-only parallel audit of
   product surfaces against product-voice criteria (report-only by default).
+- **Host enforcement expansion (prepared, not npm-published as a separate release):**
+  - **Google Antigravity** (`antigravity` / alias `agy`): `.agents/hooks.json` PreToolUse install,
+    `ark-mcp --hook` adapter for `toolCall` + write tools (`write_to_file`,
+    `replace_file_content`, `multi_replace_file_content`), doctor inventory, hard-write when
+    installed + trusted (same ladder as Claude/Grok).
+  - **OpenCode** (`opencode`): merge/write `opencode.json` MCP (`type: local`), advisory-only
+    write path, optional experimental plugin template
+    `templates/hooks/opencode-ark-write-gate.mjs` (never claimed hard).
+  - Canonical host matrix + README/`docs/ai-gates.md` honesty rows updated.
 
 ### Changed
 
 - **README first-run narrative:** one door (`start` → doctor → optional `/ark-autopilot`); skills
   section reframed as expert escapes, not a second curriculum; status lights language tightened;
-  host matrix states **required CI status** as the merge hard boundary and labels Cursor/Codex
-  advisory at write.
+  host matrix states **required CI status** as the merge hard boundary and labels
+  Cursor/Codex/OpenCode advisory at write (Antigravity hard when covered).
 - **Compact router** (`compactAgentInstructions`): primary path = doctor + place/validate/check;
   full `/ark-*` pack documented as optional expert depth with install command.
 - **Doctor human surface:** status-light copy matches product voice; top block is **Primary next

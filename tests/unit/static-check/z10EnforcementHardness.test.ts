@@ -4,6 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  antigravityHooks,
   claudeSettings,
   codexHooks,
   grokHooks,
@@ -23,6 +24,7 @@ function fixture() {
   write(root, 'node_modules/arkgate/bin/ark-check.mjs', '#!/usr/bin/env node\n');
   write(root, '.claude/settings.json', claudeSettings(root));
   write(root, '.grok/hooks/ark-write-gate.json', grokHooks(root));
+  write(root, '.agents/hooks.json', antigravityHooks(root));
   write(root, '.codex/hooks.json', codexHooks(root));
   write(root, '.mcp.json', '{"mcpServers":{"ark":{"command":"npx","args":["arkgate-mcp"]}}}\n');
   write(
@@ -36,13 +38,13 @@ function fixture() {
 describe('Z10 runtime-proven enforcement hardness', () => {
   it('keeps installed host assets unverified and hard:false for every unobserved host', () => {
     const root = fixture();
-    for (const host of ['claude', 'grok', 'cursor', 'codex'] as const) {
+    for (const host of ['claude', 'grok', 'antigravity', 'cursor', 'codex', 'opencode'] as const) {
       const state = detectWritePathCapabilities(root, host).enforcementState.localWrite;
       expect(state.runtimeObserved).toBe(false);
       expect(state.operation).toBeNull();
       expect(state.operationCoverage).toBe('unverified');
       expect(state.hard).toBe(false);
-      if (host === 'claude' || host === 'grok') {
+      if (host === 'claude' || host === 'grok' || host === 'antigravity') {
         expect(state).toMatchObject({
           supported: true,
           configured: true,
@@ -61,6 +63,7 @@ describe('Z10 runtime-proven enforcement hardness', () => {
     const cases = [
       ['claude', 'Write'],
       ['grok', 'search_replace'],
+      ['antigravity', 'write_to_file'],
     ] as const;
     for (const [host, operation] of cases) {
       const state = detectWritePathCapabilities(root, host, {

@@ -21,11 +21,14 @@ import {
 } from './codex-home.mjs';
 import {
   PREFERRED_MCP_BIN,
+  antigravityHooks,
   claudeSettings,
   codexHooks,
   codexProjectConfig,
   grokHooks,
   grokProjectConfig,
+  mergeOpencodeArkMcp,
+  opencodeProjectConfig,
 } from './hook-templates.mjs';
 import {
   hasCheckArchitectureScript,
@@ -174,6 +177,14 @@ export function buildManagedAssetCatalog({ root, tools, compact = false, skillsO
     if (selectedTools.has('grok')) {
       add('.grok/config.toml', grokProjectConfig(root));
       add('.grok/hooks/ark-write-gate.json', grokHooks(root));
+    }
+    if (selectedTools.has('antigravity')) {
+      add('.agents/hooks.json', antigravityHooks(root));
+      // Still useful for Gemini CLI / legacy Gemini consumers sharing the tree.
+      add('GEMINI.md', instructionRule(root));
+    }
+    if (selectedTools.has('opencode')) {
+      add('opencode.json', opencodeProjectConfig(root), 'gate', 'json-merge');
     }
     if (selectedTools.has('windsurf')) add('.windsurf/rules/ark.md', instructionRule(root));
     if (selectedTools.has('cline')) add('.clinerules/ark.md', instructionRule(root));
@@ -375,6 +386,24 @@ export function runInstallAgentGates(args) {
       if (merged === existing) return { relativePath, status: 'skipped' };
       return writeTemplate(root, relativePath, merged, true);
     }
+    if (relativePath === 'opencode.json') {
+      const fullPath = path.join(root, relativePath);
+      let existing = '';
+      try {
+        existing = fs.readFileSync(fullPath, 'utf8');
+      } catch {
+        // Missing project config → write the generated Ark MCP block.
+      }
+      if (!existing) {
+        return writeTemplate(root, relativePath, content, true);
+      }
+      const merged = mergeOpencodeArkMcp(existing, content);
+      if (merged == null) {
+        return { relativePath, status: 'skipped-non-ark' };
+      }
+      if (merged === existing) return { relativePath, status: 'skipped' };
+      return writeTemplate(root, relativePath, merged, true);
+    }
     return writeTemplate(
       root,
       relativePath,
@@ -523,6 +552,19 @@ export function runInstallAgentGates(args) {
   if (!hasCheckScript) {
     console.log('  3. Add the package.json alias if you want `run check:architecture`:');
     console.log(`     ${checkArchitectureScriptSnippet(root)}`);
+  }
+  if (tools.has('antigravity') && !args.compact) {
+    console.log('');
+    console.log('  Antigravity: PreToolUse deny is hard for listed write tools when hooks are trusted.');
+    console.log('    - Install path: `.agents/hooks.json` (+ GEMINI.md for legacy Gemini consumers).');
+    console.log('    - Trust project hooks in the host; pair with required CI --strict-merge.');
+  }
+  if (tools.has('opencode') && !args.compact) {
+    console.log('');
+    console.log('  OpenCode write path (honest):');
+    console.log('    - Local: advisory MCP in opencode.json (optional experimental plugin only).');
+    console.log('    - Hard merge backstop: CI --strict-merge + required status check.');
+    console.log('    - Not equivalent to Claude/Grok/Antigravity PreToolUse hard-write.');
   }
   if ((tools.has('codex') || args.codexHome)) {
     console.log('');

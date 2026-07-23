@@ -31,7 +31,14 @@ function readMatrixBlock(markdown: string): string {
 
 describe('canonical public host support matrix', () => {
   it('declares exact hard, advisory, CI, and repair support per host', () => {
-    expect(HOST_SUPPORT_HOSTS).toEqual(['claude', 'grok', 'cursor', 'codex']);
+    expect(HOST_SUPPORT_HOSTS).toEqual([
+      'claude',
+      'grok',
+      'antigravity',
+      'cursor',
+      'codex',
+      'opencode',
+    ]);
     expect(
       Object.fromEntries(
         HOST_SUPPORT_HOSTS.map((host) => [host, HOST_SUPPORT_MATRIX[host].capabilities])
@@ -49,6 +56,12 @@ describe('canonical public host support matrix', () => {
         'merge-gate': true,
         'repair-payload': true,
       },
+      antigravity: {
+        'hard-write': true,
+        'advisory-write': true,
+        'merge-gate': true,
+        'repair-payload': true,
+      },
       cursor: {
         'hard-write': false,
         'advisory-write': true,
@@ -61,14 +74,24 @@ describe('canonical public host support matrix', () => {
         'merge-gate': true,
         'repair-payload': false,
       },
+      opencode: {
+        'hard-write': false,
+        'advisory-write': true,
+        'merge-gate': true,
+        'repair-payload': false,
+      },
     });
     expect(getHostSupportProfile(' CODEX ')).toBe(HOST_SUPPORT_MATRIX.codex);
+    expect(getHostSupportProfile('antigravity')).toBe(HOST_SUPPORT_MATRIX.antigravity);
     expect(getHostSupportProfile('unknown')).toBeNull();
     expect(getHostSupportProfile(undefined)).toBeNull();
     expect(formatHostSupportSummary(HOST_SUPPORT_MATRIX.claude)).toContain(
       'hard local write boundary'
     );
     expect(formatHostSupportSummary(HOST_SUPPORT_MATRIX.cursor)).toContain(
+      'no hard local write boundary'
+    );
+    expect(formatHostSupportSummary(HOST_SUPPORT_MATRIX.opencode)).toContain(
       'no hard local write boundary'
     );
     expect(formatHostSupportSummary(null)).toBe('unknown host; no local write guarantee');
@@ -96,11 +119,15 @@ describe('canonical public host support matrix', () => {
     expect(doctorWritePathHonestyMessage('codex', false)).not.toEqual(
       doctorWritePathHonestyMessage('cursor', false)
     );
+    expect(doctorWritePathHonestyMessage('opencode', false)).toMatch(/OpenCode:.*advisory/i);
+    expect(doctorWritePathHonestyMessage('opencode', true)).toMatch(/not Claude\/Grok\/Antigravity hard/i);
     expect(doctorWritePathHonestyMessage('claude', true)).toBeNull();
     expect(doctorWritePathHonestyMessage('grok', true)).toBeNull();
+    expect(doctorWritePathHonestyMessage('antigravity', true)).toBeNull();
     expect(doctorWritePathHonestyMessage('claude', false)).toMatch(/unverified/i);
     expect(doctorWritePathHonestyMessage('claude', false)).toMatch(/Required CI/i);
     expect(doctorWritePathHonestyMessage('grok', false)).toMatch(/Grok:.*unverified/i);
+    expect(doctorWritePathHonestyMessage('antigravity', false)).toMatch(/Antigravity:.*unverified/i);
     expect(doctorWritePathHonestyMessage('unknown', false)).toBeNull();
     expect(doctorWritePathHonestyMessage(null, false)).toBeNull();
     expect(doctorWritePathHonestyMessage(' CLAUDE ', false)).toMatch(/Claude:/);

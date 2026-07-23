@@ -64,7 +64,7 @@ describe('detectWritePathCapabilities (shipped write-path-detect.mjs)', () => {
       expect(cap.capabilities['merge-gate']).toBe(false);
       expect(cap.gap?.id).toBe('write-path-none');
       expect(cap.gap?.fix).toContain(
-        '--install-agent-gates --tools claude,grok,cursor,codex'
+        '--install-agent-gates --tools claude,grok,antigravity,cursor,codex,opencode'
       );
       // Empty inventory still gets a this-invocation note (no on-disk host list).
       expect(cap.sessionNote).toMatch(/activeHost unknown/i);

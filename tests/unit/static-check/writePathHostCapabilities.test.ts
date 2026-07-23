@@ -46,7 +46,29 @@ function writeMergeGate(root: string): void {
   );
 }
 
-function writeHook(root: string, host: 'claude' | 'grok', repair = true): void {
+function writeHook(root: string, host: 'claude' | 'grok' | 'antigravity', repair = true): void {
+  if (host === 'antigravity') {
+    write(
+      root,
+      '.agents/hooks.json',
+      JSON.stringify({
+        'ark-write-gate': {
+          PreToolUse: [
+            {
+              matcher: 'write_to_file|replace_file_content|multi_replace_file_content',
+              hooks: [
+                {
+                  type: 'command',
+                  command: `npx arkgate-mcp --hook${repair ? ' --hook-repair' : ''} --root .`,
+                },
+              ],
+            },
+          ],
+        },
+      })
+    );
+    return;
+  }
   const relativePath =
     host === 'claude'
       ? '.claude/settings.json'
@@ -75,8 +97,11 @@ function writeHook(root: string, host: 'claude' | 'grok', repair = true): void {
   );
 }
 
-function writeMcp(root: string, host: 'claude' | 'grok' | 'cursor' | 'codex'): void {
-  if (host === 'claude') {
+function writeMcp(
+  root: string,
+  host: 'claude' | 'grok' | 'cursor' | 'codex' | 'antigravity' | 'opencode'
+): void {
+  if (host === 'claude' || host === 'antigravity') {
     write(root, '.mcp.json', '{"mcpServers":{"ark":{"command":"npx","args":["arkgate-mcp"]}}}');
     return;
   }
@@ -86,6 +111,23 @@ function writeMcp(root: string, host: 'claude' | 'grok' | 'cursor' | 'codex'): v
   }
   if (host === 'cursor') {
     write(root, '.cursor/mcp.json', '{"mcpServers":{"ark":{"command":"npx","args":["arkgate-mcp"]}}}');
+    return;
+  }
+  if (host === 'opencode') {
+    write(
+      root,
+      'opencode.json',
+      JSON.stringify({
+        $schema: 'https://opencode.ai/config.json',
+        mcp: {
+          ark: {
+            type: 'local',
+            command: ['npx', 'arkgate-mcp', '--root', '.', '--config', 'ark.config.json'],
+            enabled: true,
+          },
+        },
+      })
+    );
     return;
   }
   write(

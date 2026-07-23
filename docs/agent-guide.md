@@ -29,10 +29,11 @@ Doctor is the **control plane** (status light + primary next action). The compac
 npx ark-check --install-agent-gates --skills-only --force
 ```
 
-**Write-path honesty:** Claude/Grok can hard-block listed PreToolUse ops when installed and
-trusted. Cursor/Codex remain **advisory at write**. For every host, the repository-wide hard
-boundary is a **required** CI status (`arkgate-check --strict-merge`) — never claim Cursor/Codex
-hard write. See [ai-gates.md](ai-gates.md) and the README host matrix.
+**Write-path honesty:** Claude/Grok/Antigravity can hard-block listed PreToolUse ops when
+installed and trusted. Cursor/Codex/OpenCode remain **advisory at write**. For every host, the
+repository-wide hard boundary is a **required** CI status (`arkgate-check --strict-merge`) —
+never claim Cursor/Codex/OpenCode hard write. See [ai-gates.md](ai-gates.md) and the README host
+matrix.
 
 ## Architecture playbook and `ark-check --recommend`
 
@@ -434,7 +435,7 @@ directories (`utils/`, `lib/`) must be classified explicitly via `/ark-contract`
 Wire write-gate + MCP for the active host; add the full `/ark-*` skill pack only as **expert depth** (`--skills-only` or full install when you want guided autopilot):
 
 ```bash
-npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
+npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok,antigravity,opencode
 # expert pack on an existing compact install:
 # npx ark-check --install-agent-gates --skills-only --force
 # alias: npx ark-check --install-agent-gates --tools claude,cursor,codex,grok
@@ -446,6 +447,8 @@ npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
 | Cursor | `.cursor/mcp.json` + `.cursor/rules/ark.mdc` | `.cursor/commands/` |
 | OpenAI Codex | `.codex/config.toml` (project primary, relative `--root .`); optional legacy `$CODEX_HOME/config.toml` fallback uses absolute roots and scoped secondaries — see [ai-gates.md](ai-gates.md) | **Repo:** `.agents/skills/<name>/SKILL.md`; **home:** `$CODEX_HOME/skills/<name>/SKILL.md` (`--codex-home`) |
 | **Grok Build** | `.grok/hooks/ark-write-gate.json` + `.grok/config.toml` / `.mcp.json` | `.grok/skills/<name>/SKILL.md` |
+| Google Antigravity | `.agents/hooks.json` (+ `GEMINI.md` for shared Gemini consumers) | `.agents/skills/<name>/SKILL.md` |
+| OpenCode | `opencode.json` MCP (`type: local`; advisory) | `.opencode/skills/<name>/SKILL.md` |
 
 This is a path reference, not a guarantee table. Full copy-paste setups:
 [ai-gates.md](ai-gates.md). Skill inventory: main

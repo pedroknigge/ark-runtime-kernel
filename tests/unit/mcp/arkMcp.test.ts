@@ -1148,6 +1148,80 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('typeorm');
   });
+
+  it('accepts Antigravity write_to_file payloads and emits deny decision JSON', () => {
+    const result = runHook(root, {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: path.join(root, 'src/domain/customer.ts'),
+          CodeContent:
+            "import { PrismaClient } from 'prisma';\nexport const repo = new PrismaClient();\n",
+          Overwrite: true,
+          Description: 'bad write',
+        },
+      },
+      conversationId: 'test-agy',
+      workspacePaths: [root],
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('FORBIDDEN_IMPORT');
+    const decision = JSON.parse(result.stdout.trim());
+    expect(decision.decision).toBe('deny');
+    expect(decision.reason).toContain('FORBIDDEN_IMPORT');
+  });
+
+  it('accepts Antigravity replace_file_content as Edit', () => {
+    const result = runHook(root, {
+      toolCall: {
+        name: 'replace_file_content',
+        args: {
+          TargetFile: path.join(root, 'src/domain/order.ts'),
+          TargetContent: 'export const a = 1;',
+          ReplacementContent: "import { db } from 'typeorm';\nexport const a = db;",
+          Instruction: 'inject infra',
+          Description: 'bad edit',
+        },
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('typeorm');
+  });
+
+  it('accepts Antigravity multi_replace_file_content as MultiEdit', () => {
+    const result = runHook(root, {
+      toolCall: {
+        name: 'multi_replace_file_content',
+        args: {
+          TargetFile: path.join(root, 'src/domain/order.ts'),
+          ReplacementChunks: [
+            {
+              TargetContent: 'export const a = 1;',
+              ReplacementContent: "import { db } from '../infra/db';\nexport const a = db;",
+            },
+          ],
+          Instruction: 'multi',
+          Description: 'bad multi',
+        },
+      },
+    });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toMatch(/LAYER_IMPORT_VIOLATION|FORBIDDEN_IMPORT|typeorm|infra/i);
+  });
+
+  it('allows a clean Antigravity write_to_file (exit 0)', () => {
+    const result = runHook(root, {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: path.join(root, 'src/domain/clean.ts'),
+          CodeContent: 'export const clean = true;\n',
+        },
+      },
+    });
+    expect(result.status).toBe(0);
+    expect(result.stderr ?? '').not.toContain('blocked');
+  });
 });
 
 // The write gate resolves a file's layer with the same `layerForFile` as ark-check, so

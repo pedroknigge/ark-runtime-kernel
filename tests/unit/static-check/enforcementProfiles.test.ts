@@ -17,7 +17,14 @@ function mk(): string {
 
 describe('enforcement profile policy', () => {
   it('declares the supported host guarantees explicitly', () => {
-    expect(WRITE_PROFILE_HOSTS).toEqual(['claude', 'grok', 'cursor', 'codex']);
+    expect(WRITE_PROFILE_HOSTS).toEqual([
+      'claude',
+      'grok',
+      'antigravity',
+      'cursor',
+      'codex',
+      'opencode',
+    ]);
     expect(HOST_ENFORCEMENT_SUPPORT).toEqual({
       claude: {
         hardWrite: true,
@@ -29,8 +36,14 @@ describe('enforcement profile policy', () => {
         advisoryWrite: true,
         hookPath: '.grok/hooks/ark-write-gate.json',
       },
+      antigravity: {
+        hardWrite: true,
+        advisoryWrite: true,
+        hookPath: '.agents/hooks.json',
+      },
       cursor: { hardWrite: false, advisoryWrite: true, hookPath: null },
       codex: { hardWrite: false, advisoryWrite: true, hookPath: '.codex/hooks.json' },
+      opencode: { hardWrite: false, advisoryWrite: true, hookPath: null },
     });
   });
 
@@ -68,7 +81,8 @@ describe('enforcement profile policy', () => {
         validateHardWriteRequest({ root, host: ' IDE ', tools: null })
       ).toEqual({
         ok: false,
-        error: 'Unknown write host "ide". Expected: claude, grok, cursor, codex.',
+        error:
+          'Unknown write host "ide". Expected: claude, grok, antigravity, cursor, codex, opencode.',
       });
       expect(
         validateHardWriteRequest({ root, host: 'CODEX', tools: 'codex' })
@@ -76,6 +90,14 @@ describe('enforcement profile policy', () => {
         ok: false,
         error:
           'codex supports advisory-write plus the shared CI check, not a hard local write hook. ' +
+          'Omit --require-write-hook, keep --strict-merge in CI, and require that status to block merges.',
+      });
+      expect(
+        validateHardWriteRequest({ root, host: 'opencode', tools: 'opencode' })
+      ).toEqual({
+        ok: false,
+        error:
+          'opencode supports advisory-write plus the shared CI check, not a hard local write hook. ' +
           'Omit --require-write-hook, keep --strict-merge in CI, and require that status to block merges.',
       });
       expect(

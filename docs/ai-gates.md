@@ -1,13 +1,30 @@
 # Gating AI Agents with ArkGate
 
 **ArkGate** (`arkgate`) is the architecture co-pilot for AI TypeScript (write gate · CI · plan/loop).
-On Claude Code and Grok Build, an installed and trusted PreToolUse hook can block matched writes
-before they land on disk. Cursor and OpenAI Codex use advisory MCP validation at write time; CI is
-their hard repository check. Codex 0.123+ dispatches hooks for its native `apply_patch` handler,
-but Code Mode hosts can execute deferred nested writes without that project hook event. See the
-[canonical host support matrix](../README.md#host-enforcement-support) before installing. The
+
+This page is **develop** depth (install hooks/MCP/CI per host). Product path: [use.md](use.md) ·
+overview: [develop.md](develop.md) · hub: [README.md](README.md).
+
+### Host write honesty (fail-closed)
+
+| Host | Write-time boundary | Hard merge boundary |
+|------|---------------------|---------------------|
+| **Claude Code** | Hard PreToolUse for listed ops when installed + trusted + (for `hard:true`) runtime-observed | Required `arkgate-check --strict-merge` status |
+| **Grok Build** | Hard PreToolUse for listed ops when installed + trusted + (for `hard:true`) runtime-observed | Required `arkgate-check --strict-merge` status |
+| **Google Antigravity** | Hard PreToolUse for listed write tools when installed + trusted + (for `hard:true`) runtime-observed | Required `arkgate-check --strict-merge` status |
+| **Cursor** | **Advisory only** (MCP/rules) — no hard PreToolUse | Required CI status (same check) |
+| **OpenAI Codex** | **Advisory / best-effort** (MCP + optional hooks.json) — **not** equivalent to Claude/Grok hard block | Required CI status (same check) |
+| **OpenCode** | **Advisory / best-effort** (MCP + optional experimental plugin) — **not** a hard boundary | Required CI status (same check) |
+
+On Claude Code, Grok Build, and Google Antigravity, an installed and trusted PreToolUse hook can
+block matched writes before they land on disk. Cursor, OpenAI Codex, and OpenCode use advisory MCP
+validation at write time; CI is their hard repository check. Codex 0.123+ dispatches hooks for its
+native `apply_patch` handler, but Code Mode hosts can execute deferred nested writes without that
+project hook event. OpenCode `tool.execute.before` plugins have known subagent bypass holes. See
+the [canonical host support matrix](../README.md#host-enforcement-support) before installing. The
 advisory-local / hard-CI split is a deliberate trade-off: local surfaces optimize feedback speed,
 while a required merge status is the one boundary a repository can make every write path share.
+Prefer fail-closed honesty over fake hard guarantees on advisory hosts.
 
 Everything below uses the same `ark.config.json` as `arkgate-check` / `ark-check` (CI) — one
 contract shared by every surface. Generate it once:
@@ -37,7 +54,8 @@ npx arkgate-check --install-agent-gates
 
 The command writes templates for `.mcp.json`, Claude hooks, Cursor MCP/rules,
 GitHub Actions, `AGENTS.md`, Codex `.codex/hooks.json` plus a TOML snippet under `docs/`, and (when
-selected) Grok Build project files under `.grok/`. It skips existing files unless
+selected) Grok Build project files under `.grok/`, Antigravity `.agents/hooks.json`, and OpenCode
+`opencode.json` MCP registration. It skips existing files unless
 you pass `--force`, so review and commit only the templates that match your project.
 
 **Doctor (W5):** `ark-check --doctor --json` includes `doctor.writePath`
@@ -338,9 +356,10 @@ When a valid project `.codex/config.toml` exists, doctor treats it as the effect
 does not report an unrelated home primary. Without a project binding, doctor surfaces the
 legacy multi-project state. **Deferred (fix when using Codex):**
 non-temp Codex-home gaps (`codex-home-multi-project`, stale `$CODEX_HOME/skills`) are
-severity **info**, marked `deferred: true`, and omitted from Top actions when the session
-host is known and not Codex — `/ark-upgrade` on Grok/Claude is not Incomplete because of
-them. **Temp/upgrade primary roots** stay fail-closed urgent (rewritten, not multi-project).
+severity **info**, marked `deferred: true`, and omitted from doctor **Primary next action** /
+**Also** list (formerly “Top actions”) when the session host is known and not Codex —
+`/ark-upgrade` on Grok/Claude is not Incomplete because of them. **Temp/upgrade primary roots**
+stay fail-closed urgent (rewritten, not multi-project).
 
 ### Codex skill catalog (SKILL.md, not flat prompts)
 
@@ -412,6 +431,69 @@ args = ["ark-mcp", "--root", ".", "--config", "ark.config.json"]
 Then restart Grok or refresh via `/mcps`. Pair with CI `ark-check`; require that status if it
 must block merges.
 
+## Google Antigravity (`antigravity` / `agy`)
+
+Antigravity loads project hooks from **`.agents/hooks.json`** (also
+`~/.gemini/config/hooks.json` for user-global). Official PreToolUse **`decision: "deny"`** is a
+hard block for matched tools.
+
+Install:
+
+```bash
+npx ark-check --install-agent-gates --tools antigravity
+# alias:
+npx ark-check --install-agent-gates --tools agy
+```
+
+| File | Role |
+|------|------|
+| `.agents/hooks.json` | Named hook `ark-write-gate` with PreToolUse on write tools |
+| `GEMINI.md` | Instruction rule for Gemini CLI / legacy consumers sharing the tree |
+| `.agents/skills/*/SKILL.md` | Agent Skills catalog (shared path with Codex) |
+| `AGENTS.md` + `.mcp.json` + CI | Shared with other hosts |
+
+**Write tools covered:** `write_to_file`, `replace_file_content`, `multi_replace_file_content`.
+`ark-mcp --hook` accepts the Antigravity stdin shape (`toolCall.name` / `toolCall.args` with
+PascalCase fields such as `TargetFile`, `CodeContent`, `TargetContent`, `ReplacementContent`,
+`ReplacementChunks`). **Gating is stdout `decision`** (official PreToolUse contract): allow →
+`{ "decision": "allow" }` on stdout (exit 0); deny → `{ "decision": "deny", "reason": "…" }` on
+stdout (exit 2). Exit codes are secondary/plumbing for hosts that also honor them.
+
+**Honesty:** hard for listed ops when installed + trusted, and for `hard:true` only with
+runtime-observed covered PreToolUse evidence (same ladder as Claude/Grok). Alternate tools,
+`run_command` shell writes, and human edits still rely on required CI. Doctor reports installed
+evidence under host `antigravity`.
+
+**Do not** confuse with the instruction-tier `gemini` tool id (GEMINI.md only) — selecting
+`antigravity` also refreshes `GEMINI.md` for shared consumers without removing the separate
+`gemini` install path.
+
+## OpenCode
+
+OpenCode is first-class for MCP (`opencode.json` / `~/.config/opencode/opencode.json`) and supports
+plugin hooks such as `tool.execute.before`. Plugin coverage is **not** a complete write boundary
+(subagent and alternate tool paths may bypass).
+
+Install:
+
+```bash
+npx ark-check --install-agent-gates --tools opencode
+```
+
+| File | Role |
+|------|------|
+| `opencode.json` | Merges local MCP server `ark` (`type: "local"`, command argv) |
+| `.opencode/skills/*/SKILL.md` | Optional skill catalog when skills are installed |
+| `AGENTS.md` + CI | Shared with other hosts |
+
+**Write path (honest):** advisory MCP only. An optional experimental plugin template lives at
+`templates/hooks/opencode-ark-write-gate.mjs` (copy into `.opencode/plugins/` if you want
+best-effort `tool.execute.before` → `ark-mcp --hook`). Never claim hard write for OpenCode.
+Pair with required CI `--strict-merge`.
+
+Doctor detects `opencode.json` / `opencode.jsonc` MCP registration as advisory-write evidence for
+host `opencode`.
+
 ## Instruction-tier agents: Windsurf, Cline, Copilot, Kiro, Roo Code, Continue, Gemini CLI
 
 Agents without MCP or hook support still follow the contract through an always-on
@@ -444,9 +526,13 @@ If your runtime can run a shell command before file writes and pass the tool pay
 - stdin (Claude): JSON `{ "tool_name": "Write|Edit|MultiEdit", "tool_input": { "file_path": ..., ... } }`
 - stdin (Grok): JSON `{ "toolName": "write|search_replace|…", "toolInput": { "file_path": ..., ... } }` (also accepts Claude names)
 - stdin (Codex): JSON `{ "tool_name": "apply_patch", "tool_input": { "patch": "*** Begin Patch…" } }`
+- stdin (Antigravity): JSON `{ "toolCall": { "name": "write_to_file|…", "args": { "TargetFile": …, … } } }`
 - exit `0` → allow; exit `2` → block, human-readable violations on stderr
-- Grok payloads also get `{ "decision": "deny", "reason": "…" }` on stdout when blocked
-- plumbing problems (no stdin, non-source files, files outside `--root`) never block
+- Grok: `{ "decision": "deny", "reason": "…" }` on stdout when blocked
+- Antigravity: **stdout `decision` is required** — allow → `{ "decision": "allow" }`; deny →
+  `{ "decision": "deny", "reason": "…" }` (exit 2 still set on deny)
+- plumbing problems (no stdin, non-source files, files outside `--root`) never block; Antigravity
+  still emits `{ "decision": "allow" }` on those fail-open paths
 
 ## ESLint (editor feedback) — bounded parity envelope
 

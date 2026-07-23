@@ -5,7 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import { arkCommand, buildArchitectureRecommendation } from '../ark-shared.mjs';
 import { compactAgentInstructions, instructionRule, mcpJson } from './ci-and-commands.mjs';
-import { claudeSettings, codexHooks, grokHooks, grokProjectConfig } from './hook-templates.mjs';
+import {
+  antigravityHooks,
+  claudeSettings,
+  codexHooks,
+  grokHooks,
+  grokProjectConfig,
+  opencodeProjectConfig,
+} from './hook-templates.mjs';
 
 const COMPACT_HOST_TEMPLATES = {
   claude: (root) => [
@@ -16,8 +23,13 @@ const COMPACT_HOST_TEMPLATES = {
     ['.grok/config.toml', grokProjectConfig(root)],
     ['.grok/hooks/ark-write-gate.json', grokHooks(root)],
   ],
+  antigravity: (root) => [
+    ['.agents/hooks.json', antigravityHooks(root)],
+    ['.mcp.json', mcpJson(root)],
+  ],
   cursor: (root) => [['.cursor/mcp.json', mcpJson(root)]],
   codex: (root) => [['.codex/hooks.json', codexHooks(root)]],
+  opencode: (root) => [['opencode.json', opencodeProjectConfig(root)]],
   windsurf: (root) => [['.windsurf/rules/ark.md', instructionRule(root)]],
   cline: (root) => [['.clinerules/ark.md', instructionRule(root)]],
   copilot: (root) => [['.github/copilot-instructions.md', instructionRule(root)]],

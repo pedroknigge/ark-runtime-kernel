@@ -194,9 +194,11 @@ function commandArkMcpInvocation(command) {
 }
 
 function requiredWriteOperations(relativePath) {
-  return relativePath.startsWith('.grok/')
-    ? ['write', 'search_replace']
-    : ['Write', 'Edit', 'MultiEdit'];
+  if (relativePath.startsWith('.grok/')) return ['write', 'search_replace'];
+  if (relativePath === '.agents/hooks.json' || relativePath.startsWith('.agents/')) {
+    return ['write_to_file', 'replace_file_content', 'multi_replace_file_content'];
+  }
+  return ['Write', 'Edit', 'MultiEdit'];
 }
 
 function matcherOperations(relativePath, matcher) {
@@ -248,25 +250,39 @@ function tomlArkMcpIsValid(text) {
   return primary.length === 1 && tomlMcpBlockIsValid(primary[0].block);
 }
 
+function collectPreToolUseGroups(parsed) {
+  // Claude/Grok/Codex: { hooks: { PreToolUse: [...] } }
+  if (Array.isArray(parsed?.hooks?.PreToolUse)) return parsed.hooks.PreToolUse;
+  // Antigravity: { "named-hook": { PreToolUse: [...] }, ... }
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const groups = [];
+    for (const value of Object.values(parsed)) {
+      if (value && typeof value === 'object' && Array.isArray(value.PreToolUse)) {
+        groups.push(...value.PreToolUse);
+      }
+    }
+    return groups;
+  }
+  return [];
+}
+
 function hookEvidence(root, relativePath) {
   const text = readText(path.join(root, relativePath));
   let hooks = [];
   try {
-    const groups = JSON.parse(text)?.hooks?.PreToolUse;
-    if (Array.isArray(groups)) {
-      hooks = groups.flatMap((group) =>
-        Array.isArray(group?.hooks)
-          ? group.hooks
-              .filter((hook) => !hook?.type || hook.type === 'command')
-              .map((hook) => ({
-                hook,
-                invocation: commandArkMcpInvocation(hook?.command),
-                operations: matcherOperations(relativePath, group.matcher),
-              }))
-              .filter((entry) => entry.invocation)
-          : []
-      );
-    }
+    const groups = collectPreToolUseGroups(JSON.parse(text));
+    hooks = groups.flatMap((group) =>
+      Array.isArray(group?.hooks)
+        ? group.hooks
+            .filter((hook) => !hook?.type || hook.type === 'command')
+            .map((hook) => ({
+              hook,
+              invocation: commandArkMcpInvocation(hook?.command),
+              operations: matcherOperations(relativePath, group.matcher),
+            }))
+            .filter((entry) => entry.invocation)
+        : []
+    );
   } catch {
     hooks = [];
   }
@@ -288,6 +304,29 @@ function hookEvidence(root, relativePath) {
     hard: hard ? [relativePath] : [],
     repair: repair ? [relativePath] : [],
   };
+}
+
+/** OpenCode local MCP: `{ mcp: { ark: { type: "local", command: [...] } } }`. */
+function opencodeMcpIsValid(text) {
+  try {
+    const server = JSON.parse(text)?.mcp?.ark;
+    if (!server || typeof server !== 'object') return false;
+    if (server.type != null && server.type !== 'local') return false;
+    if (!Array.isArray(server.command) || server.command.length === 0) return false;
+    if (!server.command.every((value) => typeof value === 'string')) return false;
+    const [command, ...args] = server.command;
+    return mcpServerRunsArk({ command, args });
+  } catch {
+    return false;
+  }
+}
+
+function opencodeMcpEvidence(root) {
+  for (const relativePath of ['opencode.json', 'opencode.jsonc']) {
+    const text = readText(path.join(root, relativePath));
+    if (text && opencodeMcpIsValid(text)) return [relativePath];
+  }
+  return [];
 }
 
 function mcpEvidence(root, relativePath) {
@@ -338,6 +377,7 @@ export function detectWritePathInventory(root) {
   const merge = ci.failClosed ? ci.arkWorkflowFiles : [];
   const claudeHook = hookEvidence(root, '.claude/settings.json');
   const grokHook = hookEvidence(root, '.grok/hooks/ark-write-gate.json');
+  const antigravityHook = hookEvidence(root, '.agents/hooks.json');
   const hosts = {
     claude: hostRecord(
       claudeHook.hard,
@@ -351,12 +391,21 @@ export function detectWritePathInventory(root) {
       grokHook.repair,
       merge
     ),
+    antigravity: hostRecord(
+      antigravityHook.hard,
+      // Shared project MCP (.mcp.json) is the common advisory surface; hooks own hard write.
+      mcpEvidence(root, '.mcp.json'),
+      antigravityHook.repair,
+      merge
+    ),
     cursor: hostRecord([], mcpEvidence(root, '.cursor/mcp.json'), [], merge),
     // Codex 0.123+ emits PreToolUse for the native apply_patch handler, but some
     // Code Mode hosts execute deferred nested writes without dispatching that
     // project hook. Keep the installed hook as best-effort protection; do not
     // report a hard boundary that cannot be verified for every write surface.
     codex: hostRecord([], codexMcpEvidence(root), [], merge),
+    // OpenCode: MCP only (plugin hooks are incomplete / subagent-bypassable).
+    opencode: hostRecord([], opencodeMcpEvidence(root), [], merge),
   };
 
   const evidence = emptyEvidence();

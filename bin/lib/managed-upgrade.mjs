@@ -110,6 +110,8 @@ const HOST_SIGNALS = {
   cursor: ['.cursor/mcp.json', '.cursor/rules/ark.mdc', '.cursor/commands/ark-upgrade.md'],
   codex: ['.codex/hooks.json', '.codex/config.toml', '.agents/skills/ark-upgrade/SKILL.md'],
   grok: ['.grok/config.toml', '.grok/hooks/ark-write-gate.json', '.grok/skills/ark-upgrade/SKILL.md'],
+  antigravity: ['.agents/hooks.json', '.agents/skills/ark-upgrade/SKILL.md'],
+  opencode: ['opencode.json', '.opencode/skills/ark-upgrade/SKILL.md'],
   windsurf: ['.windsurf/rules/ark.md', '.windsurf/workflows/ark-upgrade.md'],
   cline: ['.clinerules/ark.md', '.clinerules/workflows/ark-upgrade.md'],
   copilot: ['.github/copilot-instructions.md', '.github/prompts/ark-upgrade.prompt.md'],

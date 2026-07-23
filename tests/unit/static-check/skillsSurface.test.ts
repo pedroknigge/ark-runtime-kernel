@@ -17,6 +17,7 @@ import {
   SKILL_TOOL_TARGETS,
   verifyHostSkillCatalog,
 } from '../../../bin/lib/agent-gates.mjs';
+import { normalizeToolsList } from '../../../bin/lib/skill-install.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const SKILLS_DIR = path.join(REPO, 'templates/skills');
@@ -51,6 +52,22 @@ describe('active agent host detection', () => {
     expect(detectActiveAgentHost({})).toBe(null);
   });
 
+  it('detects Antigravity and OpenCode session signals', () => {
+    expect(detectActiveAgentHost({ ANTIGRAVITY: '1' })).toBe('antigravity');
+    expect(detectActiveAgentHost({ AGY: 'true' })).toBe('antigravity');
+    expect(detectActiveAgentHost({ ANTIGRAVITY_WORKSPACE: '/tmp/ws' })).toBe('antigravity');
+    expect(detectActiveAgentHost({ OPENCODE: '1' })).toBe('opencode');
+    expect(detectActiveAgentHost({ OPENCODE_SESSION_ID: 's1' })).toBe('opencode');
+    expect(detectActiveAgentHost({ OPENCODE_CONFIG: '/tmp/opencode.json' })).toBe('opencode');
+  });
+
+  it('maps agy alias and skill targets for antigravity / opencode', () => {
+    expect(normalizeToolsList('agy')).toEqual(['antigravity']);
+    expect(normalizeToolsList('agy,opencode')).toEqual(['antigravity', 'opencode']);
+    expect(SKILL_TOOL_TARGETS.antigravity('ark-fix')).toBe('.agents/skills/ark-fix/SKILL.md');
+    expect(SKILL_TOOL_TARGETS.opencode('ark-fix')).toBe('.opencode/skills/ark-fix/SKILL.md');
+  });
+
   it('codexConcernIsActive only when session host is Codex', () => {
     expect(codexConcernIsActive({ CODEX_THREAD_ID: 't1' })).toBe(true);
     expect(codexConcernIsActive({ GROK_BUILD: '1' })).toBe(false);
@@ -71,6 +88,20 @@ describe('skill surface inventory', () => {
     expect(body).toContain('**Active host:**');
     expect(body).toContain('**Deferred hosts:**');
     expect(body).toMatch(/Deferred hosts.*never make Incomplete/i);
+  });
+
+  it('autopilot/explore rank ENFORCE · design-weak Shape door (no false-done)', () => {
+    const autopilot = fs.readFileSync(path.join(SKILLS_DIR, 'ark-autopilot.md'), 'utf8');
+    const explore = fs.readFileSync(path.join(SKILLS_DIR, 'ark-explore.md'), 'utf8');
+    expect(autopilot).toMatch(/Enforce · design-weak/i);
+    expect(autopilot).toMatch(/Primary Shape door|shape-focus/i);
+    expect(autopilot).toMatch(/False-done forbidden|never claim healthy finished|Empty plan A/i);
+    expect(autopilot).toMatch(/Never auto-apply B|never mechanical-safe/i);
+    expect(explore).toMatch(/Enforce · design-weak/i);
+    expect(explore).toMatch(/Primary post-green map door|shape-focus/i);
+    expect(explore).toMatch(/False-done forbidden|never claim healthy/i);
+    // Smell envelope honesty (absence ≠ full-tree proof)
+    expect(explore).toMatch(/absence of smell|not full-tree proof|envelope/i);
   });
 
   it('skillTemplates returns non-empty body for each expected skill', () => {
@@ -137,15 +168,17 @@ describe('agentInstructions routing table', () => {
   it('emits default autopilot + skill routing table + STOP guidance', () => {
     const text = agentInstructions(REPO);
     expect(text).toContain('/ark-autopilot');
-    expect(text).toContain('## Skill routing (triggers → skill)');
+    expect(text).toContain('## Skill routing (expert depth — triggers → skill)');
     expect(text).toContain('STOP — do not continue this skill as complete');
     expect(text).toContain('/ark-explore');
     expect(text).toContain('/ark-adopt');
     expect(text).toContain('/ark-place');
     expect(text).toContain('/ark-fix');
     expect(text).toContain('dual-engine');
-    // default when unsure stays autopilot
-    expect(text).toMatch(/if unsure[\s\S]*\/ark-autopilot/i);
+    // when unsure → doctor #1 only (not a default hop to autopilot)
+    expect(text).toMatch(/When unsure, do doctor top action #1 only/i);
+    expect(text).toMatch(/Do \*\*not\*\* jump to `\/ark-autopilot` unless/i);
+    expect(text).toMatch(/Unsure what to do next[\s\S]*Doctor top action #1/i);
     expect(text).toMatch(/Subagent fan-out/i);
     expect(text.toLowerCase()).toMatch(/fall back to sequential/);
     // Post-3.0: non-overlapping roles + Shape honesty

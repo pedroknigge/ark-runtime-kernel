@@ -1,5 +1,6 @@
 /**
- * Host hook / MCP project templates for agent-gate install (Claude, Grok, Codex).
+ * Host hook / MCP project templates for agent-gate install
+ * (Claude, Grok, Codex, Antigravity, OpenCode).
  * Kept out of agent-gates.mjs so install orchestration stays scannable (explore gap #5).
  */
 import { execCommandParts, execRunner } from '../ark-shared.mjs';
@@ -148,4 +149,99 @@ export function grokHooks(root) {
       ],
     },
   }, null, 2)}\n`;
+}
+
+/**
+ * Google Antigravity project hooks (`.agents/hooks.json`).
+ * Schema is a map of named hooks (not Claude's outer `{ hooks: … }` wrapper).
+ * PreToolUse deny is a documented hard block for matched write tools.
+ */
+export function antigravityHooks(root) {
+  const runner = execRunner(root);
+  // workspacePaths[0] is not available as an env var; hook cwd is the workspace root.
+  const agyRoot = '${PWD:-.}';
+  return `${JSON.stringify({
+    'ark-write-gate': {
+      PreToolUse: [
+        {
+          matcher: 'write_to_file|replace_file_content|multi_replace_file_content',
+          hooks: [
+            {
+              type: 'command',
+              timeout: 30,
+              command: `${runner} ${PREFERRED_MCP_BIN} --hook --hook-repair --fail-on-new-smells --root "${agyRoot}" --config ark.config.json`,
+            },
+          ],
+        },
+      ],
+    },
+  }, null, 2)}\n`;
+}
+
+/**
+ * OpenCode project MCP registration (`opencode.json`).
+ * Advisory only — plugin hooks are not a complete write boundary.
+ */
+export function opencodeProjectConfig(root) {
+  const { command, args } = execCommandParts(root, PREFERRED_MCP_BIN, [
+    '--root',
+    '.',
+    '--config',
+    'ark.config.json',
+  ]);
+  return `${JSON.stringify({
+    $schema: 'https://opencode.ai/config.json',
+    mcp: {
+      ark: {
+        type: 'local',
+        command: [command, ...args],
+        enabled: true,
+      },
+    },
+  }, null, 2)}\n`;
+}
+
+/**
+ * Upsert only the `ark-write-gate` named hook into an existing Antigravity hooks map.
+ * Preserves sibling named hooks and unknown top-level keys. Returns null if unreadable.
+ */
+export function mergeAntigravityArkHook(existingText, generatedText) {
+  let existing;
+  let generated;
+  try {
+    existing = existingText && existingText.trim() ? JSON.parse(existingText) : {};
+    generated = JSON.parse(generatedText);
+  } catch {
+    return null;
+  }
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return null;
+  if (!generated || typeof generated !== 'object' || Array.isArray(generated)) return null;
+  const arkGate = generated['ark-write-gate'];
+  if (!arkGate || typeof arkGate !== 'object') return null;
+  const next = { ...existing, 'ark-write-gate': arkGate };
+  return `${JSON.stringify(next, null, 2)}\n`;
+}
+
+/**
+ * Merge Ark MCP into an existing OpenCode config without clobbering other keys.
+ * Returns null when the existing file is unreadable JSON (caller should skip).
+ */
+export function mergeOpencodeArkMcp(existingText, generatedText) {
+  let existing;
+  let generated;
+  try {
+    existing = existingText && existingText.trim() ? JSON.parse(existingText) : {};
+    generated = JSON.parse(generatedText);
+  } catch {
+    return null;
+  }
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return null;
+  const next = { ...existing };
+  if (!next.$schema && generated.$schema) next.$schema = generated.$schema;
+  const mcp = existing.mcp && typeof existing.mcp === 'object' && !Array.isArray(existing.mcp)
+    ? { ...existing.mcp }
+    : {};
+  mcp.ark = generated.mcp.ark;
+  next.mcp = mcp;
+  return `${JSON.stringify(next, null, 2)}\n`;
 }

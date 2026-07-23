@@ -178,12 +178,89 @@ function isResolvedAnalysisInput(relativePath, args, compilerInputs = new Set())
 }
 
 /**
+ * Map Google Antigravity write tools (PascalCase args) onto Claude Write/Edit/MultiEdit.
+ * @returns {{ toolName: string, toolInput: object }|null}
+ */
+function mapAntigravityToolCall(toolCall) {
+  if (!toolCall || typeof toolCall !== 'object') return null;
+  const name = toolCall.name ?? '';
+  const args = toolCall.args && typeof toolCall.args === 'object' ? toolCall.args : {};
+  const filePath = args.TargetFile ?? args.targetFile ?? args.file_path ?? args.path;
+  if (name === 'write_to_file') {
+    return {
+      toolName: 'Write',
+      toolInput: {
+        file_path: filePath,
+        content: args.CodeContent ?? args.codeContent ?? args.content ?? '',
+      },
+      operation: 'write_to_file',
+    };
+  }
+  if (name === 'replace_file_content') {
+    return {
+      toolName: 'Edit',
+      toolInput: {
+        file_path: filePath,
+        old_string: args.TargetContent ?? args.targetContent ?? args.old_string ?? '',
+        new_string: args.ReplacementContent ?? args.replacementContent ?? args.new_string ?? '',
+        replace_all: Boolean(args.AllowMultiple ?? args.allowMultiple),
+      },
+      operation: 'replace_file_content',
+    };
+  }
+  if (name === 'multi_replace_file_content') {
+    const chunks = Array.isArray(args.ReplacementChunks)
+      ? args.ReplacementChunks
+      : Array.isArray(args.replacementChunks)
+        ? args.replacementChunks
+        : [];
+    return {
+      toolName: 'MultiEdit',
+      toolInput: {
+        file_path: filePath,
+        edits: chunks.map((chunk) => ({
+          old_string: chunk?.TargetContent ?? chunk?.targetContent ?? chunk?.old_string ?? '',
+          new_string:
+            chunk?.ReplacementContent ?? chunk?.replacementContent ?? chunk?.new_string ?? '',
+          replace_all: Boolean(chunk?.AllowMultiple ?? chunk?.allowMultiple),
+        })),
+      },
+      operation: 'multi_replace_file_content',
+    };
+  }
+  return {
+    toolName: name,
+    toolInput: { ...args, file_path: filePath },
+    operation: name,
+  };
+}
+
+/**
  * Normalize agent PreToolUse payloads.
  * Claude Code: { tool_name, tool_input: { file_path, content | old_string/new_string } }
  * Grok Build:  { toolName, toolInput:  { file_path, content | old_string/new_string } }
  *              (aliases Write/Edit/MultiEdit → write/search_replace; matcher keeps both)
+ * Antigravity: { toolCall: { name, args: { TargetFile, CodeContent, … } } }
  */
 function normalizeHookPayload(payload, grokHookEvent = Boolean(process.env.GROK_HOOK_EVENT)) {
+  const antigravityStyle =
+    payload != null && typeof payload === 'object' && 'toolCall' in payload;
+  if (antigravityStyle) {
+    const mapped = mapAntigravityToolCall(payload.toolCall);
+    const filePath =
+      mapped?.toolInput?.file_path ??
+      mapped?.toolInput?.filePath ??
+      mapped?.toolInput?.path ??
+      mapped?.toolInput?.target_file;
+    return {
+      toolName: mapped?.toolName ?? '',
+      toolInput: { ...(mapped?.toolInput ?? {}), file_path: filePath },
+      grokStyle: true, // decision JSON on stdout (deny)
+      antigravityStyle: true,
+      operation: mapped?.operation ?? mapped?.toolName ?? null,
+    };
+  }
+
   const rawName = payload?.tool_name ?? payload?.toolName ?? '';
   const toolInput = payload?.tool_input ?? payload?.toolInput ?? {};
   const nameMap = {
@@ -194,6 +271,9 @@ function normalizeHookPayload(payload, grokHookEvent = Boolean(process.env.GROK_
     MultiEdit: 'MultiEdit',
     ApplyPatch: 'ApplyPatch',
     apply_patch: 'ApplyPatch',
+    write_to_file: 'Write',
+    replace_file_content: 'Edit',
+    multi_replace_file_content: 'MultiEdit',
   };
   const toolName = nameMap[rawName] ?? rawName;
   const filePath =
@@ -205,6 +285,8 @@ function normalizeHookPayload(payload, grokHookEvent = Boolean(process.env.GROK_
     grokStyle:
       grokHookEvent ||
       (payload != null && typeof payload === 'object' && 'toolName' in payload),
+    antigravityStyle: false,
+    operation: null,
   };
 }
 
@@ -409,8 +491,14 @@ function processHookOutput() {
   };
 }
 
+/** Antigravity PreToolUse requires stdout `decision` on every response (allow included). */
+function emitAntigravityAllow(output, antigravityStyle) {
+  if (!antigravityStyle) return;
+  output.stdout(`${JSON.stringify({ decision: 'allow' })}\n`);
+}
+
 function runHookPayload(payload, gate, config, args, ts, attemptContext, output = processHookOutput()) {
-  const { toolName, toolInput, grokStyle } = normalizeHookPayload(
+  const { toolName, toolInput, grokStyle, antigravityStyle, operation } = normalizeHookPayload(
     payload,
     attemptContext?.grokHookEvent ?? Boolean(process.env.GROK_HOOK_EVENT)
   );
@@ -419,7 +507,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     const parsedPatch = codexPatchWrites(patch, args.root);
     // Codex ApplyPatch is only preflighted when Ark can reconstruct every file operation.
     // An incomplete reconstruction must not be mislabeled as atomic or hard enforcement.
-    if (!parsedPatch.complete) return;
+    if (!parsedPatch.complete) {
+      emitAntigravityAllow(output, antigravityStyle);
+      return;
+    }
     const patchWrites = parsedPatch.writes;
     const sourceWrites = patchWrites.filter((change) =>
       isGovernableSourceFile(path.basename(String(change.path)))
@@ -482,7 +573,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
             .join(', ')}; source-only virtual preflight cannot model those contents.`
         );
       }
-      if (changes.length === 0) return;
+      if (changes.length === 0) {
+        emitAntigravityAllow(output, antigravityStyle);
+        return;
+      }
       result = prepareChangeFromRoot({
         root: args.root,
         config,
@@ -537,7 +631,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     const designDelta = args.failOnNewSmells
       ? evaluateWriteDesignDelta({ root: args.root, config, changes, ts })
       : null;
-    if (result.valid && (designDelta?.valid ?? true)) return;
+    if (result.valid && (designDelta?.valid ?? true)) {
+      emitAntigravityAllow(output, antigravityStyle);
+      return;
+    }
     const message = [
       `Ark architecture gate blocked this complete ${toolName} (${changes.length} governed file(s)):`,
       ...result.diagnostics.map(
@@ -567,16 +664,27 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     return;
   }
   const filePath = toolInput.file_path;
-  if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) return;
+  if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) {
+    // Non-file tools: fail-open. Antigravity still needs an explicit allow decision.
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
   if (typeof filePath !== 'string' || !SOURCE_FILE.test(filePath) || filePath.endsWith('.d.ts')) {
+    emitAntigravityAllow(output, antigravityStyle);
     return;
   }
   const rel = path.relative(args.root, path.resolve(filePath));
   const segments = rel.split(path.sep);
-  if (segments[0] === '..' || segments.includes('node_modules')) return;
+  if (segments[0] === '..' || segments.includes('node_modules')) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   const source = proposedSource(toolName, toolInput);
-  if (typeof source !== 'string') return;
+  if (typeof source !== 'string') {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   const layer = inferLayer(filePath, config, args.root);
   const validateOnce = (src) =>
@@ -611,7 +719,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
         ts,
       })
     : null;
-  if (result.valid && (designDelta?.valid ?? true)) return;
+  if (result.valid && (designDelta?.valid ?? true)) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   // Ratchet semantics (same philosophy as ark-check --baseline): an edit is blocked only
   // when it ADDS violations relative to the file's current on-disk state. Otherwise a
@@ -639,7 +750,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     existingCounts.set(key, remaining - 1);
     return false;
   });
-  if (newViolations.length === 0 && (designDelta?.valid ?? true)) return;
+  if (newViolations.length === 0 && (designDelta?.valid ?? true)) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
   const combinedViolations = [...newViolations, ...designDeltaViolations(designDelta)];
   const adapterResult = createAdapterResult({
     valid: false,
@@ -698,9 +812,21 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
       filePath: normalizedRel,
       enforcement: hookEnforcement(
         args.root,
-        attemptContext?.host ?? (grokStyle ? 'grok' : 'claude'),
+        attemptContext?.host ??
+          (antigravityStyle ? 'antigravity' : grokStyle ? 'grok' : 'claude'),
         attemptContext?.operation ??
-          (grokStyle ? (toolName === 'Edit' ? 'search_replace' : 'write') : toolName),
+          operation ??
+          (antigravityStyle
+            ? toolName === 'Edit'
+              ? 'replace_file_content'
+              : toolName === 'MultiEdit'
+                ? 'multi_replace_file_content'
+                : 'write_to_file'
+            : grokStyle
+              ? toolName === 'Edit'
+                ? 'search_replace'
+                : 'write'
+              : toolName),
         toolName === 'Write' || Boolean(attemptContext?.completePatch)
       ),
       ...(layer ? { layer } : {}),

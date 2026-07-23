@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { version } from '../../../src/version.ts';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const CURRENT = '3.8.3';
+const CURRENT = '3.9.0';
 
 function read(rel: string) {
   return fs.readFileSync(path.join(REPO, rel), 'utf8');
@@ -86,9 +86,61 @@ describe('CHANGELOG + release note cover 3.7.0 Phase Y', () => {
   });
 
   it('public latest-release pointers move together', () => {
-    expect(read('README.md')).toMatch(/Latest release \(3\.8\.3\).*3\.8\.3\.md/s);
+    expect(read('README.md')).toMatch(/Latest release \(3\.9\.0\).*3\.9\.0\.md/s);
+    // Until npm publish, CONTRIBUTING keeps 3.8.3 as published and 3.9.0 as prepared
     expect(read('CONTRIBUTING.md')).toMatch(/Current published release:.*3\.8\.3/s);
-    expect(read('docs/package-surface.md')).toMatch(/latest:\s*\[3\.8\.3\.md\]/s);
+    expect(read('CONTRIBUTING.md')).toMatch(/Next prepared.*3\.9\.0/s);
+    expect(read('docs/package-surface.md')).toMatch(/latest:\s*\[3\.9\.0\.md\]/s);
+    // Consumer banner must not claim unqualified "current stable" pre-npm
+    expect(read('README.md')).toMatch(/next prepared|prepared release/i);
+    expect(read('README.md')).toMatch(/npm [`']?latest[`']? is still[\s\S]{0,20}3\.8\.3/i);
+    expect(read('README.md')).not.toMatch(/ArkGate 3\.9\.0\*\* is current stable/i);
+  });
+});
+
+describe('CHANGELOG + release note cover 3.9.0 Beautiful Path', () => {
+  it('CHANGELOG 3.9.0 names product voice, progressive disclosure, and doctor path', () => {
+    const body = read('CHANGELOG.md');
+    expect(body).toMatch(/## 3\.9\.0/);
+    expect(body).toMatch(/product-voice|Beautiful Path/i);
+    expect(body).toMatch(/progressive disclosure|compact router/i);
+    expect(body).toMatch(/Primary next action|doctor/i);
+    expect(body).toMatch(/No required config migration/i);
+    expect(body).toMatch(/write-path honesty|advisory/i);
+    expect(body).toMatch(/docs\/field|field kit|Z09/i);
+  });
+
+  it('docs/releases/3.9.0.md has the upgrade path and first-run path', () => {
+    const body = read('docs/releases/3.9.0.md');
+    expect(body).toMatch(/arkgate@3\.9\.0/);
+    expect(body).toMatch(/npm install -D arkgate@3\.9\.0/);
+    expect(body).toMatch(/product-voice|Beautiful Path/i);
+    expect(body).toMatch(/product-beauty-audit/);
+    expect(body).toMatch(/No required config migration/i);
+    expect(body).toMatch(/mcp-publisher validate server\.json/);
+    expect(body).toMatch(/field kit|docs\/field|Z09/i);
+    // Prepared front matter (not fake "Released" while status is prepared)
+    expect(body).toMatch(/\*\*Prepared:\*\*/);
+    expect(body).toMatch(/\*\*Status:\*\*\s*prepared/i);
+    expect(body).not.toMatch(/\*\*Released:\*\*/);
+  });
+
+  it('product-voice has Do table + design-weak/residual lexicon', () => {
+    const body = read('docs/product-voice.md');
+    expect(body).toMatch(/## Do \(product copy\)/);
+    expect(body).toMatch(/\*\*design-weak\*\*/);
+    expect(body).toMatch(/\*\*residual\*\*/);
+    expect(body).toMatch(/advisory write|required CI/i);
+  });
+
+  it('field kit exists and stays not-closed', () => {
+    expect(fs.existsSync(path.join(REPO, 'docs/field/README.md'))).toBe(true);
+    expect(fs.existsSync(path.join(REPO, 'docs/field/preregistration-template.md'))).toBe(true);
+    expect(fs.existsSync(path.join(REPO, 'docs/field/cohort-retention-checklist.md'))).toBe(true);
+    expect(fs.existsSync(path.join(REPO, 'docs/field/independent-reviewer-manifesto.md'))).toBe(true);
+    const kit = read('docs/field/README.md');
+    expect(kit).toMatch(/Status: not closed/i);
+    expect(kit).not.toMatch(/Z09 is done|RB-11 closed/i);
   });
 });
 

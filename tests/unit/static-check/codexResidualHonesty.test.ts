@@ -314,9 +314,12 @@ describe('multi-host skill hints (no exclusive Codex legacy)', () => {
     expect(joined).toMatch(/legacy flat \.codex\/prompts only/i);
     expect(joined).toMatch(/missing \/ .* content-behind-package \/ark-\* skill\(s\) for claude/i);
     expect(joined).toMatch(/Codex home skills.*deferred/i);
-    // Deferred line should not look like a yellow "!" warn mark path that adds Top action.
-    // Top actions should not list codex-home when deferred (home refresh only when on Codex).
-    const topIdx = joined.indexOf('Top actions');
+    // Deferred line should not look like a yellow "!" warn mark path that adds primary action.
+    // Primary next actions should not list codex-home when deferred (home refresh only when on Codex).
+    const topIdx = Math.max(
+      joined.indexOf('Primary next action'),
+      joined.indexOf('Top actions')
+    );
     if (topIdx >= 0) {
       expect(joined.slice(topIdx)).not.toMatch(/--codex-home --force/);
     }

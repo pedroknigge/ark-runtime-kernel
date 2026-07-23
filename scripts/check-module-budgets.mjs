@@ -18,7 +18,8 @@ const BUDGETS = [
   { path: 'bin/ark.mjs', max: 900 },
   { path: 'bin/lib/agent-gates.mjs', max: 150 },
   { path: 'bin/lib/mcp-adoption.mjs', max: 600 },
-  { path: 'bin/lib/install-migrate.mjs', max: 600 },
+  // Host expansion (Antigravity hooks merge + OpenCode MCP migrate/merge).
+  { path: 'bin/lib/install-migrate.mjs', max: 700 },
   // Phase P: designFitness / designSmells doctor surface + patternBets plan IR.
   // 3.8.2 field DX (sessionNote, pure-layer opt-in, Codex legacy advisory) — was 920.
   { path: 'bin/lib/doctor-plan.mjs', max: 980 },

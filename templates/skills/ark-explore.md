@@ -1,9 +1,13 @@
 ---
 name: ark-explore
-description: Decision-grade architecture recon — sensor + tree + field path + coupling + design-correct residual. Dual-plan seed for spaghetti/pattern debt (never multi-week roadmaps). CLI is a sensor; you read the tree. No gate bypass.
+description: Specialized map skill — decision-grade recon + dual-plan seed (no apply). Primary post-green door when design-weak. Not the default day-to-day path (use doctor + place/gate; guided apply is /ark-autopilot). CLI is a sensor; you read the tree. No gate bypass.
 ---
 
-# /ark-explore — Recon the real project
+# /ark-explore — Recon the real project (map only)
+
+**Specialized escape**, not the default curriculum. Use when you need a decision-grade map
+or the post-green Shape door; hand off to `/ark-autopilot` to apply. Day-to-day place + gate
+work does not require this skill.
 
 You are a **staff engineer doing architecture reconnaissance** on *this* repository.
 Ark’s CLI is a **sensor** (coverage, doctor, plan). **You** open source, entry points,
@@ -25,6 +29,15 @@ ranked residual that changes the next command — **not** a celebration of ENFOR
 (shape-focus / dual-plan seed) is the map half of the one door** — then `/ark-autopilot` only
 to apply B with user OK. Do not send the user to coverage or think as equal first choices.
 
+### Status lights (rank residual; not settings)
+
+| Light | Explore role |
+|-------|----------------|
+| **Suggest** | Point at `ark start` → doctor; map only if user insists on recon before setup |
+| **Adapt** | Map false-green / ungoverned / concentrated edge; hand off adopt/contract before Shape vanity |
+| **Enforce** | Confirm edges; if residual smells/patterns appear, auto-upgrade to dual-plan seed / shape-focus |
+| **Enforce · design-weak** | **Primary post-green map door** — shape-focus + dual-plan B + extraction cards. False-done forbidden. Never claim healthy because plan A is empty. |
+
 `/ark-autopilot`, `/ark-adopt`, and `/ark-coverage` embed a **lighter** version of this pass.
 **You** are the full recon + pattern-planning skill.
 
@@ -33,7 +46,7 @@ to apply B with user OK. Do not send the user to coverage or think as equal firs
 - **Greenfield / thin tree:** `/ark-architect` or `ark-check --recommend` / `ark start`.
 - **Brownfield action (write contract/baseline):** `/ark-adopt` after the map.
 - **Execute dual plan:** `/ark-autopilot` (explore seeds; autopilot applies A, proposes B).
-- **Default path:** `ark start` → `/ark-autopilot` → `ark-check --doctor`.
+- **Default path:** `ark start` → `ark-check --doctor` → `/ark-autopilot` for guided apply; use this skill for map-only or post-green Shape residual.
 
 ## Dual engine (mandatory)
 
@@ -222,7 +235,7 @@ ENFORCE without Shape progress is **`ENFORCE · design-weak`** — say that out 
 | Smell id (label) | How you detect it in source |
 |------------------|-----------------------------|
 | `io-under-application` | I/O clients under Application; empty Domain/Persistence (also doctor when present) |
-| `handler-in-persistence` | Static framework HTTP imports, `defineRoute` calls, or route bodies under Persistence-role repo/db globs (first 800 sorted candidates; no advisory is not whole-tree proof above that bound) |
+| `handler-in-persistence` | Static framework HTTP imports, `defineRoute` calls, or route bodies under Persistence-role repo/db globs (**envelope:** first 800 sorted candidates; absence of smell ≠ full-tree proof above that cap; incomplete/partial analysis is never “no smells”) |
 | `god-module` | High fan-in + wide export surface + mixed concerns |
 | `domain-logic-in-ui` | `can*` / `calculate*` / policy constants in hooks/pages |
 | `mixed-pattern-cluster` | Same feature area uses ≥2 incompatible layouts |

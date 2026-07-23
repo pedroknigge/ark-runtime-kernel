@@ -25,8 +25,9 @@ export const COMMAND_GATE_TEXT_FILES = [
   '.clinerules/ark.md', '.github/copilot-instructions.md', '.kiro/steering/ark.md',
   '.roo/rules/ark.md', '.continue/rules/ark.md', 'GEMINI.md', 'package.json',
   '.grok/hooks/ark-write-gate.json', '.grok/config.toml', '.codex/config.toml',
+  '.agents/hooks.json',
 ];
-export const COMMAND_GATE_JSON_FILES = ['.mcp.json', '.cursor/mcp.json'];
+export const COMMAND_GATE_JSON_FILES = ['.mcp.json', '.cursor/mcp.json', 'opencode.json'];
 // Primary CLI names (product) + one-major aliases. migrate-commands must strip ALL of these
 // before re-emitting a single preferred bin — otherwise a partial rename leaves
 // args: ["ark-mcp", "arkgate-mcp", ...] which breaks stdio MCP hosts.
@@ -61,6 +62,34 @@ export function stripMcpServerArgs(args) {
   return kept.length > 0 ? kept : ['--root', '.', '--config', 'ark.config.json'];
 }
 
+/**
+ * OpenCode `mcp.ark.command` is a full argv (runner + bin + flags).
+ * Strip runners and any ark* bin names so migrate can re-emit preferred command+args.
+ */
+export function stripOpencodeMcpCommand(command) {
+  if (!Array.isArray(command) || command.length === 0) {
+    return ['--root', '.', '--config', 'ark.config.json'];
+  }
+  const runners = new Set(['npx', 'yarn', 'pnpm', 'node', 'bun']);
+  const kept = [];
+  for (const entry of command) {
+    if (typeof entry !== 'string') continue;
+    const base = path.basename(entry.replace(/\\/g, '/'));
+    if (
+      runners.has(base) ||
+      MCP_RUNNER_ARGV.has(entry) ||
+      ARK_MCP_BINS.has(base) ||
+      ARK_MCP_BINS.has(entry) ||
+      ARK_CHECK_BINS.has(base) ||
+      ARK_CLI_BINS.has(base)
+    ) {
+      continue;
+    }
+    kept.push(entry);
+  }
+  return kept.length > 0 ? kept : ['--root', '.', '--config', 'ark.config.json'];
+}
+
 /** True when mcpServers.ark.args list more than one Ark MCP bin (broken dual rename). */
 export function mcpArgsHaveDuplicateBins(args) {
   if (!Array.isArray(args)) return false;
@@ -75,6 +104,12 @@ export function brokenMcpGateFiles(root) {
     try {
       json = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     } catch {
+      continue;
+    }
+    // OpenCode uses mcp.ark.command[] (single argv); Claude/Cursor use mcpServers.ark.args.
+    if (rel === 'opencode.json') {
+      const command = json?.mcp?.ark?.command;
+      if (Array.isArray(command) && mcpArgsHaveDuplicateBins(command)) bad.push(rel);
       continue;
     }
     const ark = json?.mcpServers?.ark;
@@ -159,9 +194,32 @@ export function collectAdoptionGaps(root, config, coverage) {
         ],
         toolsFlag: 'codex',
       },
+      {
+        host: 'antigravity',
+        dir: '.agents',
+        skill: (n) => path.join(root, '.agents', 'skills', n, 'SKILL.md'),
+        extras: [['.agents/hooks.json', 'write-gate hook']],
+        toolsFlag: 'antigravity',
+        // Only when hooks.json is present — `.agents/skills` alone is Codex scope.
+        presentIf: () => fs.existsSync(path.join(root, '.agents', 'hooks.json')),
+      },
+      {
+        host: 'opencode',
+        dir: '.opencode',
+        skill: (n) => path.join(root, '.opencode', 'skills', n, 'SKILL.md'),
+        extras: [['opencode.json', 'project MCP config']],
+        toolsFlag: 'opencode',
+        presentIf: () =>
+          fs.existsSync(path.join(root, 'opencode.json')) ||
+          fs.existsSync(path.join(root, '.opencode')),
+      },
     ];
     for (const h of hostChecks) {
-      if (!fs.existsSync(path.join(root, h.dir))) continue;
+      const present =
+        typeof h.presentIf === 'function'
+          ? h.presentIf()
+          : fs.existsSync(path.join(root, h.dir));
+      if (!present) continue;
       const missingSkills = skillNames.filter((n) => !fs.existsSync(h.skill(n)));
       const missingExtras = h.extras.filter(([rel]) => !fs.existsSync(path.join(root, rel)));
       const complete = missingSkills.length === 0 && missingExtras.length === 0;

@@ -1,6 +1,6 @@
 # ArkGate internal roadmap — truth, focus, proof
 
-- **Status date:** 2026-07-22
+- **Status date:** 2026-07-23
 - **Scope:** canonical implementation queue for the ArkGate library repository
 - **Rule:** one active item at a time; do not start an item until all dependencies are `done`
 
@@ -417,6 +417,26 @@ ADR 0004 and `docs/production-hardening.md`; its confirmed intra-process commit 
 separately as parked candidate `K01` rather than silently dropped. Self-hosted design residual
 (historical domain analysis pilot cluster done; residual smell evidence is the package barrel
 `src/index.ts` only) is plan-B judgment only — never a ROADMAP `todo` or release blocker.
+
+### 3.9.0 — Beautiful Path (product surface minor)
+
+Origin: product-owner mandate for a track so simple a newcomer enters and so strict a senior
+trusts — one primary path, doctor as control plane, progressive disclosure, senior English voice.
+Not an analysis-engine rewrite; not Phase Z field closure.
+
+| Order | ID | Status | Size | Depends on | Outcome |
+|---:|---|---|---:|---|---|
+| 81 | `BP01` | `done` | M | 3.8.3 shipped | Product voice canon, README/doctor/router/skills progressive disclosure, 3.9.0 packaging, beauty-audit workflow |
+
+Acceptance (met in tree; publish is a separate maintainer step):
+
+- [x] `docs/product-voice.md` linked from README / Agents knowledge map
+- [x] One primary path obvious in README and compact router
+- [x] Doctor human primary next action; JSON post-green ids stable; no false done under design-weak
+- [x] Full skill pack remains expert depth (`--skills-only`); templates not deleted
+- [x] Version stamps 3.9.0 + CHANGELOG + `docs/releases/3.9.0.md`
+- [x] `.grok/workflows/product-beauty-audit.rhai` report-only default
+- [x] Targeted tests for doctor/post-green/compact surfaces
 
 ### 3.8.3 — Field journey patch (install/upgrade close-out)
 
@@ -845,6 +865,9 @@ release artifacts, and strict Ark. All three falsifiable outcomes passed, so Z10
 
 - **Status:** `parked` (claim gate — not continuous implementation)
 - **Depends on:** `Z10` (done); promotion gate below
+- **Field kit (scaffolding only, not close):** [docs/field/](docs/field/README.md) —
+  preregistration template, cohort D30/D90 checklist, independent-reviewer manifesto + open
+  signed-identity decision. **Does not** mark Z09/`RB-11`/C-028 residual done.
 - **Promotion gate:** signed repository/reviewer identity mechanism preregistered; external matrix
   preregistered; cohort of ≥8 consented adopters enrolled before D30/D90 clocks start. Promote to
   `todo` only when those prerequisites exist; then `doing` only while evidence is actively collected.
@@ -2801,11 +2824,14 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Engineering doing: none (2026-07-22 queue hygiene)
+Engineering doing: none (2026-07-23 post-P1–P4 residuals + 3.9.0 prepared; publish pending auth)
 Claim gate: `Z09` (`parked`) — residual RB-11 only (retained adoption + independent close)
+  Field kit scaffolding: docs/field/ (preregistration, cohort checklist, reviewer manifesto) — NOT closed
   Promote Z09 only when: signed reviewer/repo identity mechanism + external matrix + ≥8 consented adopters are preregistered
   Do not occupy the single engineering `doing` slot while no cohort is collecting evidence
 Closed in 3.8.0: Z01–Z08, Z10; RB-07–RB-10, RB-12; 10× / causal / design-delta claim evidence earned
+Product surface 3.9.0: Beautiful Path + beauty residuals + write-path honesty + Shape coach depth
+  (no plan-B auto-apply; no false hard on Cursor/Codex)
 Not product backlog: god-module / plan-B residual (judgment only). Domain analysis pilot cluster
   done; residual smell evidence is package barrel src/index.ts only — do not big-bang the public surface
 Parked field candidates: Y09 (keep), Y07 (low priority behind Y06 pure-opt-in corpus)
@@ -2815,6 +2841,7 @@ Runtime parked: K01 outside Phase Z; experimental @arkgate/runtime is not the pr
   deprecated root forwarders arkgate/runtime|nestjs remain until major 4.0
 Release lanes: ordinary corrective patches do not wait for Z09; broad “Phase Z shipped” /
   retained-adoption / independent-close claims wait for residual RB-11
+Released baseline: npm arkgate@3.9.0 prepared (Beautiful Path + P1–P4 residuals; publish pending; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.3 (field journey: pnpm -w, start pin, compact MCP; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.1 (pure-path fail-closed patch; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.0 (Phase Z corrective minor; Z09/RB-11 residual open) — PR #90

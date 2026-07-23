@@ -11,7 +11,7 @@ import { buildWritePathCapabilityModel } from './write-path-capabilities.mjs';
 
 function installToolsForHost(activeHost) {
   return activeHost === 'unknown'
-    ? 'claude,grok,cursor,codex'
+    ? 'claude,grok,antigravity,cursor,codex,opencode'
     : activeHost;
 }
 
@@ -109,22 +109,26 @@ export function detectWritePathCapabilities(root, explicitHost, attempt) {
       ),
     };
   } else if (mode === 'mcp-only') {
-    const codexHonesty =
+    const honesty =
       activeHost === 'codex'
         ? 'Codex local write is advisory (MCP + best-effort hooks.json — not a hard boundary; ' +
           'not equivalent to Claude/Grok PreToolUse hard-write + repair). ' +
           'The hard merge backstop is CI --strict-merge plus a required status check.'
-        : `Active host ${activeHost} has advisory prepare-write/autoPatch tools, ` +
-          'but no hard write boundary; CI can report failure, while merge blocking requires provider policy.';
+        : activeHost === 'opencode'
+          ? 'OpenCode local write is advisory (MCP + optional experimental plugin — not a hard boundary; ' +
+            'not equivalent to Claude/Grok/Antigravity PreToolUse hard-write). ' +
+            'The hard merge backstop is CI --strict-merge plus a required status check.'
+          : `Active host ${activeHost} has advisory prepare-write/autoPatch tools, ` +
+            'but no hard write boundary; CI can report failure, while merge blocking requires provider policy.';
     gap = {
       id: 'write-path-mcp-only',
       severity: 'info',
       host: activeHost,
-      message: codexHonesty,
+      message: honesty,
       fix:
-        activeHost === 'codex'
+        activeHost === 'codex' || activeHost === 'opencode'
           ? 'Keep CI on --strict-merge and require the ark-check status on the default branch; ' +
-            `refresh Codex MCP/skills with ${arkCommand(root, 'ark-check', '--install-agent-gates --tools codex')}`
+            `refresh ${activeHost} MCP/skills with ${arkCommand(root, 'ark-check', `--install-agent-gates --tools ${activeHost}`)}`
           : arkCommand(root, 'ark-check', `--install-agent-gates --tools ${tools}`),
     };
   }

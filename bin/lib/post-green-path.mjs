@@ -17,11 +17,11 @@ export const POST_GREEN_PRIMARY_SKILL = '/ark-explore';
  * Chained: explore shape-focus then autopilot only to apply B with user OK.
  */
 export const POST_GREEN_PRIMARY_ACTION =
-  'Clarify for AI (Shape): /ark-explore shape-focus → dual-plan B, then /ark-autopilot only to apply B with your OK — never empty plan A = done; patternBets never mechanical-safe';
+  'Shape residual (design-weak): edges are clean, design is not finished. Map with /ark-explore shape-focus → dual-plan B; apply B only via /ark-autopilot with your OK. Empty plan A is not done; pattern bets are never mechanical-safe.';
 
 /** Short label for tables / metrics. */
 export const POST_GREEN_PRIMARY_SHORT =
-  '/ark-explore shape-focus → /ark-autopilot (apply B with OK)  # clarify for AI';
+  '/ark-explore shape-focus → /ark-autopilot (apply B with OK)  # Shape residual';
 
 /**
  * @param {{ designWeak?: boolean } | null | undefined} designFitness

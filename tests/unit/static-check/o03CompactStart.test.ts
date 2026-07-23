@@ -94,8 +94,12 @@ describe('O03 compact start', () => {
       expect(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).toBe(originalPackage);
       const instructions = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
       expect(instructions).toContain('## Compact router');
+      expect(instructions).toMatch(/Primary path/i);
+      expect(instructions).toMatch(/Expert depth/i);
+      expect(instructions).toMatch(/--doctor/);
       expect(instructions).not.toMatch(/origin is frozen/i);
-      expect(instructions).not.toMatch(/\/ark-autopilot/);
+      // Optional single guided-skill mention under expert depth is allowed; no full skill catalog.
+      expect(instructions).not.toMatch(/\/ark-coverage|\/ark-think|\/ark-loop|\/ark-adopt/);
       expect(fs.existsSync(path.join(root, '.codex', 'prompts'))).toBe(false);
 
       const strict = spawnSync(process.execPath, [ARK_CHECK, '--root', root, '--strict-merge'], {

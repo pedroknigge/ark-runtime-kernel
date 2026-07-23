@@ -1,8 +1,13 @@
 # ArkGate — Agent Integration Guide
 
-**ArkGate** (`arkgate`) — architecture co-pilot for AI TypeScript. This guide describes how AI
-agents and codegen tools safely interact with write hooks, advisory MCP tools, CI, and `/ark-*`
-skills. Guarantees differ by host; start with the
+**ArkGate** (`arkgate`) — architecture co-pilot for AI TypeScript. This guide is the **develop**
+reference for agents and codegen: write hooks, advisory MCP tools, CI, and `/ark-*` skills.
+
+- Product path (anyone): [use.md](use.md)  
+- Integration overview: [develop.md](develop.md)  
+- Docs hub: [README.md](README.md)  
+
+Guarantees differ by host; start with the
 [canonical host support matrix](../README.md#host-enforcement-support). The advisory-local /
 hard-CI split is a deliberate trade-off, not a gap: local hooks and MCP coach at write time,
 while a required merge status is the one boundary a repository can make every write path share.
@@ -10,8 +15,30 @@ while a required merge status is the one boundary a repository can make every wr
 CLI names: prefer **`arkgate` / `arkgate-check` / `arkgate-mcp`**; aliases `ark` / `ark-check` /
 `ark-mcp` still work for one major. **arkgate@3.8.0+** tests packed project TypeScript
 **5.9.3 / 6.0.3 / 7.0.2** and uses an exact, physically distinct TypeScript 6 analysis host when
-the project API is unusable. Published 3.7.0 predates that correction; see the distribution and
-completeness boundary in [typescript-support.md](typescript-support.md).
+the project API is unusable. See the distribution and completeness boundary in
+[typescript-support.md](typescript-support.md). Product English and progressive-disclosure rules:
+[product-voice.md](product-voice.md).
+
+### Default path (3.9.0)
+
+```text
+ark start → ark start --apply → ark-check --doctor
+  day to day: compact router / MCP place + validate + check
+  guided work: install skill pack → /ark-autopilot
+```
+
+Doctor is the **control plane** (status light + primary next action). The compact router from
+`ark start` is enough for normal feature work. Full `/ark-*` skills are **expert depth**:
+
+```bash
+npx ark-check --install-agent-gates --skills-only --force
+```
+
+**Write-path honesty:** Claude/Grok/Antigravity can hard-block listed PreToolUse ops when
+installed and trusted. Cursor/Codex/OpenCode remain **advisory at write**. For every host, the
+repository-wide hard boundary is a **required** CI status (`arkgate-check --strict-merge`) —
+never claim Cursor/Codex/OpenCode hard write. See [ai-gates.md](ai-gates.md) and the README host
+matrix.
 
 ## Architecture playbook and `ark-check --recommend`
 
@@ -72,8 +99,8 @@ npx ark-check --watch                           # debounced re-check when govern
 ```
 
 **Day-zero origin (2.12+):** `ark init` freezes `.ark/reports/origin.*` before writing agent
-docs or CI templates. Compact `ark start` previews first and keeps the applied setup under five
-project files and 25 KB;
+docs or CI templates. Compact `ark start` previews first and keeps the applied setup small
+(budget: 8 files / 32 KB including project `.mcp.json`);
 run `ark-check --report ark-report.html` explicitly when you want to establish an origin/evolution
 baseline. Do not `--reset-origin` unless the user explicitly wants a new baseline.
 `ark-check --report --no-archive` still creates `origin.*` on the first report (or on an explicit
@@ -89,12 +116,13 @@ To remove a compact host integration, preview `ark start --remove-host <host>` a
 only after review. Ark removes only its exact compact artifacts, leaves customized files untouched
 as unresolved decisions, and restores the integration with `ark start --tools <host> --apply`.
 
-**Skill roles (avoid overlap):** `/ark-explore` = map + dual-plan **seed** + Shape residual
-(no apply). `/ark-coverage` = Ark **fitness** only (governed/gates). `/ark-think` = one decision
-(2–3 options). `/ark-adopt` = brownfield Align/Stabilize + seed Shape B. `/ark-autopilot` =
-explore then apply A + propose/apply-with-ok B. `/ark-loop` = plan A only. Empty plan A is not
+**Skill roles (expert depth — avoid overlap):** `/ark-autopilot` = **guided end-to-end** default
+when skills are installed (explore → apply A + propose/apply-with-ok B). `/ark-explore` = map +
+dual-plan **seed** + Shape residual (no apply); primary post-green map half. `/ark-coverage` = Ark
+**fitness** only (governed/gates). `/ark-think` = one decision (2–3 options). `/ark-adopt` =
+brownfield Align/Stabilize + seed Shape B. `/ark-loop` = plan A only. Empty plan A is not
 “architecture healthy” if design-weak residual remains. Full routing table: full-install
-`AGENTS.md` / [README skill table](../README.md#other-skills-only-when-you-need-them).
+`AGENTS.md` / [README expert skills](../README.md#expert-skills-escapes--not-onboarding).
 
 **Design fitness (3.0.1+ / Phase Q 3.0.3):** after edges are clean, doctor can still report **ENFORCE · design-weak**.
 
@@ -335,12 +363,16 @@ reference, and explanation for the full path (recommend → init → gallery →
 
 ### Agent workflow (before codegen)
 
+**Default path first:** `ark start` → `ark start --apply` → `ark-check --doctor`. Doctor’s primary next action is the control plane; do not skill-shop around it.
+
+Greenfield / empty-tree **depth** (only when doctor or a thin tree points here — not a second day-zero curriculum):
+
 1. Run `ark-check --recommend --json` or MCP `ark_recommend`.
 2. Read `archetype`, `preset`, and `adoptInOrder.phase1` — scaffold only those directories first.
-3. Run `ark init --archetype <id> --yes`, `--apply-policy-pack enthusiast-<preset>`, or `ark init --preset <preset> --yes` when no `ark.config.json` exists.
+3. Run `ark init --archetype <id> --yes`, `--apply-policy-pack enthusiast-<preset>`, or `ark init --preset <preset> --yes` when no `ark.config.json` exists (or let `ark start --apply` install the compact contract).
 4. Optional: `--write-plan` for `ark-adoption-plan.json`; copy a gallery starter from `examples/README.md`.
 5. Use `/ark-place` or `ark_place` for individual files after the contract exists.
-6. Verify with `ark-check --root . --config ark.config.json --strict`.
+6. Re-check with `ark-check --doctor`, then `ark-check --root . --config ark.config.json --strict`.
 
 ### Golden pattern for new code (Q03)
 
@@ -403,10 +435,14 @@ directories (`utils/`, `lib/`) must be classified explicitly via `/ark-contract`
 
 ## Supported agent hosts
 
-Wire write-gate + MCP + the full `/ark-*` skill set with:
+**Day zero** is the compact path from `ark start` / `ark start --apply` (router + write path + CI plan) — not the full skill pack.
+
+Wire write-gate + MCP for the active host; add the full `/ark-*` skill pack only as **expert depth** (`--skills-only` or full install when you want guided autopilot):
 
 ```bash
-npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
+npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok,antigravity,opencode
+# expert pack on an existing compact install:
+# npx ark-check --install-agent-gates --skills-only --force
 # alias: npx ark-check --install-agent-gates --tools claude,cursor,codex,grok
 ```
 
@@ -416,6 +452,8 @@ npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
 | Cursor | `.cursor/mcp.json` + `.cursor/rules/ark.mdc` | `.cursor/commands/` |
 | OpenAI Codex | `.codex/config.toml` (project primary, relative `--root .`); optional legacy `$CODEX_HOME/config.toml` fallback uses absolute roots and scoped secondaries — see [ai-gates.md](ai-gates.md) | **Repo:** `.agents/skills/<name>/SKILL.md`; **home:** `$CODEX_HOME/skills/<name>/SKILL.md` (`--codex-home`) |
 | **Grok Build** | `.grok/hooks/ark-write-gate.json` + `.grok/config.toml` / `.mcp.json` | `.grok/skills/<name>/SKILL.md` |
+| Google Antigravity | `.agents/hooks.json` (+ `GEMINI.md` for shared Gemini consumers) | `.agents/skills/<name>/SKILL.md` |
+| OpenCode | `opencode.json` MCP (`type: local`; advisory) | `.opencode/skills/<name>/SKILL.md` |
 
 This is a path reference, not a guarantee table. Full copy-paste setups:
 [ai-gates.md](ai-gates.md). Skill inventory: main
@@ -866,7 +904,11 @@ Register the server itself in `.mcp.json` so the agent can read `ark://manifest`
 On Claude/Grok, the installed PreToolUse hook makes matched writes an enforced checkpoint. MCP
 registration by itself remains advisory on every host because the agent must call the tool.
 
-## Recommended Agent Workflow
+## Experimental runtime kernel workflow (not the default path)
+
+This section is for adopters who **opt into** the experimental `@arkgate/runtime` / kernel surfaces.
+It is **not** the Beautiful Path day-zero curriculum. Default remains: `ark start` → doctor → compact
+router (and `/ark-autopilot` only after the skill pack).
 
 1. **Read** manifest via `ark.manifest().toJSON()`
 2. **Generate** code using registered intents, profiles, metadata, projections, and workflow definitions

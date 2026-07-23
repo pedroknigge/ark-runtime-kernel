@@ -1,14 +1,17 @@
 ---
 name: ark-autopilot
-description: End-to-end co-pilot — explore first, dual plan A remediation + B pattern/Shape bets, mechanical-safe fixes, judgment design. Empty plan A is not healthy if design-weak. CLI is a sensor; you read and remediate files.
+description: Guided end-to-end path — doctor next action when unsure. Explore first; dual plan A (edges) + B (shape); mechanical-safe only by default; B with user OK, one pilot at a time. Empty plan A is not healthy if design-weak. CLI is a sensor; you read and remediate files.
 ---
 
-# /ark-autopilot — Get to a sound architecture, end to end
+# /ark-autopilot — Guided end-to-end architecture path
+
+**This is the full guided co-pilot** after the compact router. Prefer it when the user wants
+architecture cleaned end-to-end, not when they only need a map (`/ark-explore`) or a single
+edge fix (`/ark-fix`). Doctor remains the control plane: re-check status after each major step.
 
 Composes **explore → sensors → dual plan → loop**. Safe default: auto-apply only
-`mechanical-safe`; when the user says full apply / “al mango” / apply everything, also
-execute **judgment** fixes you design from reading source (still validate with ark-check,
-never weaken the gate).
+`mechanical-safe`; when the user says full apply / apply everything, also execute **judgment**
+fixes you design from reading source (still validate with ark-check, never weaken the gate).
 
 **Not a plan grinder.** Empty `--plan` does **not** mean “architecture is healthy” without
 the explore pass and dual-plan section B (pattern / Shape bets).
@@ -32,7 +35,7 @@ to apply B with OK. Prefer that order when `postGreenPath` / design-weak is the 
 - **Brownfield:** `/ark-adopt` — match contract to reality; do not force a starter preset.
 - **Deep map only:** `/ark-explore` — full recon / dual-plan seed without applying.
 - **Adoption fitness only:** `/ark-coverage` — governed% + capability gaps (not pattern dual-plan).
-- **Default path:** `ark start` → `/ark-autopilot` → `ark-check --doctor`.
+- **Default path:** `ark start` → `ark-check --doctor` → **`/ark-autopilot`** (this skill) for guided work.
 
 ## Dual engine (mandatory)
 
@@ -127,9 +130,19 @@ repo so the next agent session continues the same pilot — still never auto-app
 
 ## Operating modes (detected, not picked)
 
-- **Setup (Suggest):** no config → `ark start` / recommend shape (start freezes origin after config, before gates).
+Status lights from doctor — not settings you choose. Rank residual honestly:
+
+| Light | Means | Your move (this skill) |
+|-------|--------|------------------------|
+| **Suggest** | Thin/new tree; contract not control plane | Finish `ark start` → re-doctor; do not skill-shop |
+| **Adapt** | Contract/tree disagree or debt open | Explore + adopt/loop/contract; do not claim guarded |
+| **Enforce** | Honest coverage + clean checked **edges** | Confirm gates + CI; emit dual-plan B only if residual found |
+| **Enforce · design-weak** | Edges clean; design smells remain | **Primary Shape door:** explore shape-focus → dual-plan **B** → apply **one** pilot with user OK. Empty plan A ≠ done. Never mechanical-safe B. False-done forbidden. |
+
+- **Setup (Suggest):** no config → `ark start` (start freezes origin after config, before gates).
 - **Align (Adapt):** open debt, low honesty, or false-green → explore + adopt/loop; do not claim “guarded”.
 - **Guard (Enforce):** `goal.met`, solid governed%, no false-green → confirm gates; still emit dual plan B if explore found residual.
+- **Guard · design-weak:** same as Enforce on edges, **plus** mandatory dual-plan B / pilot card; Incomplete? must not claim healthy finished while residual remains.
 
 ## Flow
 

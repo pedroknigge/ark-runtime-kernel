@@ -8,18 +8,28 @@ import { arkCommand } from '../ark-shared.mjs';
 import { codexPromptsDir, codexSkillsDir } from './codex-home.mjs';
 import { __packageRoot, isCompactRouterAgentsContent, readJson } from './gate-files.mjs';
 
+/** Alias map so --tools agy installs the antigravity profile. */
+const TOOL_ALIASES = Object.freeze({
+  agy: 'antigravity',
+});
+
+function normalizeToolId(value) {
+  const id = String(value).trim().toLowerCase();
+  return TOOL_ALIASES[id] ?? id;
+}
+
 export function normalizeToolsList(tools) {
   if (tools == null) return [];
   if (Array.isArray(tools)) {
     return tools
       .flatMap((t) => String(t).split(','))
-      .map((t) => t.trim().toLowerCase())
+      .map(normalizeToolId)
       .filter(Boolean);
   }
   if (typeof tools === 'string') {
     return tools
       .split(',')
-      .map((t) => t.trim().toLowerCase())
+      .map(normalizeToolId)
       .filter(Boolean);
   }
   return [];
@@ -77,6 +87,25 @@ export function detectActiveAgentHost(env = process.env) {
   ) {
     return 'codex';
   }
+  // Google Antigravity / agy CLI
+  if (
+    envTruthy(env.ANTIGRAVITY) ||
+    envTruthy(env.AGY) ||
+    env.ANTIGRAVITY_WORKSPACE ||
+    env.AGY_WORKSPACE ||
+    /antigravity/i.test(String(env.TERM_PROGRAM ?? ''))
+  ) {
+    return 'antigravity';
+  }
+  // OpenCode
+  if (
+    envTruthy(env.OPENCODE) ||
+    env.OPENCODE_SESSION_ID ||
+    env.OPENCODE_CONFIG ||
+    envTruthy(env.OPENCODE_CLI)
+  ) {
+    return 'opencode';
+  }
   return null;
 }
 
@@ -101,6 +130,15 @@ export function resolveTools(args) {
   if (fs.existsSync(path.join(root, '.cursor'))) detected.add('cursor');
   if (fs.existsSync(path.join(root, '.codex'))) detected.add('codex');
   if (fs.existsSync(path.join(root, '.grok'))) detected.add('grok');
+  // Antigravity project hooks (distinct from Codex-only `.agents/skills`).
+  if (fs.existsSync(path.join(root, '.agents', 'hooks.json'))) detected.add('antigravity');
+  if (
+    fs.existsSync(path.join(root, 'opencode.json')) ||
+    fs.existsSync(path.join(root, 'opencode.jsonc')) ||
+    fs.existsSync(path.join(root, '.opencode'))
+  ) {
+    detected.add('opencode');
+  }
   if (fs.existsSync(path.join(root, '.windsurf'))) detected.add('windsurf');
   // .clinerules can also be a single FILE (older Cline convention); only a directory
   // can receive .clinerules/ark.md, so a file must not trigger detection.
@@ -136,6 +174,8 @@ export const KNOWN_TOOLS = [
   'cursor',
   'codex',
   'grok',
+  'antigravity',
+  'opencode',
   'windsurf',
   'cline',
   'copilot',
@@ -161,6 +201,10 @@ export const SKILL_TOOL_TARGETS = {
   codex: (name) => `.agents/skills/${name}/SKILL.md`,
   // Grok Build: project skills at .grok/skills/<name>/SKILL.md (slash-invocable).
   grok: (name) => `.grok/skills/${name}/SKILL.md`,
+  // Antigravity loads Agent Skills from `.agents/skills` (shared path with Codex).
+  antigravity: (name) => `.agents/skills/${name}/SKILL.md`,
+  // OpenCode project skills under `.opencode/skills`.
+  opencode: (name) => `.opencode/skills/${name}/SKILL.md`,
   windsurf: (name) => `.windsurf/workflows/${name}.md`,
   cline: (name) => `.clinerules/workflows/${name}.md`,
   copilot: (name) => `.github/prompts/${name}.prompt.md`,

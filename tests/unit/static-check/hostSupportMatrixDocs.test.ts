@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { agentInstructions } from '../../../bin/lib/ci-and-commands.mjs';
 import { detectWritePathCapabilities } from '../../../bin/lib/write-path-detect.mjs';
 import {
+  doctorWritePathHonestyMessage,
   formatHostSupportSummary,
   getHostSupportProfile,
   HOST_SUPPORT_HOSTS,
@@ -81,6 +82,28 @@ describe('canonical public host support matrix', () => {
     const rendered = renderHostSupportMatrixMarkdown();
     expect(readMatrixBlock(read('README.md'))).toBe(rendered);
     expect(agentInstructions(REPO)).toContain(rendered);
+    // Hard hosts: no double "PreToolUse PreToolUse"
+    expect(rendered).toMatch(/\*\*Hard\*\* block for listed ops \(PreToolUse/);
+    expect(rendered).not.toMatch(/PreToolUse for listed ops \(PreToolUse/);
+    expect(rendered).toMatch(/Advisory \/ best-effort/);
+  });
+
+  it('doctorWritePathHonestyMessage covers host × hardWrite combinations', () => {
+    expect(doctorWritePathHonestyMessage('cursor', false)).toMatch(/Cursor:.*advisory/i);
+    expect(doctorWritePathHonestyMessage('cursor', true)).toMatch(/Cursor:.*advisory/i);
+    expect(doctorWritePathHonestyMessage('codex', false)).toMatch(/Codex:.*best-effort/i);
+    expect(doctorWritePathHonestyMessage('codex', false)).toMatch(/not Claude\/Grok hard/i);
+    expect(doctorWritePathHonestyMessage('codex', false)).not.toEqual(
+      doctorWritePathHonestyMessage('cursor', false)
+    );
+    expect(doctorWritePathHonestyMessage('claude', true)).toBeNull();
+    expect(doctorWritePathHonestyMessage('grok', true)).toBeNull();
+    expect(doctorWritePathHonestyMessage('claude', false)).toMatch(/unverified/i);
+    expect(doctorWritePathHonestyMessage('claude', false)).toMatch(/Required CI/i);
+    expect(doctorWritePathHonestyMessage('grok', false)).toMatch(/Grok:.*unverified/i);
+    expect(doctorWritePathHonestyMessage('unknown', false)).toBeNull();
+    expect(doctorWritePathHonestyMessage(null, false)).toBeNull();
+    expect(doctorWritePathHonestyMessage(' CLAUDE ', false)).toMatch(/Claude:/);
   });
 
   it('keeps detailed host docs linked to the canonical matrix without universal claims', () => {

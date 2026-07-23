@@ -16,10 +16,10 @@ and makes sure a “green” check means something real.
 
 </div>
 
-> **ArkGate 3.9.0** is current stable: **Beautiful Path** — one primary flow, doctor as control
-> plane, progressive disclosure (compact router first; full skill pack is expert depth), senior-grade
-> product voice. [Release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.9.0.md) ·
-> [Product voice](docs/product-voice.md).
+> **ArkGate 3.9.0** is the next prepared release (**Beautiful Path** — one primary flow, doctor as
+> control plane, progressive disclosure, senior-grade product voice). **npm `latest` is still
+> 3.8.3** until the [publication checklist](docs/releases/3.9.0.md#maintainer-publication-checklist)
+> succeeds. [Release notes](docs/releases/3.9.0.md) · [Product voice](docs/product-voice.md).
 
 > **TypeScript 7 distribution note:** ArkGate prefers a usable project compiler API, then its
 > exact, physically distinct TypeScript 6 analysis host. Analysis reports required
@@ -248,8 +248,8 @@ Brownfield phases: **Align** (honest contract) → **Stabilize** (real baseline)
 <!-- arkgate-host-support:start -->
 | Host | Local write boundary | MCP validation | CI / merge path | Repair payload |
 |------|----------------------|----------------|-----------------|----------------|
-| Claude Code | **Hard** PreToolUse for listed ops (PreToolUse `Write` / `Edit` / `MultiEdit`) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
-| Grok Build | **Hard** PreToolUse for listed ops (PreToolUse `write` / `search_replace` (plus aliases)) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
+| Claude Code | **Hard** block for listed ops (PreToolUse `Write` / `Edit` / `MultiEdit`) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
+| Grok Build | **Hard** block for listed ops (PreToolUse `write` / `search_replace` (plus aliases)) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
 | Cursor | **Advisory only** at write (no hard hook) | Advisory; the agent must call it | **Required status** = hard merge boundary (same CI) | No hard-boundary payload |
 | OpenAI Codex | **Advisory / best-effort** at write (not equivalent to Claude/Grok hard block) | Advisory; the agent must call it | **Required status** = hard merge boundary (same CI) | No hard-boundary payload |
 

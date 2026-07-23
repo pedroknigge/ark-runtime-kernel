@@ -71,9 +71,10 @@ export function renderHostSupportMatrixMarkdown() {
     const profile = HOST_SUPPORT_MATRIX[host];
     const capabilities = profile.capabilities;
     // Fail-closed honesty: Cursor/Codex never claim hard write; CI is required-status, not "file present".
+    // hookSurface already includes "PreToolUse …" — do not prefix PreToolUse again.
     let local;
     if (capabilities['hard-write']) {
-      local = `**Hard** PreToolUse for listed ops (${profile.hookSurface}) when installed + trusted`;
+      local = `**Hard** block for listed ops (${profile.hookSurface}) when installed + trusted`;
     } else if (host === 'codex') {
       local =
         '**Advisory / best-effort** at write (not equivalent to Claude/Grok hard block)';
@@ -105,9 +106,11 @@ This table describes the supported profile **after its files are installed and t
  */
 export function doctorWritePathHonestyMessage(activeHost, hardWriteActive) {
   const host = typeof activeHost === 'string' ? activeHost.trim().toLowerCase() : '';
-  if (host === 'cursor' || host === 'codex') {
-    const label = host === 'cursor' ? 'Cursor' : 'Codex';
-    return `${label}: write path is advisory (MCP/rules; no hard PreToolUse). Required CI status (arkgate-check --strict-merge) is the hard merge boundary.`;
+  if (host === 'cursor') {
+    return 'Cursor: write path is advisory (MCP/rules; no hard PreToolUse). Required CI status (arkgate-check --strict-merge) is the hard merge boundary.';
+  }
+  if (host === 'codex') {
+    return 'Codex: write path is advisory / best-effort at write (not Claude/Grok hard). Required CI status (arkgate-check --strict-merge) is the hard merge boundary.';
   }
   if ((host === 'claude' || host === 'grok') && !hardWriteActive) {
     const label = host === 'claude' ? 'Claude' : 'Grok';

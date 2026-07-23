@@ -91,6 +91,10 @@ describe('CHANGELOG + release note cover 3.7.0 Phase Y', () => {
     expect(read('CONTRIBUTING.md')).toMatch(/Current published release:.*3\.8\.3/s);
     expect(read('CONTRIBUTING.md')).toMatch(/Next prepared.*3\.9\.0/s);
     expect(read('docs/package-surface.md')).toMatch(/latest:\s*\[3\.9\.0\.md\]/s);
+    // Consumer banner must not claim unqualified "current stable" pre-npm
+    expect(read('README.md')).toMatch(/next prepared|prepared release/i);
+    expect(read('README.md')).toMatch(/npm [`']?latest[`']? is still[\s\S]{0,20}3\.8\.3/i);
+    expect(read('README.md')).not.toMatch(/ArkGate 3\.9\.0\*\* is current stable/i);
   });
 });
 
@@ -115,6 +119,10 @@ describe('CHANGELOG + release note cover 3.9.0 Beautiful Path', () => {
     expect(body).toMatch(/No required config migration/i);
     expect(body).toMatch(/mcp-publisher validate server\.json/);
     expect(body).toMatch(/field kit|docs\/field|Z09/i);
+    // Prepared front matter (not fake "Released" while status is prepared)
+    expect(body).toMatch(/\*\*Prepared:\*\*/);
+    expect(body).toMatch(/\*\*Status:\*\*\s*prepared/i);
+    expect(body).not.toMatch(/\*\*Released:\*\*/);
   });
 
   it('product-voice has Do table + design-weak/residual lexicon', () => {

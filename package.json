@@ -1,6 +1,6 @@
 {
   "name": "arkgate",
-  "version": "3.8.3",
+  "version": "3.9.0",
   "description": "ArkGate — architecture co-pilot for AI TypeScript (write gate, CI gate, plan/loop)",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -66,6 +66,7 @@
     "schemas",
     "!schemas/*.source.json",
     "docs/agent-guide.md",
+    "docs/product-voice.md",
     "docs/enthusiast",
     "docs/demos/01-write-gate-self-correction.md",
     "docs/demos/02-brownfield-baseline-adoption.md",

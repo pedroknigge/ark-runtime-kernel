@@ -73,6 +73,20 @@ describe('skill surface inventory', () => {
     expect(body).toMatch(/Deferred hosts.*never make Incomplete/i);
   });
 
+  it('autopilot/explore rank ENFORCE · design-weak Shape door (no false-done)', () => {
+    const autopilot = fs.readFileSync(path.join(SKILLS_DIR, 'ark-autopilot.md'), 'utf8');
+    const explore = fs.readFileSync(path.join(SKILLS_DIR, 'ark-explore.md'), 'utf8');
+    expect(autopilot).toMatch(/Enforce · design-weak/i);
+    expect(autopilot).toMatch(/Primary Shape door|shape-focus/i);
+    expect(autopilot).toMatch(/False-done forbidden|never claim healthy finished|Empty plan A/i);
+    expect(autopilot).toMatch(/Never auto-apply B|never mechanical-safe/i);
+    expect(explore).toMatch(/Enforce · design-weak/i);
+    expect(explore).toMatch(/Primary post-green map door|shape-focus/i);
+    expect(explore).toMatch(/False-done forbidden|never claim healthy/i);
+    // Smell envelope honesty (absence ≠ full-tree proof)
+    expect(explore).toMatch(/absence of smell|not full-tree proof|envelope/i);
+  });
+
   it('skillTemplates returns non-empty body for each expected skill', () => {
     const map = new Map(skillTemplates());
     for (const name of EXPECTED_SKILLS) {
@@ -137,15 +151,17 @@ describe('agentInstructions routing table', () => {
   it('emits default autopilot + skill routing table + STOP guidance', () => {
     const text = agentInstructions(REPO);
     expect(text).toContain('/ark-autopilot');
-    expect(text).toContain('## Skill routing (triggers → skill)');
+    expect(text).toContain('## Skill routing (expert depth — triggers → skill)');
     expect(text).toContain('STOP — do not continue this skill as complete');
     expect(text).toContain('/ark-explore');
     expect(text).toContain('/ark-adopt');
     expect(text).toContain('/ark-place');
     expect(text).toContain('/ark-fix');
     expect(text).toContain('dual-engine');
-    // default when unsure stays autopilot
-    expect(text).toMatch(/if unsure[\s\S]*\/ark-autopilot/i);
+    // when unsure → doctor #1 only (not a default hop to autopilot)
+    expect(text).toMatch(/When unsure, do doctor top action #1 only/i);
+    expect(text).toMatch(/Do \*\*not\*\* jump to `\/ark-autopilot` unless/i);
+    expect(text).toMatch(/Unsure what to do next[\s\S]*Doctor top action #1/i);
     expect(text).toMatch(/Subagent fan-out/i);
     expect(text.toLowerCase()).toMatch(/fall back to sequential/);
     // Post-3.0: non-overlapping roles + Shape honesty

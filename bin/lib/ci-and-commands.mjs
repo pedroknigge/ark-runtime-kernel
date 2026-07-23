@@ -128,16 +128,13 @@ export function agentInstructions(root) {
 
 ## Default agent flow (if unsure, do only this)
 
-1. If \`ark.config.json\` is missing: run \`${startCmd}\` once.
-2. For adoption / cleanup / “make architecture sound”: run the **\`/ark-autopilot\`** skill
-   (explore first → dual plan: remediation + pattern bets → safe fixes → gates). Day-zero
-   origin is frozen by \`ark start\`/\`ark init\` (or autopilot if missing) **before** agent docs.
-   Do **not** invent a second architecture curriculum outside the routing table below — when a
-   trigger matches, use that skill; when unsure, stay on autopilot.
-3. Status anytime: \`${doctorCmd}\` (status light + next action — not a mode picker).
-4. After ordinary feature edits: run \`${checkCmd}\`. On violations → **\`/ark-fix\`** (or
-   \`/ark-place\` for new files, \`/ark-contract\` only if the contract itself is wrong).
+1. Status anytime: \`${doctorCmd}\` — **control plane** (one status light, one next action; not a mode picker).
+2. If \`ark.config.json\` is missing: run \`${startCmd}\` once (preview), then \`${startCmd} --apply\`.
+3. Guided end-to-end work (“make architecture sound”): **\`/ark-autopilot\`** — explore → dual plan A (edges) + B (shape) → mechanical-safe fixes; B only with user OK. Day-zero origin is frozen by \`ark start\`/\`ark init\` (or autopilot if missing) **before** agent docs.
+4. After ordinary feature edits: run \`${checkCmd}\`. On violations → **\`/ark-fix\`** (or \`/ark-place\` for new files, \`/ark-contract\` only if the contract itself is wrong).
 
+Do **not** skill-shop the full table for routine work. When unsure, do doctor top action #1 only
+(re-run doctor after). Do **not** jump to \`/ark-autopilot\` unless #1 or a STOP handoff names it.
 Skills are **dual-engine**: deterministic CLI sensors + exploratory read of *this* repo — not JSON-only wrappers.
 When a skill says **STOP — do not continue this skill as complete**, stop and invoke the named handoff skill.
 
@@ -151,14 +148,16 @@ scouts (disjoint path scopes) and merge in the parent. If the host does **not**,
 **fall back to sequential** — one cluster/step at a time. Never parallel-write the same
 files; never weaken the gate via subagents.
 
-## Skill routing (triggers → skill)
+## Skill routing (expert depth — triggers → skill)
 
-Do **not** run overlapping skills for the same job. Pick **one** primary skill from the table.
+**Escapes, not a second curriculum.** Do **not** run overlapping skills for the same job.
+Pick **one** primary skill. Prefer doctor top action #1 when unsure.
 
 | When | Invoke | Not this |
 |------|--------|----------|
-| Unsure / make architecture sound (apply path) | **/ark-autopilot** (default) | explore-only, coverage-only |
-| **Messy / spaghetti / design-weak after green / clarify for AI** | **Single path:** \`/ark-explore\` shape-focus → dual-plan B, then \`/ark-autopilot\` only to apply B with OK | coverage, think, loop-as-done, skill-shopping |
+| Unsure what to do next | **Doctor top action #1** (\`${doctorCmd}\`), then re-run doctor | skill-shopping, defaulting to autopilot |
+| Make architecture sound (guided apply path) | **/ark-autopilot** | explore-only, coverage-only |
+| **Messy / spaghetti / design-weak after green / Shape residual** | **Single path:** \`/ark-explore\` shape-focus → dual-plan B, then \`/ark-autopilot\` only to apply B with OK | coverage, think, loop-as-done, skill-shopping |
 | Map / residual / dual-plan seed only (no apply, already know you want recon) | \`/ark-explore\` | coverage (fitness only) |
 | Greenfield shape / empty tree | \`/ark-architect\` | adopt |
 | Brownfield / wrong contract / false-green | \`/ark-adopt\` then \`/ark-contract\` if globs wrong | architect |
@@ -209,20 +208,28 @@ export function compactAgentInstructions(root, host = null) {
     'ark-check',
     `--install-agent-gates --skills-only --tools ${selectedHost === 'none' ? '<host>' : selectedHost}`
   );
+  // Progressive disclosure: primary path only. Full /ark-* catalog is expert depth
+  // (install via --skills-only). See docs/product-voice.md.
   return `# Ark Enforcement
 
 <!-- arkgate:compact-router host=${selectedHost} -->
 ## Compact router
 
-This project uses the ArkGate package and its \`ark\` MCP resources as its one
-agent router. Before editing TypeScript or JavaScript, read \`ark://manifest\`
-when available; use \`ark_place\` for new files and \`validate_code\` after edits.
-If MCP is unavailable, inspect \`ark.config.json\` and run \`${checkCmd}\`.
+**Primary path (do this):**
 
-For architecture status, run \`${doctorCmd}\`. The selected host is
-\`${selectedHost}\`; its host registration and CI gate are installed alongside
-this file. Full \`/ark-*\` guided workflows are optional and can be added later
-with \`${installSkills}\`.
+1. Status anytime: \`${doctorCmd}\` — one status light, one next action (control plane).
+2. Day to day: read \`ark://manifest\` when MCP is available; place new files with \`ark_place\`; validate after edits; run \`${checkCmd}\`. On a gate deny, fix the architecture — do not weaken the contract.
+3. If MCP is unavailable: inspect \`ark.config.json\` and run \`${checkCmd}\`.
+
+The selected host is \`${selectedHost}\`. Host registration and CI are installed with this file.
+This compact router is enough for normal feature work.
+
+## Expert depth (optional)
+
+Full \`/ark-*\` skills (including guided end-to-end \`/ark-autopilot\`) are **not** the default
+curriculum. Install them only when doctor top action #1 or a STOP handoff names a skill:
+
+\`${installSkills}\`
 `;
 }
 

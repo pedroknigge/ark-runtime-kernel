@@ -126,7 +126,9 @@ mcp-publisher publish server.json
 # Confirm: registry lists io.github.pedroknigge/arkgate @ X.Y.Z with isLatest
 ```
 
-**Current published release:** [docs/releases/3.8.3.md](docs/releases/3.8.3.md) (`arkgate@3.8.3`).
+**Current published release:** [docs/releases/3.8.3.md](docs/releases/3.8.3.md) (`arkgate@3.8.3`).  
+**Next prepared (not yet on npm `latest`):** [docs/releases/3.9.0.md](docs/releases/3.9.0.md)
+(`arkgate@3.9.0` — flip this line to “published” only after `npm view arkgate@3.9.0` succeeds).
 
 ## Not sure where to start?
 

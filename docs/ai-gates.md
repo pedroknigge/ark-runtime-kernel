@@ -1,6 +1,16 @@
 # Gating AI Agents with ArkGate
 
 **ArkGate** (`arkgate`) is the architecture co-pilot for AI TypeScript (write gate · CI · plan/loop).
+
+### Host write honesty (fail-closed)
+
+| Host | Write-time boundary | Hard merge boundary |
+|------|---------------------|---------------------|
+| **Claude Code** | Hard PreToolUse for listed ops when installed + trusted + (for `hard:true`) runtime-observed | Required `arkgate-check --strict-merge` status |
+| **Grok Build** | Hard PreToolUse for listed ops when installed + trusted + (for `hard:true`) runtime-observed | Required `arkgate-check --strict-merge` status |
+| **Cursor** | **Advisory only** (MCP/rules) — no hard PreToolUse | Required CI status (same check) |
+| **OpenAI Codex** | **Advisory / best-effort** (MCP + optional hooks.json) — **not** equivalent to Claude/Grok hard block | Required CI status (same check) |
+
 On Claude Code and Grok Build, an installed and trusted PreToolUse hook can block matched writes
 before they land on disk. Cursor and OpenAI Codex use advisory MCP validation at write time; CI is
 their hard repository check. Codex 0.123+ dispatches hooks for its native `apply_patch` handler,
@@ -8,6 +18,7 @@ but Code Mode hosts can execute deferred nested writes without that project hook
 [canonical host support matrix](../README.md#host-enforcement-support) before installing. The
 advisory-local / hard-CI split is a deliberate trade-off: local surfaces optimize feedback speed,
 while a required merge status is the one boundary a repository can make every write path share.
+Prefer fail-closed honesty over fake hard guarantees on advisory hosts.
 
 Everything below uses the same `ark.config.json` as `arkgate-check` / `ark-check` (CI) — one
 contract shared by every surface. Generate it once:
@@ -338,9 +349,10 @@ When a valid project `.codex/config.toml` exists, doctor treats it as the effect
 does not report an unrelated home primary. Without a project binding, doctor surfaces the
 legacy multi-project state. **Deferred (fix when using Codex):**
 non-temp Codex-home gaps (`codex-home-multi-project`, stale `$CODEX_HOME/skills`) are
-severity **info**, marked `deferred: true`, and omitted from Top actions when the session
-host is known and not Codex — `/ark-upgrade` on Grok/Claude is not Incomplete because of
-them. **Temp/upgrade primary roots** stay fail-closed urgent (rewritten, not multi-project).
+severity **info**, marked `deferred: true`, and omitted from doctor **Primary next action** /
+**Also** list (formerly “Top actions”) when the session host is known and not Codex —
+`/ark-upgrade` on Grok/Claude is not Incomplete because of them. **Temp/upgrade primary roots**
+stay fail-closed urgent (rewritten, not multi-project).
 
 ### Codex skill catalog (SKILL.md, not flat prompts)
 

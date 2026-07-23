@@ -70,18 +70,48 @@ export function renderHostSupportMatrixMarkdown() {
   const rows = HOST_SUPPORT_HOSTS.map((host) => {
     const profile = HOST_SUPPORT_MATRIX[host];
     const capabilities = profile.capabilities;
-    const local = capabilities['hard-write']
-      ? `Hard block for ${profile.hookSurface}`
-      : 'No hard hook; MCP/rules are advisory';
+    // Fail-closed honesty: Cursor/Codex never claim hard write; CI is required-status, not "file present".
+    let local;
+    if (capabilities['hard-write']) {
+      local = `**Hard** PreToolUse for listed ops (${profile.hookSurface}) when installed + trusted`;
+    } else if (host === 'codex') {
+      local =
+        '**Advisory / best-effort** at write (not equivalent to Claude/Grok hard block)';
+    } else {
+      local = '**Advisory only** at write (no hard hook)';
+    }
     const repair = capabilities['repair-payload']
       ? 'Emitted on hook deny; host must re-inject'
       : 'No hard-boundary payload';
-    return `| ${profile.label} | ${local} | Advisory; the agent must call it | Available \`arkgate-check --strict-merge\` check | ${repair} |`;
+    const merge = capabilities['hard-write']
+      ? '**Required status** = hard merge boundary (`arkgate-check --strict-merge`)'
+      : '**Required status** = hard merge boundary (same CI)';
+    return `| ${profile.label} | ${local} | Advisory; the agent must call it | ${merge} | ${repair} |`;
   }).join('\n');
 
   return `| Host | Local write boundary | MCP validation | CI / merge path | Repair payload |
 |------|----------------------|----------------|-----------------|----------------|
 ${rows}
 
+**Read the CI column:** for every host, the repository-wide hard guarantee is a **required**
+merge check — not “CI file present.” Cursor/Codex never get a fake hard write claim.
+
 This table describes the supported profile **after its files are installed and the host loads/trusts them**. A hard local boundary covers only the listed hook operations; alternate tools, direct filesystem writes, and human edits still rely on CI. MCP validation is advisory because the agent must call it. The CI check blocks a merge only when the repository makes that status required. Repair payloads never write code silently: the host must re-inject the candidate and ArkGate revalidates it. Run \`arkgate-check --doctor\` for the evidence actually detected in the current repository.`;
+}
+
+/**
+ * Doctor human one-liner for active-host write honesty (fail-closed).
+ * @returns {string|null}
+ */
+export function doctorWritePathHonestyMessage(activeHost, hardWriteActive) {
+  const host = typeof activeHost === 'string' ? activeHost.trim().toLowerCase() : '';
+  if (host === 'cursor' || host === 'codex') {
+    const label = host === 'cursor' ? 'Cursor' : 'Codex';
+    return `${label}: write path is advisory (MCP/rules; no hard PreToolUse). Required CI status (arkgate-check --strict-merge) is the hard merge boundary.`;
+  }
+  if ((host === 'claude' || host === 'grok') && !hardWriteActive) {
+    const label = host === 'claude' ? 'Claude' : 'Grok';
+    return `${label}: hard PreToolUse is supported for listed ops when installed + trusted; without runtime-observed hook evidence, hard is unverified. Required CI remains the merge hard boundary.`;
+  }
+  return null;
 }

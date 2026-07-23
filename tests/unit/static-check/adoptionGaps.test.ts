@@ -397,8 +397,11 @@ args = ["arkgate-mcp", "--root", "${absA}", "--config", "${absA}/ark.config.json
     );
     expect(human.stdout).toMatch(/Deferred \(fix when using Codex\)/i);
     expect(human.stdout).toMatch(/When using Codex:/i);
-    // Deferred gaps must not appear as numbered Top actions
-    expect(human.stdout).not.toMatch(/Top actions[\s\S]*install-agent-gates --tools codex/i);
+    // Deferred gaps must not appear as numbered primary next actions / Also list.
+    // Match the doctor heading line only (mode-help may say “top action #1” in prose).
+    const stripAnsi = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, '');
+    const afterPrimary = stripAnsi(human.stdout).split(/^Primary next action\s*$/m)[1] || '';
+    expect(afterPrimary).not.toMatch(/install-agent-gates --tools codex/i);
   });
 
   it('doctor flags missing lint script when Next production build embeds ESLint (universal deploy-path)', () => {

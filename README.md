@@ -16,9 +16,10 @@ and makes sure a “green” check means something real.
 
 </div>
 
-> **ArkGate 3.8.3** is current stable: field journey on top of 3.8.2 — pnpm/yarn workspace install,
-> default `start` package pin, compact `.mcp.json`, upgrade recovery/UX.
-> [Release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.8.3.md).
+> **ArkGate 3.9.0** is current stable: **Beautiful Path** — one primary flow, doctor as control
+> plane, progressive disclosure (compact router first; full skill pack is expert depth), senior-grade
+> product voice. [Release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.9.0.md) ·
+> [Product voice](docs/product-voice.md).
 
 > **TypeScript 7 distribution note:** ArkGate prefers a usable project compiler API, then its
 > exact, physically distinct TypeScript 6 analysis host. Analysis reports required
@@ -33,23 +34,24 @@ If you remember nothing else:
 
 ```text
 1.  npx arkgate start          ← read-only preview: files + commands + projected coverage
-    npx arkgate start --apply  ← apply exactly the previewed mutations
-2.  Compact router             ← MCP/AGENTS routes place, validate, and architecture checks
-    /ark-autopilot             ← optional full guided workflow after its skill pack is installed
-3.  npx arkgate-check --doctor ← “where am I?” anytime (one status screen)
+    npx arkgate start --apply  ← apply exactly the previewed mutations (compact router + host + CI)
+2.  npx arkgate-check --doctor ← control plane: one status light, one primary next action
+3.  Day to day                 ← place + gate protect (compact router / MCP is enough)
+    /ark-autopilot             ← optional guided end-to-end work (after skill-pack install)
 ```
 
 | Stuck on… | Do this |
 |-----------|---------|
-| Gate failed after an edit | `/ark-fix` |
-| “Where does this new file go?” | `/ark-place` |
+| Unsure what to do next | `npx arkgate-check --doctor` — do top action #1 |
+| Gate failed after an edit | `/ark-fix` (skill pack) or re-run check and fix the edge |
+| “Where does this new file go?” | MCP `ark_place` or `/ark-place` |
 | Contract globs / layers wrong | `/ark-contract` |
-| **Messy / spaghetti code** (even if the gate is green) | **`/ark-explore`** then **`/ark-autopilot`** — [below](#less-spaghetti-after-the-gate-is-green) |
+| **Messy / spaghetti** (even if the gate is green) | **Shape door** — [below](#less-spaghetti-after-the-gate-is-green) |
 | New ArkGate version | `/ark-upgrade` |
 
-**Everything else is optional.** You do not need to learn “modes”, the full skill pack, or the runtime
-kernel to get value. The compact router is enough for normal work; install `/ark-autopilot` only
-when you want the full guided workflow.
+**Everything else is expert depth.** You do not need the full skill pack, “modes,” or the runtime
+kernel for day-to-day value. Doctor is the control plane; the compact router is enough for normal
+feature work. Install the skill pack only when doctor or a handoff names a skill.
 
 ---
 
@@ -77,33 +79,32 @@ It is **not** a web framework, ORM, or job runner.
 
 ## Who it’s for
 
-Same start for almost everyone: **`npx arkgate start` → compact router** (then
-`/ark-autopilot` when you opt into the full skill pack).
+Same start for almost everyone: **`start` → doctor → (optional) guided autopilot**.
 
 | You are… | Same start, then… |
 |----------|-------------------|
-| Builder with AI | Use the compact router and doctor; add autopilot when you want guided remediation |
-| Tech lead on a messy monorepo | Add autopilot (or deeper `/ark-adopt` for a focused brownfield pass) |
-| Power user | Same flow; use `ark-check --plan` / `--coverage` when you want the raw sensor |
+| Builder with AI | Compact router + doctor; skill pack only when you want guided remediation |
+| Tech lead on a messy monorepo | Doctor top action; often `/ark-autopilot` or `/ark-adopt` after skill install |
+| Power user | Same flow; `--plan` / `--coverage` when you want the raw sensor |
 
 **Not for:** no TypeScript, “just one lint rule”, or looking for an app framework.
 
 ---
 
-## Status, not settings (“modes”)
+## Status lights, not settings
 
 `ark-check --doctor` may say **Suggest / Adapt / Enforce**. That is a **status light**, not a
 mode you configure:
 
 | Light | Means | Your move |
 |-------|--------|-----------|
-| **Suggest** | New/thin project | Finish `start` + autopilot |
-| **Adapt** | Not fully protected yet | Keep autopilot / adopt until clean |
-| **Enforce** | Contract coverage is honest and checked **edges** are clean | Keep write path + CI. If the tree is still a mess → [Shape flow](#less-spaghetti-after-the-gate-is-green) |
-| **Enforce · design-weak** | Edges clean, but doctor still sees design smells (`designSmells` / `patternBets`) | **`/ark-explore`** (shape-focus) → **`/ark-autopilot`** for dual-plan **B** — not “done” |
+| **Suggest** | Thin or new tree; contract not yet the control plane | Finish `start` → re-run doctor |
+| **Adapt** | Contract and tree still disagree, or debt is open | Do doctor top action #1 (often adopt / contract / autopilot) |
+| **Enforce** | Honest coverage and clean checked **edges** | Keep write path + CI. Messy tree still → [Shape](#less-spaghetti-after-the-gate-is-green) |
+| **Enforce · design-weak** | Edges clean; design smells remain (`designSmells` / `patternBets`) | One Shape door: explore → dual-plan **B** → autopilot with OK — not “done” |
 
 You **arrive** at Enforce. You never “turn on Enforce”.  
-**Enforce does not mean the design is elegant** — only that the contract’s import edges are honest.
+**Enforce does not mean the design is elegant** — only that checked import edges are honest.
 
 ---
 
@@ -111,24 +112,20 @@ You **arrive** at Enforce. You never “turn on Enforce”.
 
 A green check can still leave god modules, SQL in routes, and three patterns at once.
 That residual is **Shape** work — plan **B**, never auto-applied as mechanical-safe.
+Doctor names this as **Enforce · design-weak** and ranks **one** door first.
 
 ```text
-1.  /ark-explore              ← map + dual-plan B + extraction cards (no apply)
-2.  /ark-autopilot            ← apply A (edges); B only with your ok, one pilot at a time
-3.  npx arkgate-check --doctor
-    npx arkgate-check --plan --json   ← designWeak + patternBets when residual remains
+1.  npx arkgate-check --doctor     ← confirms design-weak + primary next action
+2.  /ark-explore (shape-focus)     ← map + dual-plan B + extraction cards (no apply)
+3.  /ark-autopilot                 ← apply B only with your OK, one pilot at a time
+4.  npx arkgate-check --doctor     ← re-check; residual outside the pilot may remain
 ```
 
-| If… | Skill |
-|-----|--------|
-| Need the map / “what’s the golden pattern?” | `/ark-explore` |
-| Ready to execute the dual plan | `/ark-autopilot` |
-| Contract still lies (false-green, wrong globs) | `/ark-adopt` first, then explore |
-| One cluster only | `/ark-fix` (+ extraction card) |
-| Only care about governed% / gates installed | `/ark-coverage` (not the Shape map) |
+Skill pack (when you need guided work):  
+`npx arkgate-check --install-agent-gates --skills-only --force`
 
 Phases: **Align** (honest contract) → **Stabilize** (real baseline) → **Shape** (golden pattern + pilot).  
-Details: [docs/brownfield-adoption.md](docs/brownfield-adoption.md) §6 · skills install: `npx arkgate-check --install-agent-gates`.
+Details: [docs/brownfield-adoption.md](docs/brownfield-adoption.md) §6.
 
 ---
 
@@ -151,10 +148,11 @@ Full checklist (CI, MCP, Codex, imports): **[migrate-from-ark-runtime-kernel.md]
 ```bash
 npm install -D arkgate typescript
 npx arkgate start                 # read-only preview: exact mutations + projected coverage
-npx arkgate start --apply         # apply the compact contract → active-host router → CI plan
-# optional, after installing the full skill pack:
+npx arkgate start --apply         # compact contract → active-host router → CI
+npx arkgate-check --doctor        # control plane: status light + primary next action
+# optional expert depth (full /ark-* skill pack, then guided work):
+#   npx arkgate-check --install-agent-gates --skills-only --force
 #   /ark-autopilot
-npx arkgate-check --doctor        # status light + next action
 ```
 
 Aliases `ark` / `ark-check` / `ark-mcp` still work. **npm / pnpm / yarn**. No install lifecycle scripts.
@@ -186,18 +184,22 @@ npx arkgate-check --coverage
 
 ---
 
-## Other skills (only when you need them)
+## Expert skills (escapes — not onboarding)
 
-Install once: `npx arkgate-check --install-agent-gates`
-(`--tools claude,cursor,codex,grok` to pick hosts.)
+Default onboarding installs the **compact router** only (`ark start`). The full `/ark-*` pack is
+**expert depth**:
 
-**The compact router is the default; `/ark-autopilot` is the full guided option.** The rest are
-escapes, not a second curriculum. Full-install `AGENTS.md` includes a **skill routing table**
-(trigger → skill). Skills are
-**dual-engine** (CLI sensor + read real source) and end with a fixed **completion contract**;
-critical handoffs say **STOP** and name the next skill (hosts must follow — markdown cannot chain calls).
-When the host allows it, skills may **fan out parallel subagents** (disjoint scopes);
-otherwise they **fall back to sequential**.
+```bash
+npx arkgate-check --install-agent-gates --skills-only --force
+# or full gates refresh: npx arkgate-check --install-agent-gates --tools claude,cursor,codex,grok
+```
+
+**`/ark-autopilot` is the guided end-to-end path** when you opt into skills. The rest are specialized
+escapes — not a second curriculum. Full-install `AGENTS.md` includes a **skill routing table**
+(trigger → skill). Skills are **dual-engine** (CLI sensor + read real source) and end with a fixed
+**completion contract**; critical handoffs say **STOP** and name the next skill (hosts must follow —
+markdown cannot chain calls). When the host allows it, skills may **fan out parallel subagents**
+(disjoint scopes); otherwise they **fall back to sequential**.
 
 **Write path (Track W):** Prefer MCP **`ark_prepare_write`** when you have a snippet (place +
 constrain + validate + optional `autoPatch` + `judgmentBrief`). PreToolUse hooks with
@@ -246,10 +248,13 @@ Brownfield phases: **Align** (honest contract) → **Stabilize** (real baseline)
 <!-- arkgate-host-support:start -->
 | Host | Local write boundary | MCP validation | CI / merge path | Repair payload |
 |------|----------------------|----------------|-----------------|----------------|
-| Claude Code | Hard block for PreToolUse `Write` / `Edit` / `MultiEdit` | Advisory; the agent must call it | Available `arkgate-check --strict-merge` check | Emitted on hook deny; host must re-inject |
-| Grok Build | Hard block for PreToolUse `write` / `search_replace` (plus aliases) | Advisory; the agent must call it | Available `arkgate-check --strict-merge` check | Emitted on hook deny; host must re-inject |
-| Cursor | No hard hook; MCP/rules are advisory | Advisory; the agent must call it | Available `arkgate-check --strict-merge` check | No hard-boundary payload |
-| OpenAI Codex | No hard hook; MCP/rules are advisory | Advisory; the agent must call it | Available `arkgate-check --strict-merge` check | No hard-boundary payload |
+| Claude Code | **Hard** PreToolUse for listed ops (PreToolUse `Write` / `Edit` / `MultiEdit`) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
+| Grok Build | **Hard** PreToolUse for listed ops (PreToolUse `write` / `search_replace` (plus aliases)) when installed + trusted | Advisory; the agent must call it | **Required status** = hard merge boundary (`arkgate-check --strict-merge`) | Emitted on hook deny; host must re-inject |
+| Cursor | **Advisory only** at write (no hard hook) | Advisory; the agent must call it | **Required status** = hard merge boundary (same CI) | No hard-boundary payload |
+| OpenAI Codex | **Advisory / best-effort** at write (not equivalent to Claude/Grok hard block) | Advisory; the agent must call it | **Required status** = hard merge boundary (same CI) | No hard-boundary payload |
+
+**Read the CI column:** for every host, the repository-wide hard guarantee is a **required**
+merge check — not “CI file present.” Cursor/Codex never get a fake hard write claim.
 
 This table describes the supported profile **after its files are installed and the host loads/trusts them**. A hard local boundary covers only the listed hook operations; alternate tools, direct filesystem writes, and human edits still rely on CI. MCP validation is advisory because the agent must call it. The CI check blocks a merge only when the repository makes that status required. Repair payloads never write code silently: the host must re-inject the candidate and ArkGate revalidates it. Run `arkgate-check --doctor` for the evidence actually detected in the current repository.
 <!-- arkgate-host-support:end -->
@@ -413,6 +418,7 @@ for real systems. Details: [production-hardening.md](https://github.com/pedrokni
 | Audience | Link |
 |----------|------|
 | New builders (plain language) | [docs/enthusiast/](docs/enthusiast/README.md) |
+| **Product voice** (English UI / copy rules) | [docs/product-voice.md](docs/product-voice.md) |
 | **Package surface and configuration** | [package policy](docs/package-surface.md) · [contract](docs/configuration.md) |
 | Wire agents + **ESLint (bounded parity)** | [docs/ai-gates.md](docs/ai-gates.md) · [threat model](docs/threat-model.md) |
 | **TypeScript 5 / 6 / 7 support + analysis completeness** | [docs/typescript-support.md](docs/typescript-support.md) |
@@ -422,7 +428,7 @@ for real systems. Details: [production-hardening.md](https://github.com/pedrokni
 | Security reporting | [SECURITY.md](SECURITY.md) |
 | Demos | [docs/demos/](https://github.com/pedroknigge/arkgate/tree/main/docs/demos) |
 | Examples | [examples/](https://github.com/pedroknigge/arkgate/blob/main/examples/README.md) |
-| Latest release (3.8.3) | [release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.8.3.md) · [3.0.0 baseline](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.0.0.md) |
+| Latest release (3.9.0) | [release notes](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.9.0.md) · [3.0.0 baseline](https://github.com/pedroknigge/arkgate/blob/main/docs/releases/3.0.0.md) |
 | Roadmap and decisions | [ROADMAP.md](https://github.com/pedroknigge/arkgate/blob/main/ROADMAP.md) · [ADRs](https://github.com/pedroknigge/arkgate/tree/main/docs/adr) · [Changelog](CHANGELOG.md) |
 
 ---

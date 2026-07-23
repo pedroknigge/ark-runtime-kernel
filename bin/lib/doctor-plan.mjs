@@ -36,6 +36,7 @@ import {
   mergePostGreenTopActions,
   isDoctorHealthyNothingToDo,
 } from './post-green-path.mjs';
+import { doctorWritePathHonestyMessage } from './host-support-matrix.mjs';
 import {
   computePureLayerOptInNudge,
   loadGoldenPattern,
@@ -578,14 +579,20 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   console.log('');
   console.log(color.bold('Operating mode'));
   // Modes are detected states, not user-picked settings. Plain-language "what you do next".
-  const modeMark = mode === 'enforce' ? ok : mode === 'adapt' ? warn : warn;
+  // Never paint green (ok) under design residual — edges clean ≠ design done (product-voice).
+  const modeMark =
+    mode === 'enforce' && !designFitness.designWeak
+      ? ok
+      : warn;
+  // Status lights are detected states, not user-picked settings (see docs/product-voice.md).
+  // modeTitle alone names the light — bodies must not re-prefix Suggest/Adapt/Enforce.
   const modeHelp = {
     suggest:
-      'Setup — Ark proposes a starting architecture shape. You do not pick this mode; it means the tree is thin or new. Next: accept the shape (ark start / ark init) and add real layers as you grow.',
+      'thin or new tree; the contract is not yet the control plane. You do not pick this light. Next: ark start (preview), then ark start --apply; re-check with --doctor.',
     adapt:
-      'Align — contract and folders still disagree, or coverage is weak / debt is open. You do not pick this mode. Next: classify ungoverned dirs (/ark-contract, /ark-adopt), run the plan (/ark-autopilot or /ark-loop). Gates do not fully protect you yet.',
+      'contract and tree still disagree, or debt is open. Write path does not fully protect you yet. You do not pick this light. Next: do doctor top action #1 (often /ark-adopt, /ark-contract, or /ark-autopilot).',
     enforce:
-      'Guard — contract coverage is honest and checked edges are clean. You do not pick this mode; you arrived here. Next: keep the host-appropriate write path and CI check on; only NEW violations should fail.',
+      'honest coverage and clean checked edges. You arrived here; you never turn Enforce on. Next: keep the host write path and CI check; only NEW violations should fail.',
   };
   const modeTitle =
     mode === 'enforce' && designFitness.designWeak
@@ -595,7 +602,7 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
     modeMark,
     `${modeTitle} — ${
       designFitness.designWeak
-        ? 'Guard on edges is honest, but design smells remain (Shape residual). You do not pick this mode. Next: single path — /ark-explore shape-focus → dual-plan B, then /ark-autopilot only to apply B with your OK. Never empty plan A = done.'
+        ? 'checked edges are honest; design smells remain. Green is not elegant design. You do not pick this light. Next: one Shape door — /ark-explore shape-focus → dual-plan B; apply B only with /ark-autopilot and your OK. Empty plan A is not done.'
         : modeHelp[mode]
     }`
   );
@@ -692,34 +699,25 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   if (showNewHere) {
     console.log('');
     console.log(color.bold('New here?'));
+    // Suggest residual: start → doctor only (not a competing recommend/architect curriculum).
+    line(ok, `Primary path: ${arkCommand(root, 'ark', 'start')} (preview) → ${arkCommand(root, 'ark', 'start --apply')} → re-run --doctor`);
     if (recommendation) {
-      line(warn, `Suggested application shape: ${recommendation.archetype} — ${recommendation.label} (preset ${recommendation.preset})`);
-      if (recommendation.galleryStarter) {
-        line(ok, `Gallery starter: ${recommendation.galleryStarter}`);
-      }
+      line(warn, `Sensor shape hint (not a second curriculum): ${recommendation.archetype} — ${recommendation.label} (preset ${recommendation.preset})`);
+      if (recommendation.galleryStarter) line(ok, `Gallery starter (optional): ${recommendation.galleryStarter}`);
       if (recommendation.policyPack) {
-        line(ok, `Policy pack: ${arkCommand(root, 'ark-check', `--apply-policy-pack ${recommendation.policyPack}`)}`);
+        line(ok, `Policy pack (optional expert): ${arkCommand(root, 'ark-check', `--apply-policy-pack ${recommendation.policyPack}`)}`);
       }
       if (recommendation.signals?.nestFramework) {
-        line(
-          ok,
-          'Nest modular monolith → prefer hexagonal (or ddd-bounded-contexts if you have src/contexts/*)'
-        );
+        line(ok, 'Nest modular monolith → prefer hexagonal (or ddd-bounded-contexts if you have src/contexts/*)');
       }
       if (recommendation.signals?.monorepoTooling?.length) {
-        line(
-          ok,
-          `Monorepo tooling (${recommendation.signals.monorepoTooling.join(', ')}) → preset monorepo (apps/packages/libs)`
-        );
+        line(ok, `Monorepo tooling (${recommendation.signals.monorepoTooling.join(', ')}) → preset monorepo (apps/packages/libs)`);
       }
     } else {
-      line(warn, 'Low governed coverage or fresh config — pick an application shape before adding code.');
+      line(warn, 'Low governed coverage or fresh config — finish start, then re-run doctor before adding layers of code.');
     }
-    line(ok, `See the plan: ${arkCommand(root, 'ark-check', '--recommend')}`);
-    if (recommendation?.archetype) {
-      line(ok, `Quick setup: ${arkCommand(root, 'ark', `init --archetype ${recommendation.archetype} --yes`)}`);
-    }
-    actions.unshift('run ark-check --recommend or /ark-architect to choose your application shape');
+    line(ok, `Optional sensor detail: ${arkCommand(root, 'ark-check', '--recommend')}`);
+    actions.unshift('finish ark start (preview + --apply), then re-run --doctor');
   }
 
   console.log('');
@@ -731,8 +729,10 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
         warn,
         'No active violations — coverage is still thin, so green is not yet honest enforcement'
       );
+    } else if (designFitness.designWeak) {
+      line(warn, 'None on checked edges — edges match the contract; design residual remains (ENFORCE · design-weak). Not healthy finished.');
     } else {
-      line(ok, 'None — the code matches the contract');
+      line(ok, 'None — the code matches the contract on checked edges');
     }
   } else {
     const typeNote = summary.typeOnlyCount > 0 ? ` (${summary.valueCount} value · ${summary.typeOnlyCount} type-only)` : '';
@@ -770,6 +770,8 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   line(' ', `Active host: ${writePath.activeHost}`);
   line(' ', `Supported profile: ${writePath.supportSummary}`);
   line(wpMark, `Mode: ${writePath.mode} — ${writePathLabels[writePath.mode] || writePath.mode}`);
+  const honestyLine = doctorWritePathHonestyMessage(writePath.activeHost, capabilities['hard-write']);
+  if (honestyLine) line(warn, honestyLine);
   if (writePath.sessionNote) {
     line(warn, writePath.sessionNote);
   }
@@ -932,18 +934,25 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   const uniqueActions = mergePostGreenTopActions(actions, postGreenPath);
   if (isDoctorHealthyNothingToDo(designFitness, uniqueActions)) {
     console.log(color.green('✔ Healthy — nothing to do.'));
+    console.log(color.dim('  Contract edges and design residual are clear. Keep write path + CI.'));
   } else {
     if (designFitness.designWeak && uniqueActions.length === 0 && postGreenPath) {
       uniqueActions.push(postGreenPath.action);
     }
-    console.log(color.bold(`Top actions (${uniqueActions.length}):`));
-    uniqueActions.forEach((action, index) => console.log(`  ${index + 1}. ${action}`));
+    console.log(color.bold(`Primary next action`));
+    console.log(`  1. ${uniqueActions[0]}`);
+    if (uniqueActions.length > 1) {
+      console.log(color.bold(`Also (${uniqueActions.length - 1}):`));
+      uniqueActions.slice(1).forEach((action, index) => console.log(`  ${index + 2}. ${action}`));
+    }
     if (postGreenPath) {
       console.log(
         color.dim(
-          '  (post-green path is primary when ENFORCE · design-weak — do not skill-shop explore vs coverage vs think)'
+          '  Shape residual is the primary door under ENFORCE · design-weak — do not skill-shop explore vs coverage vs think.'
         )
       );
+    } else {
+      console.log(color.dim('  Doctor is the control plane: do #1 first, then re-run --doctor.'));
     }
   }
 }

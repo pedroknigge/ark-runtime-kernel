@@ -316,6 +316,14 @@ export function runInstallAgentGates(args) {
           ? 'no active host detected'
         : 'default set — no agent config dirs found';
   console.log(`Agent gates for: ${[...tools].sort().join(', ')} (${toolSource})`);
+  // Progressive disclosure (3.9.0): compact = router; skills-only = expert pack.
+  if (!args.json) {
+    const host = [...tools][0];
+    const later = host ? ` --tools ${host}` : '';
+    if (args.compact) console.log(`Profile: compact router. Expert skills later: ${arkCommand(root, 'ark-check', `--install-agent-gates --skills-only${later} --force`)}`);
+    else if (args.skillsOnly) console.log('Profile: expert skill pack only (refreshes /ark-*; leaves customized gates).');
+    else console.log('Profile: full agent gates. Compact-only onboarding: ark start.');
+  }
   // --skills-only refreshes just the canonical /ark-* skills, which are safe to
   // overwrite (they track the package). The gate/instruction files (AGENTS.md,
   // settings.json, CI workflow, rules) are the ones users customize, so a plain

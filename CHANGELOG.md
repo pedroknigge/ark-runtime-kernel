@@ -5,6 +5,56 @@ in the immutable pre-2.0 archive linked below.
 
 ## Unreleased
 
+## 3.9.0 — 2026-07-23
+
+**Beautiful Path** minor: one primary flow, doctor as control plane, progressive disclosure, and
+senior-grade product voice — plus residual beauty, write-path honesty, Shape coach depth, and
+field-claim scaffolding. **No required config migration.** Does not weaken write gate or CI.
+Z09 / residual `RB-11` remain open (longitudinal claim gate; field kit is scaffolding only).
+Not a rewrite of the analysis engine. No plan-B silent codemod. No fake hard write on Cursor/Codex.
+
+### Added
+
+- **Product voice canon:** `docs/product-voice.md` — lexicon (including **design-weak** / **residual**
+  / hard vs advisory write), **Do** table, doctor/deny microcopy models, progressive-disclosure rule.
+  Linked from README and Agents knowledge map.
+- **Field program kit (not closed):** `docs/field/` — Z09 preregistration template, cohort D30/D90
+  checklist, independent-reviewer manifesto + open signed-identity decision. Explicit **status: not
+  closed**; does not invent adopter counts or close `RB-11` / C-028 residual.
+- **Release notes:** `docs/releases/3.9.0.md`.
+- **Maintainer workflow:** `.grok/workflows/product-beauty-audit.rhai` — read-only parallel audit of
+  product surfaces against product-voice criteria (report-only by default).
+
+### Changed
+
+- **README first-run narrative:** one door (`start` → doctor → optional `/ark-autopilot`); skills
+  section reframed as expert escapes, not a second curriculum; status lights language tightened;
+  host matrix states **required CI status** as the merge hard boundary and labels Cursor/Codex
+  advisory at write.
+- **Compact router** (`compactAgentInstructions`): primary path = doctor + place/validate/check;
+  full `/ark-*` pack documented as optional expert depth with install command.
+- **Doctor human surface:** status-light copy matches product voice; top block is **Primary next
+  action** (#1) plus optional **Also** list; design-weak mode uses warn `!` (not green `✓`);
+  edge-clean under design-weak no longer claims absolute “matches the contract”; New-here primary
+  is finish `start` → doctor (not a competing recommend/architect curriculum); Cursor/Codex write
+  path lines state advisory + required CI. JSON ids (`postGreenPath`, `primaryNextAction`,
+  `clarify-for-ai`) unchanged.
+- **Post-green primary action string:** senior-grade Shape residual wording; same skill chain.
+- **Agent install messaging:** install-agent-gates prints compact vs expert-skill-pack profile hints.
+- **Skill frontmatter / mode tables:** `/ark-autopilot` = guided end-to-end; ranks **Enforce ·
+  design-weak** Shape door; `/ark-explore` = specialized map / post-green door with status-light
+  table and smell-envelope honesty (absence ≠ full-tree proof).
+- **Agent guide / AI gates / package surface:** default path and host write honesty aligned; design
+  smell envelope documented; no “default = full skill pack.”
+
+### Tests
+
+- `q01PostGreenPath` — primary-action wording, design-weak mode mark `!`, no absolute contract-match
+  under residual.
+- `skillsSurface` — autopilot/explore Shape door ranking; compact router progressive disclosure.
+- `q06ReleaseSurfaces` — 3.9.0 notes, product-voice Do/lexicon, field kit not-closed.
+- Compact-start / adoption-gaps / codex residual honesty expectations updated for voice.
+
 ## 3.8.3 — 2026-07-22
 
 Corrective **patch** over 3.8.2 from multi-repo field evidence (PROPIA pnpm workspace upgrade;

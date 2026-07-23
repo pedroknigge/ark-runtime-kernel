@@ -29,6 +29,7 @@ retained decisions; when they disagree with code, fix or flag the documentation.
 | Topic | Canonical authority |
 |-------|---------------------|
 | Public product and first-run flow | [README.md](README.md) |
+| Product voice (English UI / copy) | [docs/product-voice.md](docs/product-voice.md) |
 | Stable vs experimental package contract | [docs/package-surface.md](docs/package-surface.md) |
 | Config contract and schema | [docs/configuration.md](docs/configuration.md) |
 | Agent, CLI, MCP, and runtime reference | [docs/agent-guide.md](docs/agent-guide.md) |
@@ -38,8 +39,9 @@ retained decisions; when they disagree with code, fix or flag the documentation.
 | Security | [SECURITY.md](SECURITY.md) · [docs/threat-model.md](docs/threat-model.md) |
 | Decisions | [docs/adr/](docs/adr/README.md) |
 | Implementation queue | [ROADMAP.md](ROADMAP.md) |
-| Releases | [CHANGELOG.md](CHANGELOG.md) · [3.8.3 notes](docs/releases/3.8.3.md) |
+| Releases | [CHANGELOG.md](CHANGELOG.md) · [3.9.0 notes](docs/releases/3.9.0.md) |
 | Documentation audit | [docs/audit/claims-matrix.md](docs/audit/claims-matrix.md) |
+| Field claim program (Z09 scaffolding — not closed) | [docs/field/](docs/field/README.md) |
 
 Read this hub and the relevant authority before significant work. After changing a public
 surface, architecture boundary, decision, or plan, update its authority and the coverage row.

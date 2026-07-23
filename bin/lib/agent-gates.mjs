@@ -28,6 +28,7 @@ export {
   codexProjectConfig,
   grokHooks,
   grokProjectConfig,
+  mergeAntigravityArkHook,
   mergeOpencodeArkMcp,
   opencodeProjectConfig,
 } from './hook-templates.mjs';

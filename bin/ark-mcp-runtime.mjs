@@ -491,6 +491,12 @@ function processHookOutput() {
   };
 }
 
+/** Antigravity PreToolUse requires stdout `decision` on every response (allow included). */
+function emitAntigravityAllow(output, antigravityStyle) {
+  if (!antigravityStyle) return;
+  output.stdout(`${JSON.stringify({ decision: 'allow' })}\n`);
+}
+
 function runHookPayload(payload, gate, config, args, ts, attemptContext, output = processHookOutput()) {
   const { toolName, toolInput, grokStyle, antigravityStyle, operation } = normalizeHookPayload(
     payload,
@@ -501,7 +507,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     const parsedPatch = codexPatchWrites(patch, args.root);
     // Codex ApplyPatch is only preflighted when Ark can reconstruct every file operation.
     // An incomplete reconstruction must not be mislabeled as atomic or hard enforcement.
-    if (!parsedPatch.complete) return;
+    if (!parsedPatch.complete) {
+      emitAntigravityAllow(output, antigravityStyle);
+      return;
+    }
     const patchWrites = parsedPatch.writes;
     const sourceWrites = patchWrites.filter((change) =>
       isGovernableSourceFile(path.basename(String(change.path)))
@@ -564,7 +573,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
             .join(', ')}; source-only virtual preflight cannot model those contents.`
         );
       }
-      if (changes.length === 0) return;
+      if (changes.length === 0) {
+        emitAntigravityAllow(output, antigravityStyle);
+        return;
+      }
       result = prepareChangeFromRoot({
         root: args.root,
         config,
@@ -619,7 +631,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     const designDelta = args.failOnNewSmells
       ? evaluateWriteDesignDelta({ root: args.root, config, changes, ts })
       : null;
-    if (result.valid && (designDelta?.valid ?? true)) return;
+    if (result.valid && (designDelta?.valid ?? true)) {
+      emitAntigravityAllow(output, antigravityStyle);
+      return;
+    }
     const message = [
       `Ark architecture gate blocked this complete ${toolName} (${changes.length} governed file(s)):`,
       ...result.diagnostics.map(
@@ -649,16 +664,27 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     return;
   }
   const filePath = toolInput.file_path;
-  if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) return;
+  if (!['Write', 'Edit', 'MultiEdit'].includes(toolName)) {
+    // Non-file tools: fail-open. Antigravity still needs an explicit allow decision.
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
   if (typeof filePath !== 'string' || !SOURCE_FILE.test(filePath) || filePath.endsWith('.d.ts')) {
+    emitAntigravityAllow(output, antigravityStyle);
     return;
   }
   const rel = path.relative(args.root, path.resolve(filePath));
   const segments = rel.split(path.sep);
-  if (segments[0] === '..' || segments.includes('node_modules')) return;
+  if (segments[0] === '..' || segments.includes('node_modules')) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   const source = proposedSource(toolName, toolInput);
-  if (typeof source !== 'string') return;
+  if (typeof source !== 'string') {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   const layer = inferLayer(filePath, config, args.root);
   const validateOnce = (src) =>
@@ -693,7 +719,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
         ts,
       })
     : null;
-  if (result.valid && (designDelta?.valid ?? true)) return;
+  if (result.valid && (designDelta?.valid ?? true)) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
 
   // Ratchet semantics (same philosophy as ark-check --baseline): an edit is blocked only
   // when it ADDS violations relative to the file's current on-disk state. Otherwise a
@@ -721,7 +750,10 @@ function runHookPayload(payload, gate, config, args, ts, attemptContext, output 
     existingCounts.set(key, remaining - 1);
     return false;
   });
-  if (newViolations.length === 0 && (designDelta?.valid ?? true)) return;
+  if (newViolations.length === 0 && (designDelta?.valid ?? true)) {
+    emitAntigravityAllow(output, antigravityStyle);
+    return;
+  }
   const combinedViolations = [...newViolations, ...designDeltaViolations(designDelta)];
   const adapterResult = createAdapterResult({
     valid: false,

@@ -452,8 +452,9 @@ npx ark-check --install-agent-gates --tools agy
 **Write tools covered:** `write_to_file`, `replace_file_content`, `multi_replace_file_content`.
 `ark-mcp --hook` accepts the Antigravity stdin shape (`toolCall.name` / `toolCall.args` with
 PascalCase fields such as `TargetFile`, `CodeContent`, `TargetContent`, `ReplacementContent`,
-`ReplacementChunks`) and responds with `{ "decision": "deny"|"allow" semantics via exit, "reason" }`
-on deny (stdout decision JSON + exit 2).
+`ReplacementChunks`). **Gating is stdout `decision`** (official PreToolUse contract): allow →
+`{ "decision": "allow" }` on stdout (exit 0); deny → `{ "decision": "deny", "reason": "…" }` on
+stdout (exit 2). Exit codes are secondary/plumbing for hosts that also honor them.
 
 **Honesty:** hard for listed ops when installed + trusted, and for `hard:true` only with
 runtime-observed covered PreToolUse evidence (same ladder as Claude/Grok). Alternate tools,
@@ -524,8 +525,11 @@ If your runtime can run a shell command before file writes and pass the tool pay
 - stdin (Codex): JSON `{ "tool_name": "apply_patch", "tool_input": { "patch": "*** Begin Patch…" } }`
 - stdin (Antigravity): JSON `{ "toolCall": { "name": "write_to_file|…", "args": { "TargetFile": …, … } } }`
 - exit `0` → allow; exit `2` → block, human-readable violations on stderr
-- Grok and Antigravity payloads also get `{ "decision": "deny", "reason": "…" }` on stdout when blocked
-- plumbing problems (no stdin, non-source files, files outside `--root`) never block
+- Grok: `{ "decision": "deny", "reason": "…" }` on stdout when blocked
+- Antigravity: **stdout `decision` is required** — allow → `{ "decision": "allow" }`; deny →
+  `{ "decision": "deny", "reason": "…" }` (exit 2 still set on deny)
+- plumbing problems (no stdin, non-source files, files outside `--root`) never block; Antigravity
+  still emits `{ "decision": "allow" }` on those fail-open paths
 
 ## ESLint (editor feedback) — bounded parity envelope
 

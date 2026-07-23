@@ -1209,7 +1209,7 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
     expect(result.stderr).toMatch(/LAYER_IMPORT_VIOLATION|FORBIDDEN_IMPORT|typeorm|infra/i);
   });
 
-  it('allows a clean Antigravity write_to_file (exit 0)', () => {
+  it('allows a clean Antigravity write_to_file with required decision:allow on stdout', () => {
     const result = runHook(root, {
       toolCall: {
         name: 'write_to_file',
@@ -1221,6 +1221,22 @@ describe('ark-mcp --hook (PreToolUse gate)', () => {
     });
     expect(result.status).toBe(0);
     expect(result.stderr ?? '').not.toContain('blocked');
+    const decision = JSON.parse(result.stdout.trim());
+    expect(decision).toEqual({ decision: 'allow' });
+  });
+
+  it('emits Antigravity decision:allow on fail-open non-source paths', () => {
+    const result = runHook(root, {
+      toolCall: {
+        name: 'write_to_file',
+        args: {
+          TargetFile: path.join(root, 'README.md'),
+          CodeContent: '# not source\n',
+        },
+      },
+    });
+    expect(result.status).toBe(0);
+    expect(JSON.parse(result.stdout.trim())).toEqual({ decision: 'allow' });
   });
 });
 

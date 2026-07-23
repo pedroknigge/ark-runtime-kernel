@@ -62,6 +62,34 @@ export function stripMcpServerArgs(args) {
   return kept.length > 0 ? kept : ['--root', '.', '--config', 'ark.config.json'];
 }
 
+/**
+ * OpenCode `mcp.ark.command` is a full argv (runner + bin + flags).
+ * Strip runners and any ark* bin names so migrate can re-emit preferred command+args.
+ */
+export function stripOpencodeMcpCommand(command) {
+  if (!Array.isArray(command) || command.length === 0) {
+    return ['--root', '.', '--config', 'ark.config.json'];
+  }
+  const runners = new Set(['npx', 'yarn', 'pnpm', 'node', 'bun']);
+  const kept = [];
+  for (const entry of command) {
+    if (typeof entry !== 'string') continue;
+    const base = path.basename(entry.replace(/\\/g, '/'));
+    if (
+      runners.has(base) ||
+      MCP_RUNNER_ARGV.has(entry) ||
+      ARK_MCP_BINS.has(base) ||
+      ARK_MCP_BINS.has(entry) ||
+      ARK_CHECK_BINS.has(base) ||
+      ARK_CLI_BINS.has(base)
+    ) {
+      continue;
+    }
+    kept.push(entry);
+  }
+  return kept.length > 0 ? kept : ['--root', '.', '--config', 'ark.config.json'];
+}
+
 /** True when mcpServers.ark.args list more than one Ark MCP bin (broken dual rename). */
 export function mcpArgsHaveDuplicateBins(args) {
   if (!Array.isArray(args)) return false;
@@ -76,6 +104,12 @@ export function brokenMcpGateFiles(root) {
     try {
       json = JSON.parse(fs.readFileSync(path.join(root, rel), 'utf8'));
     } catch {
+      continue;
+    }
+    // OpenCode uses mcp.ark.command[] (single argv); Claude/Cursor use mcpServers.ark.args.
+    if (rel === 'opencode.json') {
+      const command = json?.mcp?.ark?.command;
+      if (Array.isArray(command) && mcpArgsHaveDuplicateBins(command)) bad.push(rel);
       continue;
     }
     const ark = json?.mcpServers?.ark;

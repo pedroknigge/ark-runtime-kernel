@@ -202,6 +202,27 @@ export function opencodeProjectConfig(root) {
 }
 
 /**
+ * Upsert only the `ark-write-gate` named hook into an existing Antigravity hooks map.
+ * Preserves sibling named hooks and unknown top-level keys. Returns null if unreadable.
+ */
+export function mergeAntigravityArkHook(existingText, generatedText) {
+  let existing;
+  let generated;
+  try {
+    existing = existingText && existingText.trim() ? JSON.parse(existingText) : {};
+    generated = JSON.parse(generatedText);
+  } catch {
+    return null;
+  }
+  if (!existing || typeof existing !== 'object' || Array.isArray(existing)) return null;
+  if (!generated || typeof generated !== 'object' || Array.isArray(generated)) return null;
+  const arkGate = generated['ark-write-gate'];
+  if (!arkGate || typeof arkGate !== 'object') return null;
+  const next = { ...existing, 'ark-write-gate': arkGate };
+  return `${JSON.stringify(next, null, 2)}\n`;
+}
+
+/**
  * Merge Ark MCP into an existing OpenCode config without clobbering other keys.
  * Returns null when the existing file is unreadable JSON (caller should skip).
  */

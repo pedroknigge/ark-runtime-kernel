@@ -27,6 +27,7 @@ import {
   codexProjectConfig,
   grokHooks,
   grokProjectConfig,
+  mergeAntigravityArkHook,
   mergeOpencodeArkMcp,
   opencodeProjectConfig,
 } from './hook-templates.mjs';
@@ -63,6 +64,7 @@ import {
 import { detectDeployPathQuality } from './deploy-path.mjs';
 import {
   stripMcpServerArgs,
+  stripOpencodeMcpCommand,
   COMMAND_GATE_TEXT_FILES,
   COMMAND_GATE_JSON_FILES,
   PREFERRED_CHECK_BIN,
@@ -249,6 +251,27 @@ export function runMigrateCommands(root) {
     } catch {
       continue;
     }
+    // OpenCode: mcp.ark.command is a single argv array (type: local), not mcpServers.ark.args.
+    if (rel === 'opencode.json') {
+      const ark = json?.mcp?.ark;
+      if (!ark || typeof ark !== 'object' || !Array.isArray(ark.command)) continue;
+      const argv = ark.command.filter((entry) => typeof entry === 'string');
+      if (argv.length === 0) continue;
+      // Drop runners + any ark* bin names; keep only server flags (e.g. --root .).
+      const binArgs = stripOpencodeMcpCommand(argv);
+      const parts = execCommandParts(root, PREFERRED_MCP_BIN, binArgs);
+      const preferredArgv = [parts.command, ...parts.args];
+      if (JSON.stringify(argv) === JSON.stringify(preferredArgv)) continue;
+      json.mcp.ark = {
+        ...ark,
+        type: ark.type ?? 'local',
+        command: preferredArgv,
+        enabled: ark.enabled !== false,
+      };
+      fs.writeFileSync(full, `${JSON.stringify(json, null, 2)}\n`);
+      changed.push(rel);
+      continue;
+    }
     const ark = json?.mcpServers?.ark;
     if (!ark) continue;
     const binArgs = stripMcpServerArgs(ark.args);
@@ -402,6 +425,25 @@ export function runInstallAgentGates(args) {
         return { relativePath, status: 'skipped-non-ark' };
       }
       if (merged === existing) return { relativePath, status: 'skipped' };
+      return writeTemplate(root, relativePath, merged, true);
+    }
+    if (relativePath === '.agents/hooks.json') {
+      const fullPath = path.join(root, relativePath);
+      let existing = '';
+      try {
+        existing = fs.readFileSync(fullPath, 'utf8');
+      } catch {
+        // Missing hooks file → write generated ark-write-gate map.
+      }
+      if (!existing) {
+        return writeTemplate(root, relativePath, content, true);
+      }
+      const merged = mergeAntigravityArkHook(existing, content);
+      if (merged == null) {
+        return { relativePath, status: 'skipped-non-ark' };
+      }
+      if (merged === existing) return { relativePath, status: 'skipped' };
+      // Upsert ark-write-gate without requiring --force; never wipe sibling named hooks.
       return writeTemplate(root, relativePath, merged, true);
     }
     return writeTemplate(

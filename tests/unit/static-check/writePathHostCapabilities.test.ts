@@ -26,6 +26,14 @@ const HOST_ENV_KEYS = [
   'CODEX_THREAD_ID',
   'CODEX_CI',
   'CODEX_SESSION_ID',
+  'ANTIGRAVITY',
+  'AGY',
+  'ANTIGRAVITY_WORKSPACE',
+  'AGY_WORKSPACE',
+  'OPENCODE',
+  'OPENCODE_SESSION_ID',
+  'OPENCODE_CONFIG',
+  'OPENCODE_CLI',
 ] as const;
 
 function mk(): string {
@@ -776,5 +784,75 @@ describe('active-host write capability model', () => {
     } finally {
       fs.rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it('reports Antigravity installed hooks as repair-capable hard-write evidence', () => {
+    const root = mk();
+    try {
+      writeMergeGate(root);
+      writeHook(root, 'antigravity', true);
+      writeMcp(root, 'antigravity');
+      const result = project(detectWritePathCapabilities(root, 'antigravity'));
+      expect(result).toMatchObject({
+        activeHost: 'antigravity',
+        mode: 'repair',
+        capabilities: {
+          'hard-write': true,
+          'advisory-write': true,
+          'merge-gate': true,
+          'repair-payload': true,
+        },
+        capabilityEvidence: {
+          'hard-write': ['.agents/hooks.json'],
+          'advisory-write': ['.mcp.json'],
+          'repair-payload': ['.agents/hooks.json'],
+        },
+      });
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('reports OpenCode MCP as advisory mcp-only (never hard-write)', () => {
+    const root = mk();
+    try {
+      writeMergeGate(root);
+      writeMcp(root, 'opencode');
+      const result = project(detectWritePathCapabilities(root, 'opencode'));
+      expect(result).toMatchObject({
+        activeHost: 'opencode',
+        mode: 'mcp-only',
+        capabilities: {
+          'hard-write': false,
+          'advisory-write': true,
+          'merge-gate': true,
+          'repair-payload': false,
+        },
+        capabilityEvidence: {
+          'hard-write': [],
+          'advisory-write': ['opencode.json'],
+          'repair-payload': [],
+        },
+      });
+      expect(result.capabilities['hard-write']).toBe(false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('merges ark-write-gate into existing Antigravity hooks without wiping siblings', async () => {
+    const { mergeAntigravityArkHook, antigravityHooks } = await import(
+      '../../../bin/lib/hook-templates.mjs'
+    );
+    const existing = JSON.stringify({
+      'user-linter': {
+        PostToolUse: [{ matcher: 'run_command', hooks: [{ command: './lint.sh' }] }],
+      },
+    });
+    const merged = mergeAntigravityArkHook(existing, antigravityHooks(REPO));
+    expect(merged).toBeTruthy();
+    const parsed = JSON.parse(merged!);
+    expect(parsed['user-linter']).toBeTruthy();
+    expect(parsed['ark-write-gate'].PreToolUse[0].matcher).toMatch(/write_to_file/);
   });
 });

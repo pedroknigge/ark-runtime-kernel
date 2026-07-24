@@ -26,14 +26,23 @@ in the immutable pre-2.0 archive linked below.
 - **Stale global CLI vs project `arkgate` (upgrade footgun):** `ark upgrade` /
   `ark update` now **fail closed** when the running CLI package root is outside
   the project's `node_modules/arkgate` **and** the running version is older than
-  the installed project package. Message points at
-  `npx arkgate upgrade …` / `node node_modules/arkgate/bin/ark.mjs upgrade …`.
-  Does not block project-local CLI, newer globals, or projects with no local
-  install yet. Field context: global Homebrew **2.x** mutative upgrade next to
-  3.8+/4.0 projects (see [4.0.0 release notes](docs/releases/4.0.0.md#field-footgun--global-arkgate-2x-on-path)).
+  the installed project package. Recovery prefers the package-manager runner
+  (`npx` / `pnpm exec` / `yarn` + `arkgate`) so hoisted monorepos without a
+  nested shallow path still work; shallow
+  `node node_modules/arkgate/bin/ark.mjs` is install-root secondary advice.
+  With `--json`, refuse also emits a machine-readable
+  `{ refused, reason, message, cliVersion, projectVersion, nextCommand }` on
+  stdout (exit 2). Does not block project-local CLI, newer globals, or projects
+  with no local install yet. Field context: global Homebrew **2.x** mutative
+  upgrade next to 3.8+/4.0 projects (see
+  [4.0.0 release notes](docs/releases/4.0.0.md#field-footgun--global-arkgate-2x-on-path)).
 - **`/ark-upgrade` skill:** procedure step 1 resolves the **project-local** CLI
   first, probes for managed upgrade (`--plan-digest`), and aborts when only an
   old PATH binary is available.
+- **Doctor `rulesUnderContract` catalog caps:** structure sensors and uncovered
+  invariants are truncated in doctor JSON (with `structureTruncated` /
+  `uncoveredTruncated`) the same way as the covered sample — HTML announces
+  overflow instead of implying the full catalog is always embedded.
 
 ## 4.0.0 — 2026-07-24
 

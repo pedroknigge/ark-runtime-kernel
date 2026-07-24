@@ -8,10 +8,13 @@ import { loadEffectiveArkRulesFromDisk } from './effective-contract-load.mjs';
 import { evaluateInvariantCoverage } from './invariant-coverage.mjs';
 import { loadInvariantCoverageInputs } from './invariant-coverage-io.mjs';
 
-/** Cap long catalogs in HTML/doctor JSON so the report stays scannable. */
+/**
+ * Cap long catalogs in doctor JSON (and HTML, which consumes the same summary).
+ * Covered is a sample; structure/uncovered are truncated with *Truncated counters.
+ */
 const COVERED_SAMPLE_MAX = 24;
-const STRUCTURE_HTML_MAX = 40;
-const UNCOVERED_HTML_MAX = 30;
+const STRUCTURE_CATALOG_MAX = 40;
+const UNCOVERED_CATALOG_MAX = 30;
 
 /**
  * @param {string} root
@@ -75,7 +78,7 @@ export function summarizeRulesUnderContract(root, config, facts) {
         };
       });
 
-    const structure = (loaded.arkRules.structure ?? []).map((entry) => ({
+    const structureAll = (loaded.arkRules.structure ?? []).map((entry) => ({
       id: entry.id,
       sensor: entry.sensor,
       mode: entry.mode ?? 'advisory',
@@ -83,8 +86,10 @@ export function summarizeRulesUnderContract(root, config, facts) {
       description: entry.description ?? null,
       sourceFile: entry.provenance?.sourceFile ?? null,
     }));
+    const structureTruncated = Math.max(0, structureAll.length - STRUCTURE_CATALOG_MAX);
+    const structure = structureAll.slice(0, STRUCTURE_CATALOG_MAX);
 
-    const uncovered = (coverage.coverage ?? [])
+    const uncoveredAll = (coverage.coverage ?? [])
       .filter((row) => !row.covered)
       .map((row) => ({
         id: row.invariantId,
@@ -93,6 +98,8 @@ export function summarizeRulesUnderContract(root, config, facts) {
         description: row.description ?? null,
         sourceFile: row.sourceFile ?? null,
       }));
+    const uncoveredTruncated = Math.max(0, uncoveredAll.length - UNCOVERED_CATALOG_MAX);
+    const uncovered = uncoveredAll.slice(0, UNCOVERED_CATALOG_MAX);
 
     const coveredAll = (coverage.coverage ?? [])
       .filter((row) => row.covered)
@@ -115,7 +122,9 @@ export function summarizeRulesUnderContract(root, config, facts) {
       testFilesScanned: coverageInputs.testFiles.length,
       layers,
       structure,
+      structureTruncated,
       uncovered,
+      uncoveredTruncated,
       coveredSample,
       coveredTruncated,
       notAScore: true,
@@ -169,6 +178,8 @@ export function formatRulesUnderContractHtml(section, esc) {
   const uncovered = Array.isArray(section.uncovered) ? section.uncovered : [];
   const coveredSample = Array.isArray(section.coveredSample) ? section.coveredSample : [];
   const coveredTruncated = Number(section.coveredTruncated) || 0;
+  const structureTruncated = Number(section.structureTruncated) || 0;
+  const uncoveredTruncated = Number(section.uncoveredTruncated) || 0;
 
   const layerRows = layers
     .map((row) => {
@@ -198,8 +209,13 @@ export function formatRulesUnderContractHtml(section, esc) {
       </table>`
     : '';
 
-  const structureItems = structure
-    .slice(0, STRUCTURE_HTML_MAX)
+  // Doctor JSON already caps catalogs; slice again only if a caller passed untruncated arrays.
+  const structureShown = structure.slice(0, STRUCTURE_CATALOG_MAX);
+  const structureOverflow =
+    structureTruncated > 0
+      ? structureTruncated
+      : Math.max(0, structure.length - STRUCTURE_CATALOG_MAX);
+  const structureItems = structureShown
     .map((s) => {
       const mode = s.mode === 'enforced' ? 'enforced' : s.mode === 'advisory' ? 'advisory' : String(s.mode ?? '');
       const modeTag =
@@ -215,12 +231,16 @@ export function formatRulesUnderContractHtml(section, esc) {
     })
     .join('\n');
   const structureMore =
-    structure.length > STRUCTURE_HTML_MAX
-      ? `<p class="muted">…(+${structure.length - STRUCTURE_HTML_MAX} more structure rule(s) in arkrules/*)</p>`
+    structureOverflow > 0
+      ? `<p class="muted">…(+${structureOverflow} more structure rule(s) in arkrules/*)</p>`
       : '';
 
-  const uncoveredItems = uncovered
-    .slice(0, UNCOVERED_HTML_MAX)
+  const uncoveredShown = uncovered.slice(0, UNCOVERED_CATALOG_MAX);
+  const uncoveredOverflow =
+    uncoveredTruncated > 0
+      ? uncoveredTruncated
+      : Math.max(0, uncovered.length - UNCOVERED_CATALOG_MAX);
+  const uncoveredItems = uncoveredShown
     .map(
       (u) => `<li>
         <code>${escape(u.id)}</code>
@@ -231,11 +251,12 @@ export function formatRulesUnderContractHtml(section, esc) {
     )
     .join('\n');
   const uncoveredMore =
-    uncovered.length > UNCOVERED_HTML_MAX
-      ? `<p class="muted">…(+${uncovered.length - UNCOVERED_HTML_MAX} more uncovered)</p>`
+    uncoveredOverflow > 0
+      ? `<p class="muted">…(+${uncoveredOverflow} more uncovered)</p>`
       : '';
   const uncoveredBlock =
-    uncovered.length === 0
+    // Aggregate total (not the truncated array length) decides "all covered".
+    Number(section.uncoveredInvariants) === 0 && uncovered.length === 0
       ? `<p class="clean-body" style="margin-top:.55rem">All catalogued invariants have coverage evidence (test/symbol scan) — residual inventory may still suggest new candidates via <code>--rules-inventory</code>.</p>`
       : `<h3 style="margin-top:.9rem;font-size:.95rem">Uncovered invariants</h3>
       <ul class="senior-list">${uncoveredItems}</ul>${uncoveredMore}`;

@@ -79,11 +79,26 @@ function tryRealpath(filePath) {
   }
 }
 
-const RECOVERY_USE_LOCAL =
-  'Use: npx arkgate upgrade …   or   node node_modules/arkgate/bin/ark.mjs upgrade …';
+/**
+ * Recovery guidance for refused upgrades. Prefer package-manager-aware
+ * `arkCommand` (works for hoisted monorepos where nested `--root` has no shallow
+ * `node_modules/arkgate`). Shallow `node …/ark.mjs` is secondary and install-root only.
+ * @param {string} root
+ */
+export function recoveryUseLocal(root) {
+  const preferred = arkCommand(root, 'arkgate', 'upgrade …');
+  return (
+    `Use the project-local CLI (package-manager runner preferred):\n` +
+    `  ${preferred}\n` +
+    `From the workspace install root you may also run:\n` +
+    `  node node_modules/arkgate/bin/ark.mjs upgrade …\n` +
+    `Hoisted monorepos: prefer the package-manager form above — nested packages may lack a shallow node_modules/arkgate path.`
+  );
+}
 
 /**
  * @param {{
+ *   root?: string,
  *   cliVersion: string|null,
  *   projectVersion: string|null,
  *   cliPackageRoot: string,
@@ -93,6 +108,7 @@ const RECOVERY_USE_LOCAL =
  */
 function staleCliRefuseMessage(detail) {
   const { cliVersion, projectVersion, cliPackageRoot, kind, projectPkgPath } = detail;
+  const recovery = recoveryUseLocal(detail.root ?? '.');
   if (kind === 'project-unreadable') {
     const where = projectPkgPath ? ` at ${projectPkgPath}` : '';
     const cliPart = cliVersion
@@ -101,7 +117,7 @@ function staleCliRefuseMessage(detail) {
     return (
       `Refusing ark upgrade: cannot read the project's arkgate version${where}; ${cliPart} is outside the install tree.\n` +
       `Use the project-local binary so managed upgrade can resolve a real install.\n` +
-      RECOVERY_USE_LOCAL
+      recovery
     );
   }
 
@@ -117,7 +133,7 @@ function staleCliRefuseMessage(detail) {
     ? 'Global/stale arkgate 2.x mutates skills and is unsafe next to 3.8+/4.0 managed upgrade.'
     : 'Older outside-tree CLI must not manage a newer project install; use the project-local binary.';
 
-  return `${versionLine}\n${second}\n${RECOVERY_USE_LOCAL}`;
+  return `${versionLine}\n${second}\n${recovery}`;
 }
 
 /**
@@ -175,6 +191,7 @@ export function evaluateStaleUpgradeCli(root, options = {}) {
       refuse: true,
       reason: 'project-unreadable',
       message: staleCliRefuseMessage({
+        root,
         cliVersion: typeof options.cliVersion === 'string' ? options.cliVersion : null,
         projectVersion: null,
         cliPackageRoot,
@@ -192,6 +209,7 @@ export function evaluateStaleUpgradeCli(root, options = {}) {
       refuse: true,
       reason: 'project-version-missing',
       message: staleCliRefuseMessage({
+        root,
         cliVersion: typeof options.cliVersion === 'string' ? options.cliVersion : null,
         projectVersion: null,
         cliPackageRoot,
@@ -214,6 +232,7 @@ export function evaluateStaleUpgradeCli(root, options = {}) {
       refuse: true,
       reason: 'outside-tree-unknown-version',
       message: staleCliRefuseMessage({
+        root,
         cliVersion: null,
         projectVersion,
         cliPackageRoot,
@@ -231,6 +250,7 @@ export function evaluateStaleUpgradeCli(root, options = {}) {
       refuse: true,
       reason: 'stale-outside-cli',
       message: staleCliRefuseMessage({
+        root,
         cliVersion,
         projectVersion,
         cliPackageRoot,
@@ -311,7 +331,28 @@ export function runUpgradeCommand(args, dependencies) {
           cliPackageRoot: dependencies?.cliPackageRoot,
         });
   if (staleGuard?.refuse) {
-    console.error(staleGuard.message || 'Refusing ark upgrade: stale CLI.');
+    const message = staleGuard.message || 'Refusing ark upgrade: stale CLI.';
+    if (args.json) {
+      // Machine-readable refuse (same exit 2) so agents parsing stdout JSON are not blind.
+      console.log(
+        JSON.stringify(
+          {
+            refused: true,
+            reason: staleGuard.reason,
+            message,
+            cliVersion: staleGuard.cliVersion ?? null,
+            projectVersion: staleGuard.projectVersion ?? null,
+            cliPackageRoot: staleGuard.cliPackageRoot ?? null,
+            projectPackageRoot: staleGuard.projectPackageRoot ?? null,
+            nextCommand: arkCommand(root, 'arkgate', 'upgrade …'),
+          },
+          null,
+          2
+        )
+      );
+    } else {
+      console.error(message);
+    }
     return 2;
   }
 

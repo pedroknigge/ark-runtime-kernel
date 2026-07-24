@@ -102,9 +102,12 @@ ArkGate has **two opt-in planes**. The user chooses which to use; you **always l
 
    **Recovery (preferred → optional):**
 
-   - Preferred: always use the project-local CLI —
-     `npx arkgate upgrade …` or
-     `node node_modules/arkgate/bin/ark.mjs upgrade …`
+   - Preferred: package-manager runner from project / `--root`
+     (`npx arkgate upgrade …` / `pnpm exec arkgate upgrade …` / `yarn arkgate upgrade …`).
+     This works when arkgate is **hoisted** and a nested package has no shallow
+     `node_modules/arkgate`.
+   - Secondary: `node node_modules/arkgate/bin/ark.mjs upgrade …` from the
+     **workspace install root** (not a nested package lacking a local install).
    - Optional: refresh a global install with `npm i -g arkgate@latest` only if the
      user wants a global binary; still prefer project-local for this procedure.
 

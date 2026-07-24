@@ -219,6 +219,8 @@ export async function save(order: Order) {
           },
         ],
         coveredTruncated: 0,
+        structureTruncated: 0,
+        uncoveredTruncated: 0,
         notAScore: true,
         note: 'ArkRules plane',
       },
@@ -235,5 +237,46 @@ export async function save(order: Order) {
     expect(html).toMatch(/Heuristics of module shape/i);
     expect(html).toMatch(/not a claim that business semantics/i);
     expect(html).not.toMatch(/counts — not a score/i);
+  });
+
+  it('doctor catalog caps structure/uncovered with *Truncated counters (HTML announces overflow)', () => {
+    // eslint-disable-next-line -- runtime .mjs under test
+    const { formatRulesUnderContractHtml } = require('../../../bin/lib/rules-under-contract.mjs');
+    const esc = (v: unknown) => String(v);
+    const structure = Array.from({ length: 3 }, (_, i) => ({
+      id: `struct-${i}`,
+      sensor: 'thin-adapter',
+      mode: 'advisory',
+      layer: 'FrameworkAdapters',
+      description: `Sensor ${i}`,
+    }));
+    const uncovered = Array.from({ length: 2 }, (_, i) => ({
+      id: `INV-U-${i}`,
+      layer: 'DomainModel',
+      description: `Uncovered ${i}`,
+    }));
+    const html = formatRulesUnderContractHtml(
+      {
+        active: true,
+        structureRules: 45,
+        invariants: 40,
+        coveredInvariants: 10,
+        uncoveredInvariants: 30,
+        testFilesScanned: 1,
+        layers: [],
+        structure,
+        structureTruncated: 42,
+        uncovered,
+        uncoveredTruncated: 28,
+        coveredSample: [],
+        coveredTruncated: 0,
+        notAScore: true,
+      },
+      esc
+    );
+    expect(html).toContain('struct-0');
+    expect(html).toContain('INV-U-0');
+    expect(html).toMatch(/\(\+42 more structure rule/);
+    expect(html).toMatch(/\(\+28 more uncovered\)/);
   });
 });

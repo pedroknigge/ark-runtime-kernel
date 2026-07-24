@@ -159,7 +159,9 @@ describe('evaluateStaleUpgradeCli', () => {
     expect(result.message).toMatch(/Refusing ark upgrade/);
     expect(result.message).toMatch(/v2\.6\.0/);
     expect(result.message).toMatch(/v4\.0\.0/);
-    expect(result.message).toMatch(/npx arkgate upgrade/);
+    // Package-manager runner is primary; shallow node path is secondary / install-root only.
+    expect(result.message).toMatch(/npx arkgate upgrade|pnpm (?:exec )?arkgate|yarn arkgate/);
+    expect(result.message).toMatch(/package-manager runner preferred/i);
     expect(result.message).toMatch(/node_modules\/arkgate\/bin\/ark\.mjs/);
     expect(result.message).toMatch(/Global\/stale arkgate 2\.x/);
   });
@@ -292,6 +294,10 @@ describe('evaluateStaleUpgradeCli', () => {
     expect(refuse.refuse).toBe(true);
     expect(refuse.reason).toBe('stale-outside-cli');
     expect(refuse.projectVersion).toBe('4.0.0');
+    // Recovery prefers package-manager form (works from nested --root without shallow path).
+    expect(refuse.message).toMatch(/npx arkgate upgrade|pnpm (?:exec )?arkgate|yarn arkgate/);
+    expect(refuse.message).toMatch(/Hoisted monorepos/i);
+    expect(refuse.message).toMatch(/package-manager runner preferred/i);
   });
 });
 
@@ -341,6 +347,49 @@ describe('runUpgradeCommand stale guard integration', () => {
     expect(joined).toMatch(/Refusing ark upgrade/);
     expect(joined).toMatch(/v2\.6\.0/);
     expect(joined).toMatch(/v4\.0\.0/);
+    expect(stdoutSpy).not.toHaveBeenCalled();
+  });
+
+  it('emits machine-readable JSON on refuse when --json is set', () => {
+    write(
+      tmp,
+      'node_modules/arkgate/package.json',
+      JSON.stringify({ name: 'arkgate', version: '4.0.0' }, null, 2)
+    );
+    const packageInstallArgv = vi.fn(() => {
+      throw new Error('packageInstallArgv must not run when guard refuses');
+    });
+    const code = runUpgradeCommand(
+      { root: tmp, apply: false, install: false, json: true, strict: true },
+      {
+        cliVersion: '2.6.0',
+        cliPackageRoot: fakeGlobal,
+        packageInstallArgv,
+        arkCheck: path.join(REPO, 'bin/ark-check.mjs'),
+        runArkCheck: () => 0,
+      }
+    );
+    expect(code).toBe(2);
+    expect(packageInstallArgv).not.toHaveBeenCalled();
+    const stdout = stdoutSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    const report = JSON.parse(stdout) as {
+      refused: boolean;
+      reason: string;
+      message: string;
+      cliVersion: string;
+      projectVersion: string;
+      nextCommand: string;
+    };
+    expect(report.refused).toBe(true);
+    expect(report.reason).toBe('stale-outside-cli');
+    expect(report.cliVersion).toBe('2.6.0');
+    expect(report.projectVersion).toBe('4.0.0');
+    expect(report.message).toMatch(/Refusing ark upgrade/);
+    expect(report.nextCommand).toMatch(/^(npx|pnpm |yarn )/);
+    expect(report.nextCommand).toMatch(/\barkgate\b/);
+    // Human multi-line refuse stays off stderr when --json (agents parse stdout only).
+    const stderr = stderrSpy.mock.calls.map((c) => c.join(' ')).join('\n');
+    expect(stderr).not.toMatch(/Refusing ark upgrade/);
   });
 
   it('does not refuse when no local arkgate (install path may proceed)', () => {

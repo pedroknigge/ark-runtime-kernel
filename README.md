@@ -65,6 +65,16 @@ A machine-readable architecture file (`ark.config.json`) plus enforcement:
 | **While the AI writes** | Hard PreToolUse on supported hosts; advisory MCP elsewhere |
 | **Before merge** | `arkgate-check` as a **required** CI status |
 
+### Two planes (4.0)
+
+| Plane | What it guards | Config |
+|-------|----------------|--------|
+| **Layers** (always) | Who may talk to whom — imports, placement, purity, isolation | `ark.config.json` layers + rules |
+| **ArkRules** (opt-in) | Habits *inside* a layer — structure sensors + domain invariants as data | `arkRules` → `arkrules/<Layer>.json` |
+
+Absence of ArkRules changes no inter-layer verdict. Label residual **`[Layer]`** vs **`[ArkRules]`**.  
+Details: [configuration](docs/configuration.md#arkrules-intra-layer-opt-in) · [use path](docs/use.md).
+
 **Not** a web framework, ORM, or job runner. Optional experimental runtime is separate and not required for the gate.
 
 **Name note:** npm package `arkgate` — not affiliated with the separate Archgate CLI project.
@@ -131,6 +141,7 @@ Setup per host: [docs/ai-gates.md](docs/ai-gates.md) · Develop path: [docs/deve
 | Contract agents can read (`ark://manifest`) | ✅ | ❌ |
 | Placement + preflight for multi-file changes | ✅ | ❌ |
 | Honest governed % + dual plan (edges vs shape) | ✅ | ❌ |
+| Opt-in intra-layer ArkRules (structure + invariants) | ✅ | ❌ |
 | Incomplete analysis cannot look green | ✅ | varies |
 
 ---

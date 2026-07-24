@@ -157,8 +157,8 @@ import { ArkModule, InjectArk } from '@arkgate/runtime/nestjs';
 
 These imports describe the intended package boundary. Before an npm evaluation, verify that a
 separate publication exists with `npm view @arkgate/runtime dist-tags --json`. Until it does,
-build `packages/runtime` in an ArkGate source checkout and install that local folder; do not treat
-the deprecated root forwarding shims as an embedded runtime.
+build `packages/runtime` in an ArkGate source checkout and install that local folder. Root
+`arkgate/runtime` / `arkgate/nestjs` forwarders were **removed in 4.0.0** (AR04).
 
 See [production-hardening.md](https://github.com/pedroknigge/arkgate/blob/main/docs/production-hardening.md) for requirements an eventual
 production deployment would need to satisfy; it is not a readiness certification.

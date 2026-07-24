@@ -10,6 +10,7 @@ import {
 } from './analysis-engine.mjs';
 import { effectiveAnalysisConfig } from './analysis-policy.mjs';
 import { resolveCandidateFacts } from './resolved-candidate-facts.mjs';
+import { loadEffectiveArkRulesFromDisk } from './effective-contract-load.mjs';
 
 /** Resolve canonical facts and optionally retain filesystem probes for resident invalidation. */
 export function resolveArchitectureSnapshot({
@@ -47,7 +48,21 @@ export function resolveArchitectureSnapshot({
     ...(args?.tsconfig ? { tsconfig: args.tsconfig } : {}),
     observeInput,
   });
-  const loadedContract = loadContract(effectiveConfig, configPath);
+  const arkRulesLoad = loadEffectiveArkRulesFromDisk(root, effectiveConfig, {
+    observeInput,
+  });
+  if (arkRulesLoad.errors.length > 0) {
+    const message = arkRulesLoad.errors
+      .map((issue) => `- ${issue.path}: ${issue.message}`)
+      .join('\n');
+    const err = new Error(`Invalid Effective Contract (${configPath}):\n${message}`);
+    err.code = 'ARKRULES_LOAD_FAILED';
+    err.issues = arkRulesLoad.errors;
+    throw err;
+  }
+  const loadedContract = loadContract(effectiveConfig, configPath, {
+    arkRules: arkRulesLoad.arkRules,
+  });
   const analyzed = analyzeTrustedResolvedProject({ contract: loadedContract, facts });
   const parseHealth = summarizeParseHealth(
     facts.files.map((file) => ({

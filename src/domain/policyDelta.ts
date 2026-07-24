@@ -1,5 +1,6 @@
 import { loweredLayerCoverage } from './capabilities';
 import type { ArkConfig, ArkConfigLayer, ArkConfigRule } from './configContract';
+import type { EffectiveArkRules, EffectiveInvariantRule, EffectiveStructureRule } from './arkRulesTypes';
 
 export const POLICY_DELTA_SCHEMA_VERSION = '1.0' as const;
 
@@ -403,7 +404,182 @@ function overallClassification(findings: readonly PolicyDeltaFinding[]): PolicyD
   return 'neutral';
 }
 
-export function classifyArkPolicyDelta(base: ArkConfig, candidate: ArkConfig): PolicyDelta {
+function ruleKey(layer: string, id: string): string {
+  return `${layer}::${id}`;
+}
+
+function indexEffectiveRules(arkRules: EffectiveArkRules | undefined): {
+  structure: Map<string, EffectiveStructureRule>;
+  invariants: Map<string, EffectiveInvariantRule>;
+} {
+  const structure = new Map<string, EffectiveStructureRule>();
+  const invariants = new Map<string, EffectiveInvariantRule>();
+  if (!arkRules) return { structure, invariants };
+  for (const rule of arkRules.structure) {
+    structure.set(ruleKey(rule.provenance.layer, rule.id), rule);
+  }
+  for (const rule of arkRules.invariants) {
+    invariants.set(ruleKey(rule.provenance.layer, rule.id), rule);
+  }
+  return { structure, invariants };
+}
+
+/**
+ * ADR 0012 / AR02 — classify ArkRules reference map and effective rule transitions.
+ * add/promote → strengthening; demote/delete → weakening; path/sensor rewrite → judgment.
+ */
+function compareArkRules(
+  findings: PolicyDeltaFinding[],
+  base: ArkConfig,
+  candidate: ArkConfig,
+  baseArkRules?: EffectiveArkRules,
+  candidateArkRules?: EffectiveArkRules
+): void {
+  const baseRefs = base.arkRules ?? {};
+  const candidateRefs = candidate.arkRules ?? {};
+  const layers = [...new Set([...Object.keys(baseRefs), ...Object.keys(candidateRefs)])].sort();
+  for (const layer of layers) {
+    const before = baseRefs[layer];
+    const after = candidateRefs[layer];
+    const path = `$.arkRules[${layer}]`;
+    if (before === undefined && after !== undefined) {
+      addFinding(findings, {
+        kind: 'arkrules-ref-added',
+        path,
+        classification: 'strengthening',
+        message: `ArkRules reference for layer ${layer} was added.`,
+        after,
+      });
+      continue;
+    }
+    if (before !== undefined && after === undefined) {
+      addFinding(findings, {
+        kind: 'arkrules-ref-removed',
+        path,
+        classification: 'weakening',
+        message: `ArkRules reference for layer ${layer} was removed.`,
+        before,
+      });
+      continue;
+    }
+    if (before !== after) {
+      addFinding(findings, {
+        kind: 'arkrules-ref-path-changed',
+        path,
+        classification: 'judgment-required',
+        message: `ArkRules file path for layer ${layer} changed; verify the effective rules still match intent.`,
+        before,
+        after,
+      });
+    }
+  }
+
+  const beforeRules = indexEffectiveRules(baseArkRules);
+  const afterRules = indexEffectiveRules(candidateArkRules);
+
+  for (const key of [...new Set([...beforeRules.structure.keys(), ...afterRules.structure.keys()])].sort()) {
+    const previous = beforeRules.structure.get(key);
+    const next = afterRules.structure.get(key);
+    const path = `$.arkRules.structure[${key}]`;
+    if (!previous && next) {
+      addFinding(findings, {
+        kind: 'arkrule-structure-added',
+        path,
+        classification: 'strengthening',
+        message: `Structure ArkRule ${next.id} was added (${next.mode}).`,
+        after: next,
+      });
+      continue;
+    }
+    if (previous && !next) {
+      addFinding(findings, {
+        kind: 'arkrule-structure-removed',
+        path,
+        classification: 'weakening',
+        message: `Structure ArkRule ${previous.id} was removed.`,
+        before: previous,
+      });
+      continue;
+    }
+    if (!previous || !next) continue;
+    if (previous.mode !== next.mode) {
+      const promotion = previous.mode === 'advisory' && next.mode === 'enforced';
+      addFinding(findings, {
+        kind: promotion ? 'arkrule-promoted' : 'arkrule-demoted',
+        path: `${path}.mode`,
+        classification: promotion ? 'strengthening' : 'weakening',
+        message: promotion
+          ? `Structure ArkRule ${next.id} was promoted to enforced.`
+          : `Structure ArkRule ${next.id} was demoted to advisory.`,
+        before: previous.mode,
+        after: next.mode,
+      });
+    }
+    if (previous.sensor !== next.sensor) {
+      addFinding(findings, {
+        kind: 'arkrule-sensor-changed',
+        path: `${path}.sensor`,
+        classification: 'judgment-required',
+        message: `Structure ArkRule ${next.id} changed sensor identity.`,
+        before: previous.sensor,
+        after: next.sensor,
+      });
+    }
+  }
+
+  for (const key of [
+    ...new Set([...beforeRules.invariants.keys(), ...afterRules.invariants.keys()]),
+  ].sort()) {
+    const previous = beforeRules.invariants.get(key);
+    const next = afterRules.invariants.get(key);
+    const path = `$.arkRules.invariants[${key}]`;
+    if (!previous && next) {
+      addFinding(findings, {
+        kind: 'arkrule-invariant-added',
+        path,
+        classification: 'strengthening',
+        message: `Invariant ${next.id} was added (${next.mode}).`,
+        after: next,
+      });
+      continue;
+    }
+    if (previous && !next) {
+      addFinding(findings, {
+        kind: 'arkrule-invariant-removed',
+        path,
+        classification: 'weakening',
+        message: `Invariant ${previous.id} was removed.`,
+        before: previous,
+      });
+      continue;
+    }
+    if (!previous || !next) continue;
+    if (previous.mode !== next.mode) {
+      const promotion = previous.mode === 'advisory' && next.mode === 'enforced';
+      addFinding(findings, {
+        kind: promotion ? 'arkrule-invariant-promoted' : 'arkrule-invariant-demoted',
+        path: `${path}.mode`,
+        classification: promotion ? 'strengthening' : 'weakening',
+        message: promotion
+          ? `Invariant ${next.id} was promoted to enforced.`
+          : `Invariant ${next.id} was demoted to advisory.`,
+        before: previous.mode,
+        after: next.mode,
+      });
+    }
+  }
+}
+
+export type ClassifyArkPolicyDeltaOptions = {
+  baseArkRules?: EffectiveArkRules;
+  candidateArkRules?: EffectiveArkRules;
+};
+
+export function classifyArkPolicyDelta(
+  base: ArkConfig,
+  candidate: ArkConfig,
+  options?: ClassifyArkPolicyDeltaOptions
+): PolicyDelta {
   const findings: PolicyDeltaFinding[] = [];
   compareStringSets(findings, '$.include', base.include, candidate.include, {
     added: 'strengthening',
@@ -474,6 +650,13 @@ export function classifyArkPolicyDelta(base: ArkConfig, candidate: ArkConfig): P
   compareLayers(findings, base.layers, candidate.layers);
   compareRules(findings, base.rules, candidate.rules);
   compareSafety(findings, base, candidate);
+  compareArkRules(
+    findings,
+    base,
+    candidate,
+    options?.baseArkRules,
+    options?.candidateArkRules
+  );
   findings.sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id));
 
   return {

@@ -531,8 +531,8 @@ live in the plan.
 | Order | ID | Status | Size | Depends on | Outcome |
 |---:|---|---|---:|---|---|
 | 82 | `AR01` | `done` | M | 3.9.x published | ADR 0012 accepted; `ark.arkrules.schema.json` + config `schemaVersion 1.0→1.1` additive migration; missing/invalid/zero-match references fail closed with file-precise diagnostics |
-| 83 | `AR02` | `doing` | M | `AR01` | Effective Contract loader resolves `arkRules` references with per-rule provenance and feeds `policyHash` (parity across CLI/MCP/ESLint; resident identity invalidates; policy-delta classifies arkrule transitions) |
-| 84 | `AR03` | `todo` | M | `AR02` | Adapter contract `1.3→1.4` carries `evidence.arkruleId` + `evidence.arkruleSource`; an arkrule violation renders with provenance on every surface with no surface-specific code |
+| 83 | `AR02` | `done` | M | `AR01` | Effective Contract loader resolves `arkRules` references with per-rule provenance and feeds `policyHash` (parity across CLI/MCP/ESLint; resident identity invalidates; policy-delta classifies arkrule transitions) |
+| 84 | `AR03` | `doing` | M | `AR02` | Adapter contract `1.3→1.4` carries `evidence.arkruleId` + `evidence.arkruleSource`; an arkrule violation renders with provenance on every surface with no surface-specific code |
 | 85 | `AR04` | `todo` | S | — | v4 breaking hygiene: deprecated `arkgate/runtime|nestjs` forwarders removed; migration note published; clean-checkout pack green |
 | 86 | `AR05` | `todo` | L | `AR03` | ADR 0013 accepted; class-shape facts land in resolved facts `1.0→1.1` additively within PreToolUse latency budgets |
 | 87 | `AR06` | `todo` | M | `AR05` | Tier-1 sensors `aggregate-private-state`, `always-valid-factory`, `domain-event-on-mutation` block in enforced mode and stay invisible in advisory mode (invariants test-pinned) |
@@ -2880,9 +2880,9 @@ folded into Phase C implementation work.
 ## Next implementation session
 
 ```text
-Engineering doing: `AR02` — Effective Contract policyHash + policy-delta for ArkRules
-  (AR01 done: ADR 0012, schema 1.1, arkrules contract, fail-closed resolve)
-Phase AR (v4 train, AR01 done; AR02 doing; AR03–AR19 todo): ArkRules intra-layer contract + brownfield rules migration;
+Engineering doing: `AR03` — adapter contract 1.4 arkrule evidence provenance
+  (AR01–AR02 done)
+Phase AR (v4 train, AR01–AR02 done; AR03 doing; AR04–AR19 todo): ArkRules intra-layer contract + brownfield rules migration;
   releases 4.0.0 (AR01–AR08, incl. AR04 forwarder removal), 4.1.0 (AR09–AR12),
   4.2.0 (AR13–AR16), 4.3.0 (AR17–AR19); all opt-in/additive; no new skill names; no codemod
 Claim gate: `Z09` (`parked`) — residual RB-11 only (retained adoption + independent close)

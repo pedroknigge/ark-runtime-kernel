@@ -13,6 +13,10 @@ in the immutable pre-2.0 archive linked below.
   `loadArkRulesContract` / `resolveEffectiveContract` with per-rule provenance, and fail-closed
   diagnostics for missing/invalid referenced files. Absence of `arkRules` changes no inter-layer
   verdict.
+- **AR02 — Effective Contract policyHash + policy-delta:** `loadContract` folds non-empty
+  ArkRules into `policyHash` (absent → historical hash preserved); policy-delta classifies
+  arkrule add/remove/promote/demote; CLI loads referenced files via
+  `bin/lib/effective-contract-load.mjs` and observes them for resident invalidation.
 
 ## 3.9.2 — 2026-07-23
 

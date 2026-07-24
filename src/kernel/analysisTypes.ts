@@ -16,6 +16,7 @@ import type {
   ResolvedFileFact,
 } from '../domain/analysis';
 import type { ArkConfig, ArkConfigLoadResult } from '../domain/configTypes';
+import type { EffectiveArkRules } from '../domain/arkRulesTypes';
 import type {
   PolicyDeltaAcknowledgement,
   PolicyDeltaClassification,
@@ -26,6 +27,11 @@ import type { ArchitectureConvergenceResult } from '../domain/changeConvergence'
 
 export type AnalysisContract = ArkConfigLoadResult & {
   policyHash: string;
+  /**
+   * ADR 0012 Effective ArkRules (empty when arkRules is absent).
+   * Included in policyHash when non-empty so arkrules edits invalidate identity.
+   */
+  arkRules?: EffectiveArkRules;
 };
 
 export type AnalyzeProjectInput = {
@@ -135,6 +141,9 @@ export type AnalyzePolicyDeltaInput = {
   acknowledgement?: PolicyDeltaAcknowledgement;
   baseSource?: string;
   candidateSource?: string;
+  /** Optional pre-resolved Effective ArkRules for each side (ADR 0012 / AR02). */
+  baseArkRules?: EffectiveArkRules;
+  candidateArkRules?: EffectiveArkRules;
 };
 
 export type PolicyDeltaAnalysis = {

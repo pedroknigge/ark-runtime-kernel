@@ -2888,7 +2888,7 @@ Engineering doing: none — Phase AR (`AR01`–`AR19`) complete on this branch
 Phase AR (v4 train, AR01–AR19 done): ArkRules intra-layer contract + brownfield rules migration;
   releases 4.0.0 (AR01–AR08, incl. AR04 forwarder removal), 4.1.0 (AR09–AR12),
   4.2.0 (AR13–AR16), 4.3.0 (AR17–AR19); all opt-in/additive; no new skill names; no codemod
-VERSION HONESTY: package stamps still 3.9.2 (last 3.x); this branch MUST NOT publish as 3.9.x
+VERSION: package/src/version/server.json = 4.0.0 (prepared). Last npm latest remains 3.9.2 until publish. docs/releases/4.0.0.md Status: prepared
   (AR04 breaking). Prepare 4.0.0 deliberately before npm/MCP registry; Unreleased = 4.x train
 Claim gate: `Z09` (`parked`) — residual RB-11 only (retained adoption + independent close)
   Field kit scaffolding: docs/field/ (preregistration, cohort checklist, reviewer manifesto) — NOT closed
@@ -2906,6 +2906,7 @@ Runtime parked: K01 outside Phase Z; experimental @arkgate/runtime is not the pr
   AR04 on this branch removes root forwarders arkgate/runtime|nestjs (4.x only — not 3.9.x)
 Release lanes: ordinary corrective patches do not wait for Z09; broad “Phase Z shipped” /
   retained-adoption / independent-close claims wait for residual RB-11
+Prepared baseline: arkgate@4.0.0 (docs/releases/4.0.0.md; publish pending)
 Released baseline: npm arkgate@3.9.2 (3.x honesty patch; last 3.x line before 4.x train)
 Released baseline: npm arkgate@3.9.0 prepared (Beautiful Path + P1–P4 residuals; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.3 (field journey: pnpm -w, start pin, compact MCP; Z09/RB-11 residual open)

@@ -3,16 +3,24 @@
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here or
 in the immutable pre-2.0 archive linked below.
 
-## Unreleased — **4.x train (do not publish as 3.9.x)**
+## Unreleased
 
-> **Release honesty:** `package.json` / `src/version.ts` / `server.json` remain **`3.9.2`**
-> (last published 3.x line) until a deliberate **4.0.0** prepare + publish. This branch carries
-> **breaking AR04** (root `arkgate/runtime|nestjs` forwarders removed) plus the full ArkRules
-> epic (`AR01`–`AR19`). **Do not ship this tree as a 3.9.x patch.** Target release train:
-> `4.0.0` (AR01–AR08) → `4.1.0` (AR09–AR12) → `4.2.0` (AR13–AR16) → `4.3.0` (AR17–AR19).
-> Not published yet — no registry claim.
+## 4.0.0 — 2026-07-24
 
-### Added
+**Major** over 3.9.2. **Breaking:** deprecated root subpaths `arkgate/runtime` and `arkgate/nestjs`
+are removed (use `@arkgate/runtime`). **ArkRules (opt-in):** intra-layer structural sensors,
+invariant catalogs, coverage evidence, brownfield rules inventory, and modular `arkrules/*.json`
+on the same enforcement plane (CLI, MCP, PreToolUse, CI, doctor). Absence of `arkRules` changes no
+inter-layer verdict. **Not field-cohort proven:** Z09/RB-11 retained adoption remains open; AR16
+case-study docs are scaffolding, not a closed field gate.
+
+### Breaking (AR04)
+
+- **Removed** deprecated root package subpaths `arkgate/runtime` and `arkgate/nestjs`
+  (and the `compat/` forwarders). Import `@arkgate/runtime` / `@arkgate/runtime/nestjs`
+  instead. See [migration note](docs/migrate-from-ark-runtime-kernel.md#arkgate-4--ar04--root-runtime-forwarders-removed).
+
+### Added — ArkRules foundations + sensors (AR01–AR08)
 
 - **AR01 — ArkRules foundations (ADR 0012):** optional `arkRules` map on `ark.config.json`
   (`schemaVersion` `1.0→1.1` additive migration), sibling schema
@@ -27,37 +35,37 @@ in the immutable pre-2.0 archive linked below.
 - **AR03 — Adapter contract 1.4:** diagnostics carry optional `evidence.arkruleId` +
   `evidence.arkruleSource`; remediation/nextAction for `ARKRULE_*` / `INVARIANT_UNCOVERED`
   is judgment-only with provenance on every surface.
-
-### Breaking (v4 / AR04)
-
-- **Removed** deprecated root package subpaths `arkgate/runtime` and `arkgate/nestjs`
-  (and the `compat/` forwarders). Import `@arkgate/runtime` / `@arkgate/runtime/nestjs`
-  instead. See [migration note](docs/migrate-from-ark-runtime-kernel.md#arkgate-4--ar04--root-runtime-forwarders-removed).
-
-### Added (AR05–AR08)
-
-- **ADR 0013** + resolved facts schema `1.1` optional `classShapes[]` (class-shape evidence).
+- **ADR 0013** + resolved facts schema `1.1` optional `classShapes[]` (class-shape evidence)
+  produced on the write/CI path via `extractClassShapesFromSource`.
 - **Tier-1 sensors:** `aggregate-private-state`, `always-valid-factory`,
   `domain-event-on-mutation`, `orchestration-only`, `thin-adapter`.
 - **Tier-2 advisory:** `no-anemic-model` (never promotable).
 - **fileHints:** Tooling derives conservative `orchestrationHeavy` / `adapterThick` hints
-  (`deriveArkRuleFileHints`) and feeds the write/CI scan path so Tier-1 orchestration-only and
-  thin-adapter can fire when rules are present (prefer false negatives; default templates stay advisory).
+  (`deriveArkRuleFileHints`) and feeds the write/CI scan path (prefer false negatives;
+  default templates stay advisory).
 - **Templates:** `templates/arkrules/*.json` + presets/init emit lean `arkRules` refs and
   copy editable starter files.
 
-### Added (AR09–AR19)
+### Added — invariants, inventory, migration surfaces (shipped in package; progressive opt-in)
 
 - **ADR 0014–0016:** invariant catalog + coverage evidence + promotion ladder; migration
   routes through existing skills; no executable evaluator in core.
 - **Invariant coverage:** test-title + symbol evidence; `INVARIANT_UNCOVERED`; partial when
   test globs missing; `canPromoteInvariant` refuses uncovered promotions. Write path loads real
-  test contents via `bin/lib/invariant-coverage-io.mjs` (never empty-fileContents stub).
+  test contents via `bin/lib/invariant-coverage-io.mjs`. CLI policy-delta loads Effective ArkRules
+  + coverage so covered promotions can auto-strengthen.
 - **Doctor/HTML** `rulesUnderContract` (counts, not a score); report parity key.
 - **Rules inventory:** `ark-check --rules-inventory` + MCP `ark_rules_inventory`; extraction
   cards for pilotLoop; freeze residual reuses baseline keys.
-- **Field case study** + **claims audit** under `docs/field/`.
 - Skills deepen (`ark-adopt`, `ark-contract`, `ark-place`) without new skill names.
+- Pre-release field dogfood workflow: `.grok/workflows/pre-release-field-dogfood.rhai`.
+
+### Honesty / not claimed in 4.0.0
+
+- No claim that Z09 / RB-11 retained field adoption is closed.
+- No claim that a consented multi-adopter field pilot (AR16 gate) is complete — case-study docs
+  are present; cohort evidence is not.
+- No numeric trust score; green with frozen residual still says so.
 
 ## 3.9.2 — 2026-07-23
 

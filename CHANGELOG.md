@@ -66,6 +66,9 @@ case-study docs are scaffolding, not a closed field gate.
 - No claim that a consented multi-adopter field pilot (AR16 gate) is complete — case-study docs
   are present; cohort evidence is not.
 - No numeric trust score; green with frozen residual still says so.
+- **Dual-truth residual:** `ark upgrade --no-install` can refresh managed assets while leaving
+  package.json on an older pin — doctor exposes `packageVersionTruth` and upgrade JSON/human notes
+  when the pin is behind the CLI.
 
 ## 3.9.2 — 2026-07-23
 

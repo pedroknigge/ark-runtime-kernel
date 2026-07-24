@@ -10,6 +10,7 @@ import {
   shouldShowNewHereNudge,
 } from '../ark-shared.mjs';
 import { summarizeRulesUnderContract } from './rules-under-contract.mjs';
+import { describePackageVersionDualTruth } from './field-install.mjs';
 export { summarizeRulesUnderContract };
 import {
   collectAdoptionGaps,
@@ -412,6 +413,8 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   }
   const gatesMissing = missingGates(root);
   const skillGaps = detectSkillGaps(root);
+  // Dual-truth: CLI version vs package.json pin (field residual after upgrade --no-install).
+  const packageVersionTruth = describePackageVersionDualTruth(root);
   const staleRunners = staleRunnerGateFiles(root);
   const adoption = collectAdoptionGaps(root, config, cov);
   // Prefer writePath from adoption (same detector); recompute only if missing (tests/stubs).
@@ -506,6 +509,8 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
               config,
               options.facts ?? options.architectureFacts
             ),
+            // Dual-truth: managed CLI vs package.json pin (not a gate fail).
+            packageVersionTruth,
             // Advisories, never a verdict: W01/U05/X04/Y03 + graph-blind spots.
             ...doctorAdvisories,
             governed: cov.governed,
@@ -734,6 +739,13 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
   if (cov.emptyLayers.length > 0) line(warn, `Empty layers (pattern matches nothing): ${cov.emptyLayers.join(', ')}`);
   if (cov.layersWithoutRules.length > 0) line(warn, `Layers with no rule edge: ${cov.layersWithoutRules.join(', ')}`);
   if (cov.suggestions.length === 0 && cov.emptyLayers.length === 0) line(ok, 'Every layer classifies files; no empty layers');
+
+  if (packageVersionTruth?.dualTruth) {
+    console.log('');
+    console.log(color.bold('Package pin (dual-truth)'));
+    line(warn, packageVersionTruth.note);
+    actions.push('bump package.json arkgate pin to match this CLI (or install without --no-install)');
+  }
 
   if (showNewHere) {
     console.log('');

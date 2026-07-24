@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
+import { describePackageVersionDualTruth } from './field-install.mjs';
 import {
   applyManagedUpgrade,
   managedUpgradeJson,
@@ -176,10 +177,43 @@ export function runUpgradeCommand(args, dependencies) {
   const verification = args.strict
     ? { mode: 'strict-merge', ...verify(root, args.json, dependencies.arkCheck, dependencies.runArkCheck) }
     : { mode: 'skipped', exitCode: 0 };
-  if (args.json) console.log(JSON.stringify({ ...applied, verification }, null, 2));
-  else {
+  const dualTruth = describePackageVersionDualTruth(root);
+  if (args.json) {
+    console.log(
+      JSON.stringify(
+        {
+          ...applied,
+          verification,
+          ...(args.install === false || dualTruth.dualTruth
+            ? {
+                packageInstallSkipped: args.install === false,
+                packageVersionTruth: dualTruth,
+                ...(dualTruth.dualTruth
+                  ? {
+                      note: dualTruth.note,
+                    }
+                  : args.install === false
+                    ? {
+                        note: 'Managed assets use this CLI; package.json arkgate pin is unchanged under --no-install. Bump the pin or re-run without --no-install so CI resolves the same version.',
+                      }
+                    : {}),
+              }
+            : {}),
+        },
+        null,
+        2
+      )
+    );
+  } else {
     renderManagedUpgrade(applied);
     if (!args.strict) console.log('Architecture verification skipped (--no-strict).');
+    if (args.install === false || dualTruth.dualTruth) {
+      console.log(
+        dualTruth.dualTruth
+          ? dualTruth.note
+          : 'Note: --no-install left package.json arkgate pin unchanged. Managed assets match this CLI; bump the pin (or re-run without --no-install) so CI resolves the same version.'
+      );
+    }
   }
   return verification.exitCode;
 }

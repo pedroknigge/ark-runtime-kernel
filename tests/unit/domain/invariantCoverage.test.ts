@@ -85,4 +85,27 @@ describe('AR09–AR11 invariant coverage + promotion', () => {
     });
     expect(canPromoteInvariant(covered.coverage[0]).ok).toBe(true);
   });
+
+  it('does not stick top-level partial when symbol evidence covers without tests', () => {
+    const result = evaluateInvariantCoverage({
+      arkRules: catalog(),
+      fileContents: {
+        'src/domain/order.ts':
+          'export class Order { ensureInvariants() { if (this.total < 0) throw new Error(); } }',
+      },
+      testFiles: [],
+      testGlobsMissing: true,
+    });
+    expect(result.coverage[0]?.covered).toBe(true);
+    expect(result.coverage[0]?.partial).toBe(false);
+    expect(result.partial).toBe(false);
+    expect(result.violations).toHaveLength(0);
+  });
+
+  it('canPromoteInvariant missing-evidence message is about coverage not catalog', () => {
+    const gate = canPromoteInvariant(undefined);
+    expect(gate.ok).toBe(false);
+    expect(gate.reason).toMatch(/No coverage evidence supplied/i);
+    expect(gate.reason).not.toMatch(/not present in the Effective Contract catalog/i);
+  });
 });

@@ -256,4 +256,37 @@ export class Order {
     });
     expect(findings.some((f) => f.failsStrict)).toBe(true);
   });
+
+  it('emits ARKRULE_SCOPE_EMPTY on write path for zero-match appliesTo', () => {
+    const arkRules = structureRules([
+      {
+        id: 'enforced-miss',
+        sensor: 'aggregate-private-state',
+        mode: 'enforced',
+        appliesTo: ['src/nowhere/**'],
+      },
+      {
+        id: 'advisory-miss',
+        sensor: 'always-valid-factory',
+        mode: 'advisory',
+        appliesTo: ['src/also-nowhere/**'],
+      },
+    ]);
+    const contract = loadContract(BASE_CONFIG as never, 'ark.config.json', { arkRules });
+    const facts = minimalFacts(BASE_CONFIG, { files: ['src/domain/order.ts'] });
+    const result = analyzeCanonicalResolvedProject({ contract, facts });
+
+    expect(result.ir.violations.some((v) => v.ruleId === 'ARKRULE_SCOPE_EMPTY')).toBe(true);
+    expect(
+      result.ir.violations.some(
+        (v) => v.ruleId === 'ARKRULE_SCOPE_EMPTY' && v.arkruleId === 'enforced-miss'
+      )
+    ).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(
+      result.ir.warnings.some(
+        (w) => w.ruleId === 'ARKRULE_SCOPE_EMPTY' && w.arkruleId === 'advisory-miss'
+      )
+    ).toBe(true);
+  });
 });

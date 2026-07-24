@@ -10,13 +10,62 @@
 
 /** Keep in lockstep with arkRulesTypes.ARK_RULE_TIER2_SENSOR_IDS (self-contained for CLI gen). */
 const ARK_RULE_TIER2_SENSOR_IDS = ['no-anemic-model'];
+/**
+ * Glob to RegExp for appliesTo. Keep in lockstep with layerMatch.globToRegExp
+ * (zero path segments for double-star-slash; self-contained for generate:cli-pure).
+ * Critical: double-star-slash patterns match files with no intermediate directory.
+ */
+function escapeGlobLiteral(ch) {
+    return /[.*+?^${}()|[\]\\]/.test(ch) ? `\\${ch}` : ch;
+}
 function globToRegExp(glob) {
-    const escaped = glob
-        .replace(/[.+^${}()|[\]\\]/g, '\\$&')
-        .replace(/\*\*/g, '§§')
-        .replace(/\*/g, '[^/]*')
-        .replace(/§§/g, '.*');
-    return new RegExp(`^${escaped}$`);
+    // Normalize Windows path separators without eating glob escapes.
+    let normalized = '';
+    for (let i = 0; i < glob.length; i += 1) {
+        const c = glob[i];
+        if (c === '\\' && i + 1 < glob.length) {
+            const next = glob[i + 1];
+            if ('*?{}[],'.includes(next) || next === '\\') {
+                normalized += '\\' + next;
+                i += 1;
+                continue;
+            }
+            normalized += '/';
+            continue;
+        }
+        normalized += c;
+    }
+    let out = '';
+    for (let i = 0; i < normalized.length; i += 1) {
+        const c = normalized[i];
+        if (c === '\\' && i + 1 < normalized.length) {
+            out += escapeGlobLiteral(normalized[i + 1]);
+            i += 1;
+        }
+        else if (c === '*') {
+            if (normalized[i + 1] === '*') {
+                if (normalized[i + 2] === '/') {
+                    // Zero-or-more path segments (including zero).
+                    out += '(?:.*/)?';
+                    i += 2;
+                }
+                else {
+                    out += '.*';
+                    i += 1;
+                }
+            }
+            else {
+                out += '[^/]*';
+            }
+        }
+        else if (c === '?') {
+            out += '[^/]';
+        }
+        else {
+            out += escapeGlobLiteral(c);
+        }
+    }
+    return new RegExp(`^${out}$`);
 }
 function matchesAppliesTo(file, appliesTo) {
     if (!appliesTo || appliesTo.length === 0)
@@ -283,10 +332,15 @@ export function buildArkRuleFileHints(fileContents) {
  * Lightweight class-shape extraction from TypeScript source text (no compiler).
  * Conservative: prefers false negatives over false positives for mutability.
  * Tooling may replace with TypeScript-API facts; sensors consume the same shape.
+ *
+ * Limitation (AR05/AR06): only `export class` / `export abstract class` forms.
+ * `export default class`, re-exported classes, and non-exported aggregates are
+ * invisible — enforced structure sensors stay silent (false negative). Silence
+ * is never proof of compliance.
  */
 export function extractClassShapesFromSource(file, content) {
     const shapes = [];
-    // Match exported class declarations (simple cases).
+    // Match exported class declarations (simple cases; see limitation above).
     const classRe = /export\s+(?:abstract\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:extends\s+[^{]+)?(?:implements\s+[^{]+)?\{/g;
     let match;
     while ((match = classRe.exec(content)) !== null) {

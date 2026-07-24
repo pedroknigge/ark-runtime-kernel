@@ -173,6 +173,11 @@ export type AnalyzePolicyDeltaInput = {
   /** Optional pre-resolved Effective ArkRules for each side (ADR 0012 / AR02). */
   baseArkRules?: EffectiveArkRules;
   candidateArkRules?: EffectiveArkRules;
+  /**
+   * AR11 — optional coverage evidence for candidate invariants.
+   * When omitted, advisory→enforced promotion is judgment-required (refuse auto-allow).
+   */
+  candidateInvariantCoverage?: readonly import('../domain/invariantCoverage').InvariantCoverageEvidence[];
 };
 
 export type PolicyDeltaAnalysis = {

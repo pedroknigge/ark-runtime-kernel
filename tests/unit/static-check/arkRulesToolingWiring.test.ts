@@ -101,6 +101,22 @@ export async function save(order: Order) {
     expect(hints?.['src/adapters/thick.ts']?.adapterThick).toBe(true);
   });
 
+  it('loadInvariantCoverageInputs honors custom testGlobs', () => {
+    const root = makeRoot();
+    fs.mkdirSync(path.join(root, 'qa', 'specs'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'qa', 'specs', 'order.checks.ts'),
+      "it('INV-ORDER-001 custom layout', () => {})\n"
+    );
+    const inputs = loadInvariantCoverageInputs(
+      root,
+      { files: [] },
+      { testGlobs: ['qa/specs/**/*.checks.ts'] }
+    );
+    expect(inputs.testGlobsMissing).toBe(false);
+    expect(inputs.testFiles.some((t: string) => t.includes('order.checks.ts'))).toBe(true);
+  });
+
   it('rules-under-contract is not always uncovered when tests exist', () => {
     const root = makeRoot();
     fs.mkdirSync(path.join(root, 'arkrules'), { recursive: true });

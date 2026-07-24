@@ -103,6 +103,7 @@ export function analyzePolicyDelta(input: AnalyzePolicyDeltaInput): PolicyDeltaA
   const delta = classifyArkPolicyDelta(base.config, candidate.config, {
     baseArkRules: base.arkRules,
     candidateArkRules: candidate.arkRules,
+    candidateInvariantCoverage: input.candidateInvariantCoverage,
   });
   const blockingFindingIds = delta.findings
     .filter(

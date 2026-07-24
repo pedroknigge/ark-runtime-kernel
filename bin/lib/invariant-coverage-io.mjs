@@ -15,6 +15,54 @@ const MAX_COVERAGE_FILES = 400;
 const MAX_FILE_BYTES = 256 * 1024;
 
 /**
+ * True when absolute is root or a file under root (separator-safe).
+ * @param {string} root
+ * @param {string} absolute
+ */
+function isPathInsideRoot(root, absolute) {
+  const rootResolved = path.resolve(root);
+  const absResolved = path.resolve(absolute);
+  if (absResolved === rootResolved) return true;
+  const relative = path.relative(rootResolved, absResolved);
+  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+}
+
+/**
+ * Minimal glob match for testGlobs (double-star slash = zero path segments).
+ * @param {string} glob
+ * @param {string} file
+ */
+function matchSimpleGlob(glob, file) {
+  const pattern = String(glob || '').replace(/\\/g, '/');
+  const target = String(file || '').replace(/\\/g, '/');
+  if (!pattern) return false;
+  let out = '';
+  for (let i = 0; i < pattern.length; i += 1) {
+    const c = pattern[i];
+    if (c === '*') {
+      if (pattern[i + 1] === '*') {
+        if (pattern[i + 2] === '/') {
+          out += '(?:.*/)?';
+          i += 2;
+        } else {
+          out += '.*';
+          i += 1;
+        }
+      } else {
+        out += '[^/]*';
+      }
+    } else if (c === '?') {
+      out += '[^/]';
+    } else if (/[.+^${}()|[\]\\]/.test(c)) {
+      out += `\\${c}`;
+    } else {
+      out += c;
+    }
+  }
+  return new RegExp(`^${out}$`).test(target);
+}
+
+/**
  * @param {string} root
  * @param {{ files?: Array<{ path: string }> }} facts
  * @param {{ testGlobs?: string[] }} [opts]
@@ -24,19 +72,30 @@ export function loadInvariantCoverageInputs(root, facts, opts = {}) {
   const fileContents = {};
   const testFiles = [];
   const seen = new Set();
+  const testGlobs = Array.isArray(opts.testGlobs)
+    ? opts.testGlobs.filter((g) => typeof g === 'string' && g.length > 0)
+    : [];
+  const useCustomGlobs = testGlobs.length > 0;
 
-  const pushFile = (relPath) => {
-    const rel = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+  const isTestPath = (rel) => {
+    if (useCustomGlobs) return testGlobs.some((g) => matchSimpleGlob(g, rel));
+    return DEFAULT_TEST_NAME_RE.test(rel);
+  };
+
+  const pushFile = (relPath, forceAsTest = false) => {
+    const rel = String(relPath || '')
+      .replace(/\\/g, '/')
+      .replace(/^\.\//, '');
     if (!rel || seen.has(rel) || seen.size >= MAX_COVERAGE_FILES) return;
     const absolute = path.resolve(root, rel);
-    if (!absolute.startsWith(path.resolve(root))) return;
+    if (!isPathInsideRoot(root, absolute)) return;
     try {
       const stat = fs.statSync(absolute);
       if (!stat.isFile() || stat.size > MAX_FILE_BYTES) return;
       const content = fs.readFileSync(absolute, 'utf8');
       seen.add(rel);
       fileContents[rel] = content;
-      if (DEFAULT_TEST_NAME_RE.test(rel)) testFiles.push(rel);
+      if (forceAsTest || isTestPath(rel)) testFiles.push(rel);
     } catch {
       // skip unreadable
     }
@@ -46,13 +105,24 @@ export function loadInvariantCoverageInputs(root, facts, opts = {}) {
     if (file?.path) pushFile(file.path);
   }
 
-  // Walk common test roots when facts only cover production include globs.
-  for (const dir of ['tests', 'test', 'src', '__tests__']) {
-    const absDir = path.join(root, dir);
-    if (!fs.existsSync(absDir)) continue;
-    walkTestFiles(absDir, root, (rel) => {
-      if (DEFAULT_TEST_NAME_RE.test(rel)) pushFile(rel);
-    });
+  if (useCustomGlobs) {
+    // Walk project roots and keep files matching custom globs.
+    for (const dir of ['.', 'tests', 'test', 'src', '__tests__', 'spec']) {
+      const absDir = path.join(root, dir === '.' ? '' : dir);
+      if (!fs.existsSync(absDir)) continue;
+      walkTestFiles(absDir, root, (rel) => {
+        if (isTestPath(rel)) pushFile(rel, true);
+      });
+    }
+  } else {
+    // Walk common test roots when facts only cover production include globs.
+    for (const dir of ['tests', 'test', 'src', '__tests__']) {
+      const absDir = path.join(root, dir);
+      if (!fs.existsSync(absDir)) continue;
+      walkTestFiles(absDir, root, (rel) => {
+        if (isTestPath(rel)) pushFile(rel, true);
+      });
+    }
   }
 
   const testGlobsMissing = testFiles.length === 0;

@@ -232,4 +232,44 @@ export async function save(order: Order) {
     );
     expect(hit).toEqual([]);
   });
+
+  it('appliesTo globs match layerMatch zero-segment double-star slash', () => {
+    // src/domain/**/*.ts must match src/domain/order.ts (no intermediate dir).
+    const shapes = extractClassShapesFromSource(
+      'src/domain/order.ts',
+      `export class Order { public total = 0; constructor() {} }`
+    );
+    const nested = extractClassShapesFromSource(
+      'src/domain/aggregates/order.ts',
+      `export class NestedOrder { public total = 0; constructor() {} }`
+    );
+    const findings = evaluateArkRuleSensors({
+      arkRules: effective([
+        {
+          id: 'domain-ts',
+          sensor: 'aggregate-private-state',
+          mode: 'enforced',
+          appliesTo: ['src/domain/**/*.ts'],
+        },
+      ]),
+      classShapes: [...shapes, ...nested],
+      files: ['src/domain/order.ts', 'src/domain/aggregates/order.ts', 'src/application/x.ts'],
+    });
+    expect(findings.some((f) => f.file === 'src/domain/order.ts')).toBe(true);
+    expect(findings.some((f) => f.file === 'src/domain/aggregates/order.ts')).toBe(true);
+
+    // Zero-match must not false-fire when double-star slash matches zero segments.
+    const empty = collectEmptyAppliesToFindings(
+      effective([
+        {
+          id: 'domain-ts',
+          sensor: 'aggregate-private-state',
+          mode: 'advisory',
+          appliesTo: ['src/domain/**/*.ts'],
+        },
+      ]),
+      ['src/domain/order.ts']
+    );
+    expect(empty).toEqual([]);
+  });
 });

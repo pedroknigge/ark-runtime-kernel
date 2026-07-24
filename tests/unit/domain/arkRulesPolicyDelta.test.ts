@@ -232,4 +232,66 @@ describe('AR02 ArkRules policyHash + policy-delta', () => {
     expect(allowed.classification).toBe('strengthening');
     expect(allowed.findings.some((f) => f.id.includes('arkrule-invariant-promoted'))).toBe(true);
   });
+
+  it('Kernel analyzePolicyDelta forwards candidateInvariantCoverage (AR11 product path)', () => {
+    const invFile = (mode: 'advisory' | 'enforced') =>
+      loadArkRulesContract({
+        schemaVersion: '1.0',
+        layer: 'DomainModel',
+        invariants: [
+          {
+            id: 'INV-ORDER-001',
+            description: 'Order total never negative',
+            mode,
+          },
+        ],
+      }).config;
+    const cfg = {
+      ...BASE_CONFIG,
+      arkRules: { DomainModel: 'arkrules/DomainModel.json' },
+    };
+    const baseArkRules = buildEffectiveArkRules([
+      {
+        layer: 'DomainModel',
+        sourceFile: 'arkrules/DomainModel.json',
+        file: invFile('advisory'),
+      },
+    ]);
+    const candidateArkRules = buildEffectiveArkRules([
+      {
+        layer: 'DomainModel',
+        sourceFile: 'arkrules/DomainModel.json',
+        file: invFile('enforced'),
+      },
+    ]);
+    const refused = analyzePolicyDelta({
+      baseConfig: cfg,
+      candidateConfig: cfg,
+      baseArkRules,
+      candidateArkRules,
+    });
+    expect(refused.classification).toBe('judgment-required');
+    expect(refused.findings.some((f) => f.id.includes('promote-refused'))).toBe(true);
+
+    const allowed = analyzePolicyDelta({
+      baseConfig: cfg,
+      candidateConfig: cfg,
+      baseArkRules,
+      candidateArkRules,
+      candidateInvariantCoverage: [
+        {
+          invariantId: 'INV-ORDER-001',
+          layer: 'DomainModel',
+          sourceFile: 'arkrules/DomainModel.json',
+          mode: 'enforced',
+          covered: true,
+          evidence: ['symbol'],
+          partial: false,
+          description: 'Order total never negative',
+        },
+      ],
+    });
+    expect(allowed.classification).toBe('strengthening');
+    expect(allowed.findings.some((f) => f.id.includes('arkrule-invariant-promoted'))).toBe(true);
+  });
 });

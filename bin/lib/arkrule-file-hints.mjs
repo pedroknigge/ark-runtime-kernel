@@ -34,6 +34,7 @@ export function loadArkRuleFileHints(root, facts, arkRules, preloadedContents) {
   const fileContents = { ...(preloadedContents ?? {}) };
   const seen = new Set(Object.keys(fileContents));
 
+  const rootResolved = path.resolve(root);
   const pushFile = (relPath) => {
     const rel = String(relPath || '')
       .replace(/\\/g, '/')
@@ -42,7 +43,14 @@ export function loadArkRuleFileHints(root, facts, arkRules, preloadedContents) {
     if (!/\.(tsx?|mts|cts|jsx?|mjs|cjs)$/i.test(rel)) return;
     if (rel.includes('node_modules/') || rel.endsWith('.d.ts')) return;
     const absolute = path.resolve(root, rel);
-    if (!absolute.startsWith(path.resolve(root))) return;
+    const relative = path.relative(rootResolved, absolute);
+    if (
+      relative === '' ||
+      relative.startsWith('..') ||
+      path.isAbsolute(relative)
+    ) {
+      return;
+    }
     try {
       const stat = fs.statSync(absolute);
       if (!stat.isFile() || stat.size > MAX_FILE_BYTES) return;

@@ -40,15 +40,11 @@ export function evaluateInvariantCoverage(input) {
     const testGlobsMissing = input.testGlobsMissing === true || testFiles.length === 0;
     const coverage = [];
     const violations = [];
-    let anyPartial = false;
     for (const inv of invariants) {
         const evidence = [];
         const wantsTest = inv.coverage?.test !== false; // default: prefer test evidence when catalogued
         const symbol = inv.coverage?.symbol;
-        if (testGlobsMissing && wantsTest) {
-            anyPartial = true;
-        }
-        else if (wantsTest) {
+        if (!testGlobsMissing && wantsTest) {
             for (const file of testFiles) {
                 const content = input.fileContents[file];
                 if (content && titleMatchesInvariant(content, inv.id)) {
@@ -68,9 +64,8 @@ export function evaluateInvariantCoverage(input) {
             : inv.coverage?.test === false && !symbol
                 ? true // explicitly no coverage requirements
                 : evidence.length > 0;
+        // Partial only when tests are missing *and* no other evidence (e.g. symbol) completed coverage.
         const partial = testGlobsMissing && wantsTest && evidence.length === 0;
-        if (partial)
-            anyPartial = true;
         coverage.push({
             invariantId: inv.id,
             layer: inv.provenance.layer,
@@ -82,8 +77,8 @@ export function evaluateInvariantCoverage(input) {
             description: inv.description,
         });
         if (!covered || partial) {
+            // Enforced + proven uncovered → failsStrict; partial always advisory (never fake green).
             const failsStrict = inv.mode === 'enforced' && !partial;
-            // Partial never fakes green for enforced; still report uncovered.
             violations.push({
                 ruleId: 'INVARIANT_UNCOVERED',
                 message: partial
@@ -94,24 +89,27 @@ export function evaluateInvariantCoverage(input) {
                 arkruleId: inv.id,
                 arkruleSource: inv.provenance.sourceFile,
                 fromLayer: inv.provenance.layer,
-                severity: inv.mode === 'enforced' ? 'error' : 'warning',
-                failsStrict: inv.mode === 'enforced' && !partial ? true : failsStrict,
+                severity: failsStrict ? 'error' : 'warning',
+                failsStrict,
             });
-            // When partial, failsStrict false but completeness partial is the caller's job.
-            if (partial) {
-                violations[violations.length - 1].failsStrict = false;
-                violations[violations.length - 1].severity = 'warning';
-            }
         }
     }
-    return { coverage, violations, partial: anyPartial };
+    // Top-level partial only from entry flags (symbol-only coverage must not stick partial).
+    return {
+        coverage,
+        violations,
+        partial: coverage.some((entry) => entry.partial),
+    };
 }
 /**
  * Deterministic promotion gate: refuse advisory→enforced when invariant is uncovered.
  */
 export function canPromoteInvariant(coverage) {
     if (!coverage) {
-        return { ok: false, reason: 'Invariant is not present in the Effective Contract catalog.' };
+        return {
+            ok: false,
+            reason: 'No coverage evidence supplied for this invariant; evaluate coverage before promoting to enforced.',
+        };
     }
     if (coverage.partial) {
         return {

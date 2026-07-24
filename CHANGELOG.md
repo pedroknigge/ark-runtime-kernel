@@ -5,6 +5,15 @@ in the immutable pre-2.0 archive linked below.
 
 ## Unreleased
 
+### Added
+
+- **AR01 — ArkRules foundations (ADR 0012):** optional `arkRules` map on `ark.config.json`
+  (`schemaVersion` `1.0→1.1` additive migration), sibling schema
+  `schemas/ark.arkrules.schema.json` (`arkgate/schema/arkrules`), pure
+  `loadArkRulesContract` / `resolveEffectiveContract` with per-rule provenance, and fail-closed
+  diagnostics for missing/invalid referenced files. Absence of `arkRules` changes no inter-layer
+  verdict.
+
 ## 3.9.2 — 2026-07-23
 
 **Patch** over 3.9.1. Product honesty for post-validity coaching, coverage/host write paths, and

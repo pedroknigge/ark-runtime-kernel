@@ -44,6 +44,13 @@ const MODULES = [
     label: 'versioned ark.config.json contract + schema',
   },
   {
+    canonical: 'src/domain/arkRulesContract.ts',
+    derived: 'bin/lib/arkrules-contract.mjs',
+    schemaDerived: 'schemas/ark.arkrules.schema.json',
+    schemaExport: 'ARK_RULES_SCHEMA',
+    label: 'versioned ArkRules (intra-layer) contract + schema',
+  },
+  {
     canonical: 'src/domain/adapterContract.ts',
     derived: 'bin/lib/adapter-contract.mjs',
     schemaDerived: 'schemas/ark.analysis-result.schema.json',

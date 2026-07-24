@@ -146,6 +146,26 @@ export {
 } from './domain/configContract';
 
 export {
+  ARK_RULES_SCHEMA,
+  ARK_RULES_SCHEMA_VERSION,
+  ARK_RULE_SENSORS,
+  buildEffectiveArkRules,
+  emptyEffectiveArkRules,
+  loadArkRulesContract,
+  parseArkRulesJson,
+  type ArkRulesFile,
+  type EffectiveArkRules,
+} from './domain/arkRulesContract';
+
+export {
+  EffectiveContractError,
+  effectiveContractPolicyPayload,
+  resolveEffectiveContract,
+  type EffectiveContract,
+  type EffectiveContractWarning,
+} from './domain/effectiveContract';
+
+export {
   ARK_ENFORCEMENT_STATE_SCHEMA_VERSION,
   type ArkEnforcementHost,
   type ArkEnforcementState,

@@ -34,6 +34,8 @@
     "./schema/ark.enforcement-state.schema.json": "./schemas/ark.enforcement-state.schema.json",
     "./schema/design-delta": "./schemas/ark.design-delta.schema.json",
     "./schema/ark.design-delta.schema.json": "./schemas/ark.design-delta.schema.json",
+    "./schema/arkrules": "./schemas/ark.arkrules.schema.json",
+    "./schema/ark.arkrules.schema.json": "./schemas/ark.arkrules.schema.json",
     "./nestjs": {
       "types": "./compat/nestjs.d.ts",
       "import": "./compat/nestjs.js",

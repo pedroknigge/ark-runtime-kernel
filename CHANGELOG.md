@@ -5,6 +5,12 @@ in the immutable pre-2.0 archive linked below.
 
 ## Unreleased
 
+## 4.0.1 — 2026-07-24
+
+**Patch** over 4.0.0. Field footgun fix for stale global CLI on upgrade, ArkRules HTML/doctor
+catalog honesty, dual-plane product wording, and internal coverage attribution.
+**No required config migration.** Does not weaken write gate or CI. Does not close Z09 / RB-11.
+
 ### Improved
 
 - **HTML / doctor ArkRules showcase:** `rulesUnderContract` is no longer counts-only.

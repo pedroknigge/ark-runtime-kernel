@@ -17,6 +17,9 @@ in the immutable pre-2.0 archive linked below.
   ArkRules into `policyHash` (absent → historical hash preserved); policy-delta classifies
   arkrule add/remove/promote/demote; CLI loads referenced files via
   `bin/lib/effective-contract-load.mjs` and observes them for resident invalidation.
+- **AR03 — Adapter contract 1.4:** diagnostics carry optional `evidence.arkruleId` +
+  `evidence.arkruleSource`; remediation/nextAction for `ARKRULE_*` / `INVARIANT_UNCOVERED`
+  is judgment-only with provenance on every surface.
 
 ## 3.9.2 — 2026-07-23
 

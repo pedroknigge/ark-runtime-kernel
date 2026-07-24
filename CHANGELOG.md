@@ -3,7 +3,14 @@
 All notable changes to ArkGate (`arkgate`; formerly `ark-runtime-kernel`) are documented here or
 in the immutable pre-2.0 archive linked below.
 
-## Unreleased
+## Unreleased — **4.x train (do not publish as 3.9.x)**
+
+> **Release honesty:** `package.json` / `src/version.ts` / `server.json` remain **`3.9.2`**
+> (last published 3.x line) until a deliberate **4.0.0** prepare + publish. This branch carries
+> **breaking AR04** (root `arkgate/runtime|nestjs` forwarders removed) plus the full ArkRules
+> epic (`AR01`–`AR19`). **Do not ship this tree as a 3.9.x patch.** Target release train:
+> `4.0.0` (AR01–AR08) → `4.1.0` (AR09–AR12) → `4.2.0` (AR13–AR16) → `4.3.0` (AR17–AR19).
+> Not published yet — no registry claim.
 
 ### Added
 
@@ -12,7 +19,7 @@ in the immutable pre-2.0 archive linked below.
   `schemas/ark.arkrules.schema.json` (`arkgate/schema/arkrules`), pure
   `loadArkRulesContract` / `resolveEffectiveContract` with per-rule provenance, and fail-closed
   diagnostics for missing/invalid referenced files. Absence of `arkRules` changes no inter-layer
-  verdict.
+  verdict. Zero-match `appliesTo` emits `ARKRULE_SCOPE_EMPTY` (advisory warn / enforced fail).
 - **AR02 — Effective Contract policyHash + policy-delta:** `loadContract` folds non-empty
   ArkRules into `policyHash` (absent → historical hash preserved); policy-delta classifies
   arkrule add/remove/promote/demote; CLI loads referenced files via
@@ -33,6 +40,9 @@ in the immutable pre-2.0 archive linked below.
 - **Tier-1 sensors:** `aggregate-private-state`, `always-valid-factory`,
   `domain-event-on-mutation`, `orchestration-only`, `thin-adapter`.
 - **Tier-2 advisory:** `no-anemic-model` (never promotable).
+- **fileHints:** Tooling derives conservative `orchestrationHeavy` / `adapterThick` hints
+  (`deriveArkRuleFileHints`) and feeds the write/CI scan path so Tier-1 orchestration-only and
+  thin-adapter can fire when rules are present (prefer false negatives; default templates stay advisory).
 - **Templates:** `templates/arkrules/*.json` + presets/init emit lean `arkRules` refs and
   copy editable starter files.
 
@@ -41,7 +51,8 @@ in the immutable pre-2.0 archive linked below.
 - **ADR 0014–0016:** invariant catalog + coverage evidence + promotion ladder; migration
   routes through existing skills; no executable evaluator in core.
 - **Invariant coverage:** test-title + symbol evidence; `INVARIANT_UNCOVERED`; partial when
-  test globs missing; `canPromoteInvariant` refuses uncovered promotions.
+  test globs missing; `canPromoteInvariant` refuses uncovered promotions. Write path loads real
+  test contents via `bin/lib/invariant-coverage-io.mjs` (never empty-fileContents stub).
 - **Doctor/HTML** `rulesUnderContract` (counts, not a score); report parity key.
 - **Rules inventory:** `ark-check --rules-inventory` + MCP `ark_rules_inventory`; extraction
   cards for pilotLoop; freeze residual reuses baseline keys.

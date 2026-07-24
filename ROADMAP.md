@@ -2882,9 +2882,14 @@ folded into Phase C implementation work.
 ```text
 Engineering doing: none — Phase AR (`AR01`–`AR19`) complete on this branch
   (ArkRules foundations → sensors → catalog/coverage → inventory → docs/claims audit)
+  Residual write-path wiring closed: classShapes on facts, invariant coverage I/O,
+  fileHints for orchestration-only/thin-adapter, ARKRULE_SCOPE_EMPTY zero-match appliesTo,
+  promotion refuse without coverage, doctor rules-under-contract real test scan
 Phase AR (v4 train, AR01–AR19 done): ArkRules intra-layer contract + brownfield rules migration;
   releases 4.0.0 (AR01–AR08, incl. AR04 forwarder removal), 4.1.0 (AR09–AR12),
   4.2.0 (AR13–AR16), 4.3.0 (AR17–AR19); all opt-in/additive; no new skill names; no codemod
+VERSION HONESTY: package stamps still 3.9.2 (last 3.x); this branch MUST NOT publish as 3.9.x
+  (AR04 breaking). Prepare 4.0.0 deliberately before npm/MCP registry; Unreleased = 4.x train
 Claim gate: `Z09` (`parked`) — residual RB-11 only (retained adoption + independent close)
   Field kit scaffolding: docs/field/ (preregistration, cohort checklist, reviewer manifesto) — NOT closed
   Promote Z09 only when: signed reviewer/repo identity mechanism + external matrix + ≥8 consented adopters are preregistered
@@ -2898,10 +2903,11 @@ Parked field candidates: Y09 (keep), Y07 (low priority behind Y06 pure-opt-in co
 Y06 done: pure-layer opt-in nudge (PREDIAL field case)
 Archived until field demand + ADR: Y10 (not “next after Z09”)
 Runtime parked: K01 outside Phase Z; experimental @arkgate/runtime is not the product wedge;
-  deprecated root forwarders arkgate/runtime|nestjs remain until major 4.0 (removal owned by AR04)
+  AR04 on this branch removes root forwarders arkgate/runtime|nestjs (4.x only — not 3.9.x)
 Release lanes: ordinary corrective patches do not wait for Z09; broad “Phase Z shipped” /
   retained-adoption / independent-close claims wait for residual RB-11
-Released baseline: npm arkgate@3.9.0 prepared (Beautiful Path + P1–P4 residuals; publish pending; Z09/RB-11 residual open)
+Released baseline: npm arkgate@3.9.2 (3.x honesty patch; last 3.x line before 4.x train)
+Released baseline: npm arkgate@3.9.0 prepared (Beautiful Path + P1–P4 residuals; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.3 (field journey: pnpm -w, start pin, compact MCP; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.1 (pure-path fail-closed patch; Z09/RB-11 residual open)
 Released baseline: npm arkgate@3.8.0 (Phase Z corrective minor; Z09/RB-11 residual open) — PR #90

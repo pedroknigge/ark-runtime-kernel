@@ -500,7 +500,12 @@ export function runDoctor(root, config, files, rules, violations, asJson, option
             // Q04: one-pilot loop (extraction card → re-doctor).
             pilotLoop,
             // AR12 — Rules under contract (honest counts, not a score).
-            rulesUnderContract: summarizeRulesUnderContract(root, config),
+            // Pass architecture facts when available so coverage can scan real tests.
+            rulesUnderContract: summarizeRulesUnderContract(
+              root,
+              config,
+              options.facts ?? options.architectureFacts
+            ),
             // Advisories, never a verdict: W01/U05/X04/Y03 + graph-blind spots.
             ...doctorAdvisories,
             governed: cov.governed,

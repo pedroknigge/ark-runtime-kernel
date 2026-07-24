@@ -1,6 +1,10 @@
 import { loweredLayerCoverage } from './capabilities';
 import type { ArkConfig, ArkConfigLayer, ArkConfigRule } from './configContract';
 import type { EffectiveArkRules, EffectiveInvariantRule, EffectiveStructureRule } from './arkRulesTypes';
+import {
+  canPromoteInvariant,
+  type InvariantCoverageEvidence,
+} from './invariantCoverage';
 
 export const POLICY_DELTA_SCHEMA_VERSION = '1.0' as const;
 
@@ -433,8 +437,12 @@ function compareArkRules(
   base: ArkConfig,
   candidate: ArkConfig,
   baseArkRules?: EffectiveArkRules,
-  candidateArkRules?: EffectiveArkRules
+  candidateArkRules?: EffectiveArkRules,
+  candidateInvariantCoverage?: readonly InvariantCoverageEvidence[]
 ): void {
+  const coverageById = new Map(
+    (candidateInvariantCoverage ?? []).map((entry) => [entry.invariantId, entry] as const)
+  );
   const baseRefs = base.arkRules ?? {};
   const candidateRefs = candidate.arkRules ?? {};
   const layers = [...new Set([...Object.keys(baseRefs), ...Object.keys(candidateRefs)])].sort();
@@ -556,16 +564,40 @@ function compareArkRules(
     if (!previous || !next) continue;
     if (previous.mode !== next.mode) {
       const promotion = previous.mode === 'advisory' && next.mode === 'enforced';
-      addFinding(findings, {
-        kind: promotion ? 'arkrule-invariant-promoted' : 'arkrule-invariant-demoted',
-        path: `${path}.mode`,
-        classification: promotion ? 'strengthening' : 'weakening',
-        message: promotion
-          ? `Invariant ${next.id} was promoted to enforced.`
-          : `Invariant ${next.id} was demoted to advisory.`,
-        before: previous.mode,
-        after: next.mode,
-      });
+      if (promotion) {
+        // AR11: refuse auto-allow when uncovered / partial. Without coverage evidence,
+        // promotion is judgment-required (cannot silently strengthen).
+        const coverage = coverageById?.get(next.id);
+        const gate = canPromoteInvariant(coverage);
+        if (gate.ok) {
+          addFinding(findings, {
+            kind: 'arkrule-invariant-promoted',
+            path: `${path}.mode`,
+            classification: 'strengthening',
+            message: `Invariant ${next.id} was promoted to enforced (coverage evidence present).`,
+            before: previous.mode,
+            after: next.mode,
+          });
+        } else {
+          addFinding(findings, {
+            kind: 'arkrule-invariant-promote-refused',
+            path: `${path}.mode`,
+            classification: 'judgment-required',
+            message: `Invariant ${next.id} cannot be promoted to enforced: ${gate.reason}`,
+            before: previous.mode,
+            after: next.mode,
+          });
+        }
+      } else {
+        addFinding(findings, {
+          kind: 'arkrule-invariant-demoted',
+          path: `${path}.mode`,
+          classification: 'weakening',
+          message: `Invariant ${next.id} was demoted to advisory.`,
+          before: previous.mode,
+          after: next.mode,
+        });
+      }
     }
   }
 }
@@ -573,6 +605,12 @@ function compareArkRules(
 export type ClassifyArkPolicyDeltaOptions = {
   baseArkRules?: EffectiveArkRules;
   candidateArkRules?: EffectiveArkRules;
+  /**
+   * AR11 — coverage evidence for candidate invariants. Required to auto-allow
+   * advisory→enforced promotion; without it (or when uncovered), promotion is
+   * judgment-required / refused.
+   */
+  candidateInvariantCoverage?: readonly InvariantCoverageEvidence[];
 };
 
 export function classifyArkPolicyDelta(
@@ -655,7 +693,8 @@ export function classifyArkPolicyDelta(
     base,
     candidate,
     options?.baseArkRules,
-    options?.candidateArkRules
+    options?.candidateArkRules,
+    options?.candidateInvariantCoverage
   );
   findings.sort((left, right) => left.path.localeCompare(right.path) || left.id.localeCompare(right.id));
 

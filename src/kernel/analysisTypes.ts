@@ -61,6 +61,30 @@ export type AnalysisResult = {
 export type AnalyzeResolvedProjectInput = {
   contract: AnalysisContract;
   facts: unknown;
+  /**
+   * AR10 — Tooling-supplied contents for invariant coverage evidence.
+   * When omitted and the Effective Contract has invariants, coverage is partial
+   * (never false green covered).
+   */
+  coverageInputs?: {
+    fileContents: Readonly<Record<string, string>>;
+    testFiles?: readonly string[];
+    testGlobsMissing?: boolean;
+  };
+  /**
+   * AR07 — Tooling-supplied orchestration/thin-adapter heuristics per file.
+   * Prefer deriveArkRuleFileHints / buildArkRuleFileHints (Domain pure).
+   * When omitted, orchestration-only and thin-adapter sensors stay silent.
+   */
+  fileHints?: Readonly<
+    Record<
+      string,
+      {
+        orchestrationHeavy?: boolean;
+        adapterThick?: boolean;
+      }
+    >
+  >;
 };
 
 export type PreflightResolvedChangeInput = {

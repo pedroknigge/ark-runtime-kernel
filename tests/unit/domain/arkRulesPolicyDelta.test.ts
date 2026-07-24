@@ -6,6 +6,7 @@ import {
 } from '../../../src/domain/arkRulesContract';
 import { classifyArkPolicyDelta } from '../../../src/domain/policyDelta';
 import { loadContract, analyzePolicyDelta } from '../../../src/kernel/analysisCore';
+import { canPromoteInvariant } from '../../../src/domain/invariantCoverage';
 
 const BASE_CONFIG = {
   schemaVersion: '1.1' as const,
@@ -162,5 +163,73 @@ describe('AR02 ArkRules policyHash + policy-delta', () => {
     expect(result.requiresAcknowledgement).toBe(true);
     expect(result.valid).toBe(false);
     expect(result.basePolicyHash).not.toBe(result.candidatePolicyHash);
+  });
+
+  it('refuses invariant promotion without coverage evidence (AR11)', () => {
+    const invFile = (mode: 'advisory' | 'enforced') =>
+      loadArkRulesContract({
+        schemaVersion: '1.0',
+        layer: 'DomainModel',
+        invariants: [
+          {
+            id: 'INV-ORDER-001',
+            description: 'Order total never negative',
+            mode,
+          },
+        ],
+      }).config;
+    const cfg = {
+      ...BASE_CONFIG,
+      arkRules: { DomainModel: 'arkrules/DomainModel.json' },
+    };
+    const refused = classifyArkPolicyDelta(cfg as never, cfg as never, {
+      baseArkRules: buildEffectiveArkRules([
+        {
+          layer: 'DomainModel',
+          sourceFile: 'arkrules/DomainModel.json',
+          file: invFile('advisory'),
+        },
+      ]),
+      candidateArkRules: buildEffectiveArkRules([
+        {
+          layer: 'DomainModel',
+          sourceFile: 'arkrules/DomainModel.json',
+          file: invFile('enforced'),
+        },
+      ]),
+    });
+    expect(refused.classification).toBe('judgment-required');
+    expect(refused.findings.some((f) => f.id.includes('promote-refused'))).toBe(true);
+
+    const covered = {
+      invariantId: 'INV-ORDER-001',
+      layer: 'DomainModel',
+      sourceFile: 'arkrules/DomainModel.json',
+      mode: 'enforced' as const,
+      covered: true,
+      evidence: ['test-title' as const],
+      partial: false,
+      description: 'Order total never negative',
+    };
+    expect(canPromoteInvariant(covered).ok).toBe(true);
+    const allowed = classifyArkPolicyDelta(cfg as never, cfg as never, {
+      baseArkRules: buildEffectiveArkRules([
+        {
+          layer: 'DomainModel',
+          sourceFile: 'arkrules/DomainModel.json',
+          file: invFile('advisory'),
+        },
+      ]),
+      candidateArkRules: buildEffectiveArkRules([
+        {
+          layer: 'DomainModel',
+          sourceFile: 'arkrules/DomainModel.json',
+          file: invFile('enforced'),
+        },
+      ]),
+      candidateInvariantCoverage: [covered],
+    });
+    expect(allowed.classification).toBe('strengthening');
+    expect(allowed.findings.some((f) => f.id.includes('arkrule-invariant-promoted'))).toBe(true);
   });
 });

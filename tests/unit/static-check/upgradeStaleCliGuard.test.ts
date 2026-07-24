@@ -1,23 +1,23 @@
 /**
  * Stale global CLI vs project node_modules/arkgate — upgrade fail-closed guard.
+ * ESM imports so V8 coverage attributes hits to bin/lib/upgrade-command.mjs.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-
-const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-const require = createRequire(import.meta.url);
-const {
+import {
   buildUpgradeNextCommand,
   compareSemverCore,
   evaluateStaleUpgradeCli,
   isPathInside,
+  recoveryUseLocal,
   resolveProjectArkgatePackageJson,
   runUpgradeCommand,
-} = require(path.join(REPO, 'bin/lib/upgrade-command.mjs'));
+} from '../../../bin/lib/upgrade-command.mjs';
+
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 
 function write(root: string, rel: string, body: string) {
   const full = path.join(root, rel);
@@ -25,13 +25,17 @@ function write(root: string, rel: string, body: string) {
   fs.writeFileSync(full, body);
 }
 
-describe('compareSemverCore / isPathInside', () => {
+describe('compareSemverCore / isPathInside / recoveryUseLocal', () => {
   it('orders major.minor.patch cores', () => {
     expect(compareSemverCore('2.6.0', '4.0.0')).toBe(-1);
     expect(compareSemverCore('4.0.0', '4.0.0')).toBe(0);
     expect(compareSemverCore('4.1.0', '4.0.0')).toBe(1);
     expect(compareSemverCore('v3.8.2', '3.8.0')).toBe(1);
     expect(compareSemverCore('3.8.0-beta.1', '3.8.0')).toBe(0);
+    expect(compareSemverCore('', '1.0.0')).toBe(-1);
+    // Non-numeric core → 0.0.0
+    expect(compareSemverCore('not-a-version', '0.0.1')).toBe(-1);
+    expect(compareSemverCore('not-a-version', '0.0.0')).toBe(0);
   });
 
   it('detects path containment', () => {
@@ -39,6 +43,21 @@ describe('compareSemverCore / isPathInside', () => {
     expect(isPathInside(path.join(root, 'bin'), root)).toBe(true);
     expect(isPathInside(root, root)).toBe(true);
     expect(isPathInside(path.join(root, '..', 'other'), root)).toBe(false);
+  });
+
+  it('recoveryUseLocal prefers package-manager runner and notes hoisted monorepos', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'ark-recovery-'));
+    try {
+      write(tmp, 'package.json', JSON.stringify({ name: 'consumer', private: true }, null, 2));
+      const text = recoveryUseLocal(tmp);
+      expect(text).toMatch(/project-local CLI/i);
+      expect(text).toMatch(/^(Use the project-local)/);
+      expect(text).toMatch(/\barkgate\b/);
+      expect(text).toMatch(/node_modules\/arkgate\/bin\/ark\.mjs/);
+      expect(text).toMatch(/Hoisted monorepos/i);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
   });
 });
 
@@ -81,6 +100,17 @@ describe('buildUpgradeNextCommand (project-local, never bare ark)', () => {
     expect(cmd).toMatch(/^pnpm /);
     expect(cmd).toMatch(/exec arkgate/);
     expect(cmd).not.toMatch(/^ark /);
+  });
+
+  it('install apply omits plan-digest; acceptConflicts and strict flags appear', () => {
+    const withInstall = buildUpgradeNextCommand(
+      { root: tmp, install: true, json: false, strict: true, acceptConflicts: true },
+      'sha256:ignored'
+    );
+    expect(withInstall).not.toMatch(/--plan-digest/);
+    expect(withInstall).toMatch(/--accept-conflicts/);
+    expect(withInstall).not.toMatch(/--no-strict/);
+    expect(withInstall).toMatch(/--apply/);
   });
 });
 
@@ -456,5 +486,113 @@ describe('runUpgradeCommand stale guard integration', () => {
     expect(report.nextCommand).toMatch(/\barkgate\b/);
     expect(report.nextCommand).toMatch(/--plan-digest /);
     expect(report.nextCommand).not.toMatch(/^ark /);
+  });
+
+  it('human preview path (non-json) exits 0 without refuse for project-local CLI', () => {
+    write(
+      tmp,
+      'node_modules/arkgate/package.json',
+      JSON.stringify({ name: 'arkgate', version: '4.0.0' }, null, 2)
+    );
+    const projectRoot = path.join(tmp, 'node_modules', 'arkgate');
+    const code = runUpgradeCommand(
+      { root: tmp, apply: false, install: false, json: false, strict: false },
+      {
+        cliVersion: '4.0.0',
+        cliPackageRoot: projectRoot,
+        packageInstallArgv: () => ['false', []],
+        arkCheck: path.join(REPO, 'bin/ark-check.mjs'),
+        runArkCheck: () => 0,
+      }
+    );
+    expect(code).toBe(0);
+    expect(stderrSpy.mock.calls.join('\n')).not.toMatch(/Refusing/);
+  });
+
+  it('skip-install re-enters fake local CLI and returns its exit status', () => {
+    write(
+      tmp,
+      'node_modules/arkgate/package.json',
+      JSON.stringify({ name: 'arkgate', version: '4.0.0' }, null, 2)
+    );
+    write(
+      tmp,
+      'node_modules/arkgate/bin/ark.mjs',
+      '#!/usr/bin/env node\nprocess.exit(7);\n'
+    );
+    const projectRoot = path.join(tmp, 'node_modules', 'arkgate');
+    const packageInstallArgv = vi.fn(() => {
+      throw new Error('must skip install');
+    });
+    const code = runUpgradeCommand(
+      { root: tmp, apply: true, install: true, json: false, strict: false },
+      {
+        cliVersion: '4.0.0',
+        cliPackageRoot: projectRoot,
+        packageInstallArgv,
+        shouldSkipArkgateInstall: () => ({ skip: true, installedVersion: '4.0.0' }),
+        arkCheck: path.join(REPO, 'bin/ark-check.mjs'),
+        runArkCheck: () => 0,
+      }
+    );
+    expect(packageInstallArgv).not.toHaveBeenCalled();
+    expect(code).toBe(7);
+    expect(stdoutSpy.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(
+      /Package already at arkgate@4\.0\.0/
+    );
+  });
+
+  it('apply without plan-digest fails closed with digest error (covers apply path)', () => {
+    write(
+      tmp,
+      'node_modules/arkgate/package.json',
+      JSON.stringify({ name: 'arkgate', version: '4.0.0' }, null, 2)
+    );
+    write(tmp, 'ark.config.json', JSON.stringify({ schemaVersion: '1.1', include: ['src'], layers: [], rules: [] }));
+    const projectRoot = path.join(tmp, 'node_modules', 'arkgate');
+    const code = runUpgradeCommand(
+      {
+        root: tmp,
+        apply: true,
+        install: false,
+        planDigest: 'sha256:deadbeef',
+        json: false,
+        strict: false,
+      },
+      {
+        cliVersion: '4.0.0',
+        cliPackageRoot: projectRoot,
+        packageInstallArgv: () => ['false', []],
+        arkCheck: path.join(REPO, 'bin/ark-check.mjs'),
+        runArkCheck: () => 0,
+      }
+    );
+    // Digest mismatch or plan refuse → exit 2 from apply catch.
+    expect(code).toBe(2);
+    expect(stderrSpy.mock.calls.map((c) => c.join(' ')).join('\n').length).toBeGreaterThan(0);
+  });
+
+  it('uses injectable evaluateStaleUpgradeCli when provided', () => {
+    const evaluateStaleUpgradeCli = vi.fn(() => ({
+      refuse: true,
+      reason: 'injected',
+      message: 'injected refuse',
+      cliVersion: '1.0.0',
+      projectVersion: '4.0.0',
+    }));
+    const code = runUpgradeCommand(
+      { root: tmp, apply: false, install: false, json: false, strict: true },
+      {
+        evaluateStaleUpgradeCli,
+        cliVersion: '1.0.0',
+        cliPackageRoot: fakeGlobal,
+        packageInstallArgv: () => ['false', []],
+        arkCheck: path.join(REPO, 'bin/ark-check.mjs'),
+        runArkCheck: () => 0,
+      }
+    );
+    expect(code).toBe(2);
+    expect(evaluateStaleUpgradeCli).toHaveBeenCalled();
+    expect(stderrSpy.mock.calls.map((c) => c.join(' ')).join('\n')).toMatch(/injected refuse/);
   });
 });

@@ -11,7 +11,10 @@ import {
   loadArkRuleFileHints,
   needsArkRuleFileHints,
 } from '../../../bin/lib/arkrule-file-hints.mjs';
-import { summarizeRulesUnderContract } from '../../../bin/lib/rules-under-contract.mjs';
+import {
+  formatRulesUnderContractHtml,
+  summarizeRulesUnderContract,
+} from '../../../bin/lib/rules-under-contract.mjs';
 
 const tempDirs: string[] = [];
 
@@ -174,8 +177,6 @@ export async function save(order: Order) {
   });
 
   it('rules-under-contract HTML lists layers, structure sensors, and invariants (not counts-only)', () => {
-    // eslint-disable-next-line -- runtime .mjs under test
-    const { formatRulesUnderContractHtml } = require('../../../bin/lib/rules-under-contract.mjs');
     const esc = (v: unknown) => String(v);
     const html = formatRulesUnderContractHtml(
       {
@@ -239,9 +240,105 @@ export async function save(order: Order) {
     expect(html).not.toMatch(/counts — not a score/i);
   });
 
+  it('formatRulesUnderContractHtml covers inactive, loadErrors, empty structure, and default esc', () => {
+    expect(formatRulesUnderContractHtml(null, (v: unknown) => String(v))).toBe('');
+    expect(formatRulesUnderContractHtml(undefined as never)).toBe('');
+
+    const inactive = formatRulesUnderContractHtml(
+      {
+        active: false,
+        structureRules: 0,
+        invariants: 0,
+        coveredInvariants: 0,
+        uncoveredInvariants: 0,
+        notAScore: true,
+        note: 'No arkRules map — intra-layer ArkRules are opt-in.',
+      },
+      (v: unknown) => String(v)
+    );
+    expect(inactive).toMatch(/ArkRules opt-in/);
+    expect(inactive).toMatch(/No arkRules map/);
+
+    const loadErr = formatRulesUnderContractHtml(
+      {
+        active: true,
+        loadErrors: [{ path: '$.arkRules["DomainModel"]', message: 'missing file' }],
+        notAScore: true,
+        note: 'load failed',
+      },
+      (v: unknown) => String(v)
+    );
+    expect(loadErr).toMatch(/load errors/i);
+    expect(loadErr).toMatch(/missing file/);
+
+    const noStructure = formatRulesUnderContractHtml(
+      {
+        active: true,
+        structureRules: 0,
+        invariants: 0,
+        coveredInvariants: 0,
+        uncoveredInvariants: 0,
+        layers: [{ name: 'DomainModel', structureRules: 0, invariants: 0, coveredInvariants: 0, uncoveredInvariants: 0 }],
+        structure: [],
+        uncovered: [],
+        coveredSample: [],
+        structureTruncated: 0,
+        uncoveredTruncated: 0,
+        coveredTruncated: 0,
+        testFilesScanned: 0,
+        notAScore: true,
+        note: 'ok',
+      },
+      (v: unknown) => String(v)
+    );
+    expect(noStructure).toMatch(/No structure sensors/);
+    expect(noStructure).toMatch(/All catalogued invariants have coverage evidence/);
+
+    // enforced structure mode tag + no-description rows + default esc
+    const enforced = formatRulesUnderContractHtml({
+      active: true,
+      structureRules: 1,
+      invariants: 1,
+      coveredInvariants: 0,
+      uncoveredInvariants: 1,
+      layers: [
+        {
+          name: 'DomainModel',
+          structureRules: 1,
+          invariants: 0,
+          coveredInvariants: 0,
+          uncoveredInvariants: 0,
+        },
+      ],
+      structure: [
+        {
+          id: 'thin',
+          sensor: 'thin-adapter',
+          mode: 'enforced',
+          layer: 'PersistenceAdapters',
+        },
+      ],
+      uncovered: [{ id: 'INV-X', layer: 'DomainModel' }],
+      coveredSample: [],
+      structureTruncated: 0,
+      uncoveredTruncated: 0,
+      coveredTruncated: 0,
+      testFilesScanned: 1,
+      notAScore: true,
+    });
+    expect(enforced).toMatch(/>enforced</);
+    expect(enforced).toContain('INV-X');
+
+    // summarize inactive without arkRules
+    const empty = summarizeRulesUnderContract(path.join(os.tmpdir(), 'ark-no-rules'), {
+      schemaVersion: '1.1',
+      layers: [],
+      rules: [],
+    });
+    expect(empty.active).toBe(false);
+  });
+
   it('doctor catalog caps structure/uncovered with *Truncated counters (HTML announces overflow)', () => {
-    // eslint-disable-next-line -- runtime .mjs under test
-    const { formatRulesUnderContractHtml } = require('../../../bin/lib/rules-under-contract.mjs');
     const esc = (v: unknown) => String(v);
     const structure = Array.from({ length: 3 }, (_, i) => ({
       id: `struct-${i}`,

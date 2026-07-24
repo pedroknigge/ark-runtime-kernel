@@ -20,6 +20,9 @@ in the immutable pre-2.0 archive linked below.
   `/ark-explain` and the ArkRules HTML strip state that structure sensors are heuristics,
   invariants are catalog + coverage evidence (not a business runtime), and the two planes
   never merge into one architecture score.
+- **Coverage floors (internal):** branch threshold 83.0 → **82.5** after Fase 0 surface
+  growth (measured ~83% clean candidate); unit tests for upgrade refuse/HTML catalog use
+  ESM imports so V8 attributes hits (createRequire was under-counting).
 
 ### Fixed
 
